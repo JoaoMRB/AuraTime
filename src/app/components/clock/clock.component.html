@@ -1,0 +1,401 @@
+<!-- Dynamic Theme Background Container -->
+<div class="fixed inset-0 -z-50 overflow-hidden transition-all duration-1000"
+     [ngClass]="{
+       'bg-gradient-to-br from-luxury-darkEmerald via-black to-[#011409] text-white': settings.theme() === 'emerald-gold',
+       'bg-gradient-to-tr from-indigo-950 via-slate-950 to-violet-950 text-white': settings.theme() === 'liquid-glass',
+       'bg-gradient-to-tr from-gray-200 via-slate-100 to-gray-300 text-slate-800': settings.theme() === 'light-glass',
+       'bg-gradient-to-tr from-zinc-900 via-neutral-950 to-stone-900 text-white': settings.theme() === 'dark-glass',
+       'bg-black text-white': settings.theme() === 'obsidian-platinum'
+     }">
+
+  <!-- Ambient Fluid Glow Spheres (Only for Gold Emerald & Liquid Glass themes for visuals) -->
+  <ng-container *ngIf="settings.theme() === 'emerald-gold'">
+    <div class="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-luxury-emerald/20 blur-[130px] animate-liquid-slow mix-blend-screen"></div>
+    <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-luxury-gold/10 blur-[120px] animate-liquid-fast mix-blend-screen"></div>
+  </ng-container>
+
+  <ng-container *ngIf="settings.theme() === 'liquid-glass'">
+    <div class="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-cyan-600/20 blur-[130px] animate-liquid-slow mix-blend-screen"></div>
+    <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[120px] animate-liquid-fast mix-blend-screen"></div>
+  </ng-container>
+
+  <!-- Fine Desk Setup grid overlay (subtle accent) -->
+  <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+</div>
+
+<!-- Main Display Area -->
+<div class="w-full h-full flex transition-all duration-500 select-none overflow-hidden"
+     [ngClass]="{
+       'justify-center items-center': settings.position() === 'center',
+       'justify-start items-start p-10 md:p-20': settings.position() === 'top-left',
+       'justify-end items-start p-10 md:p-20': settings.position() === 'top-right',
+       'justify-start items-end p-10 md:p-20': settings.position() === 'bottom-left',
+       'justify-end items-end p-10 md:p-20': settings.position() === 'bottom-right'
+     }">
+
+  <!-- Outer wrapper carrying Scale & Rotation Angle adjustments -->
+  <div class="transition-transform duration-300 ease-out origin-center"
+       [style.transform]="'scale(' + settings.scale() + ') rotate(' + settings.angle() + 'deg)'">
+       
+    <!-- Clock Glass Card Face -->
+    <div class="px-12 py-10 rounded-[2.5rem] flex flex-col items-center justify-center min-w-[320px] transition-all duration-700"
+         [ngClass]="{
+           'bg-[#07170d]/60 backdrop-blur-2xl border border-luxury-gold/25 shadow-[0_20px_50px_rgba(10,59,31,0.25)]': settings.theme() === 'emerald-gold',
+           'bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]': settings.theme() === 'liquid-glass',
+           'bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_15px_30px_rgba(0,0,0,0.05)]': settings.theme() === 'light-glass',
+           'bg-white/[0.02] backdrop-blur-xl border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.55)]': settings.theme() === 'dark-glass',
+           'bg-zinc-950/40 backdrop-blur-3xl border border-zinc-900/80 shadow-[0_20px_60px_rgba(0,0,0,0.85)]': settings.theme() === 'obsidian-platinum'
+         }">
+
+      <!-- Time / Countdown Segment -->
+      <div class="text-center tracking-widest"
+           [ngClass]="{
+             'font-orbitron font-bold': settings.font() === 'orbitron',
+             'font-inter font-light': settings.font() === 'inter',
+             'font-playfair font-normal italic': settings.font() === 'playfair',
+             'font-outfit font-medium': settings.font() === 'outfit'
+           }">
+
+        <!-- Standard Clock View -->
+        <div *ngIf="settings.mode() === 'clock'" 
+             class="text-5xl md:text-7xl lg:text-8xl drop-shadow-md select-all"
+             [ngClass]="{
+               'text-transparent bg-clip-text bg-gradient-to-r from-luxury-gold via-white to-luxury-platinum drop-shadow-[0_2px_10px_rgba(212,175,55,0.35)]': settings.theme() === 'emerald-gold',
+               'text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.25)]': settings.theme() === 'liquid-glass',
+               'text-slate-800': settings.theme() === 'light-glass',
+               'text-white/95': settings.theme() === 'dark-glass',
+               'text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-zinc-600': settings.theme() === 'obsidian-platinum'
+             }">
+          {{ currentTime() }}
+        </div>
+
+        <!-- Pomodoro Focus Timer View -->
+        <div *ngIf="settings.mode() === 'pomodoro'" class="flex flex-col items-center">
+          <span class="text-xs uppercase tracking-[0.25em] mb-3 text-luxury-gold drop-shadow-sm font-semibold">
+            {{ pomoPhase() === 'work' ? ts.t('POMODORO.WORK') : ts.t('POMODORO.BREAK') }}
+          </span>
+          
+          <div class="text-6xl md:text-8xl font-black drop-shadow-md tracking-wider"
+               [ngClass]="{
+                 'text-transparent bg-clip-text bg-gradient-to-r from-luxury-gold via-white to-luxury-platinum': settings.theme() === 'emerald-gold',
+                 'text-white': settings.theme() === 'liquid-glass',
+                 'text-slate-800': settings.theme() === 'light-glass',
+                 'text-white/95': settings.theme() === 'dark-glass',
+                 'text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-zinc-600': settings.theme() === 'obsidian-platinum'
+               }">
+            {{ pomoMinutes() | number:'2.0' }}:{{ pomoSeconds() | number:'2.0' }}
+          </div>
+
+          <!-- Pomodoro Control Overlay HUD (Displays directly under Pomodoro watch timer) -->
+          <div class="flex items-center gap-4 mt-6 z-10 transition-all duration-300"
+               [class.opacity-100]="hudVisible()"
+               [class.opacity-20]="!hudVisible()"
+               [class.hover:opacity-100]="true">
+            <button (click)="togglePomodoro()"
+                    class="p-3 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110 cursor-pointer shadow border"
+                    [ngClass]="{
+                      'bg-luxury-gold text-luxury-charcoal border-luxury-gold/50': settings.theme() === 'emerald-gold',
+                      'bg-white/10 text-white border-white/20 hover:bg-white/20': settings.theme() !== 'emerald-gold' && settings.theme() !== 'light-glass',
+                      'bg-black/10 text-black border-black/10 hover:bg-black/20': settings.theme() === 'light-glass'
+                    }">
+              <!-- Play / Pause Icon -->
+              <svg *ngIf="!pomoRunning()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+              </svg>
+              <svg *ngIf="pomoRunning()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <button (click)="resetPomodoro()"
+                    class="p-3 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110 cursor-pointer shadow border"
+                    [ngClass]="{
+                      'bg-white/5 text-white border-white/10 hover:bg-white/10': settings.theme() !== 'light-glass',
+                      'bg-black/5 text-black border-black/10 hover:bg-black/10': settings.theme() === 'light-glass'
+                    }">
+              <!-- Reset Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Date Segment (If configured) -->
+      <div *ngIf="settings.showDate()" 
+           class="text-[10px] md:text-xs tracking-[0.25em] uppercase mt-5 select-none font-outfit"
+           [ngClass]="{
+             'text-luxury-mint/70': settings.theme() === 'emerald-gold',
+             'text-cyan-200/60': settings.theme() === 'liquid-glass',
+             'text-slate-500': settings.theme() === 'light-glass',
+             'text-white/45': settings.theme() === 'dark-glass',
+             'text-zinc-500': settings.theme() === 'obsidian-platinum'
+           }">
+        {{ currentDateStr() }}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= HUD CONTROLS ================= -->
+
+<!-- Exit / Home Button (Top Left) -->
+<div class="fixed top-6 left-6 z-30 transition-opacity duration-500"
+     [class.opacity-100]="hudVisible()"
+     [class.opacity-0]="!hudVisible() && !settingsOpen()"
+     [class.pointer-events-none]="!hudVisible() && !settingsOpen()">
+  <a routerLink="/" 
+     class="flex items-center justify-center p-3 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105"
+     [ngClass]="{
+       'bg-white/5 border-white/10 hover:bg-white/10 text-white': settings.theme() !== 'light-glass',
+       'bg-black/5 border-black/10 hover:bg-black/10 text-slate-800': settings.theme() === 'light-glass'
+     }">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+  </a>
+</div>
+
+<!-- Floating Settings Trigger Button (Bottom Left) -->
+<div class="fixed bottom-6 left-6 z-30 transition-opacity duration-500"
+     [class.opacity-100]="hudVisible()"
+     [class.opacity-0]="!hudVisible() && !settingsOpen()"
+     [class.pointer-events-none]="!hudVisible() && !settingsOpen()">
+  <button (click)="toggleSettings()"
+          class="flex items-center justify-center p-3.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer"
+          [ngClass]="{
+            'bg-luxury-emerald/90 border-luxury-gold/40 text-luxury-gold hover:bg-luxury-emerald shadow-[0_4px_20px_rgba(10,59,31,0.4)]': settings.theme() === 'emerald-gold',
+            'bg-white/5 border-white/15 text-white hover:bg-white/10': settings.theme() !== 'emerald-gold' && settings.theme() !== 'light-glass',
+            'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': settings.theme() === 'light-glass'
+          }">
+    <!-- Sliders Minimalist Icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+    </svg>
+  </button>
+</div>
+
+<!-- ================= SETTINGS SIDEBAR DRAWER ================= -->
+
+<!-- Sidebar Backdrop Overlay -->
+<div *ngIf="settingsOpen()" 
+     (click)="closeSettings()" 
+     class="fixed inset-0 z-30 bg-black/70 backdrop-blur-xs transition-opacity duration-300">
+</div>
+
+<!-- Drawer container -->
+<div class="fixed top-0 left-0 h-full w-80 max-w-[90vw] z-40 bg-[#070c08]/95 backdrop-blur-2xl border-r border-white/5 p-6 shadow-[10px_0_50px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out overflow-y-auto no-scrollbar"
+     [class.translate-x-0]="settingsOpen()"
+     [class.-translate-x-full]="!settingsOpen()">
+  
+  <!-- Drawer Header -->
+  <div class="flex items-center justify-between pb-5 border-b border-white/10 mb-6">
+    <div class="flex items-center gap-2">
+      <div class="w-4 h-4 rounded-full bg-luxury-gold shadow-[0_0_8px_rgba(212,175,55,0.4)]"></div>
+      <h3 class="font-outfit font-bold text-white text-base tracking-wide uppercase">{{ ts.t('CLOCK.SETTINGS') }}</h3>
+    </div>
+    <button (click)="closeSettings()" class="text-gray-400 hover:text-white transition-colors cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="space-y-6 text-left">
+    
+    <!-- 1. MODE SELECT -->
+    <div class="space-y-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest">{{ ts.t('CLOCK.MODE') }}</label>
+      <div class="grid grid-cols-2 gap-2 bg-black/45 rounded-lg p-1 border border-white/5">
+        <button (click)="settings.mode.set('clock')"
+                [class]="settings.mode() === 'clock' ? 'bg-luxury-gold text-luxury-charcoal font-bold shadow' : 'text-gray-400 hover:text-white'"
+                class="py-1.5 text-xs rounded-md transition-all duration-300">
+          {{ ts.t('CLOCK.MODE_CLOCK') }}
+        </button>
+        <button (click)="settings.mode.set('pomodoro')"
+                [class]="settings.mode() === 'pomodoro' ? 'bg-luxury-gold text-luxury-charcoal font-bold shadow' : 'text-gray-400 hover:text-white'"
+                class="py-1.5 text-xs rounded-md transition-all duration-300">
+          {{ ts.t('CLOCK.MODE_POMODORO') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. THEME PALETTE -->
+    <div class="space-y-2.5">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.THEME') }}</label>
+      <div class="space-y-2">
+        <!-- Gold Emerald (Active indicator) -->
+        <button (click)="settings.theme.set('emerald-gold')"
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all duration-300"
+                [ngClass]="settings.theme() === 'emerald-gold' ? 'bg-luxury-emerald/20 border-luxury-gold text-white font-semibold' : 'bg-black/25 border-white/5 text-gray-400 hover:bg-black/45 hover:text-white'">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-luxury-emerald border border-luxury-gold/50"></span>
+            {{ ts.t('CLOCK.THEME_EMERALD_GOLD') }}
+          </div>
+          <span *ngIf="settings.theme() === 'emerald-gold'" class="text-[9px] px-1.5 py-0.5 rounded bg-luxury-gold/20 text-luxury-gold font-bold">ACTIVE</span>
+        </button>
+
+        <!-- Liquid Glass -->
+        <button (click)="settings.theme.set('liquid-glass')"
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all duration-300"
+                [ngClass]="settings.theme() === 'liquid-glass' ? 'bg-indigo-950/20 border-indigo-500 text-white font-semibold' : 'bg-black/25 border-white/5 text-gray-400 hover:bg-black/45 hover:text-white'">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500"></span>
+            {{ ts.t('CLOCK.THEME_LIQUID_GLASS') }}
+          </div>
+        </button>
+
+        <!-- Obsidian Platinum -->
+        <button (click)="settings.theme.set('obsidian-platinum')"
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all duration-300"
+                [ngClass]="settings.theme() === 'obsidian-platinum' ? 'bg-zinc-900/30 border-white/30 text-white font-semibold' : 'bg-black/25 border-white/5 text-gray-400 hover:bg-black/45 hover:text-white'">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-black border border-white/20"></span>
+            {{ ts.t('CLOCK.THEME_OBSIDIAN_PLATINUM') }}
+          </div>
+        </button>
+
+        <!-- Frosted Dark Glass -->
+        <button (click)="settings.theme.set('dark-glass')"
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all duration-300"
+                [ngClass]="settings.theme() === 'dark-glass' ? 'bg-zinc-800/20 border-white/10 text-white font-semibold' : 'bg-black/25 border-white/5 text-gray-400 hover:bg-black/45 hover:text-white'">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-zinc-700/50"></span>
+            {{ ts.t('CLOCK.THEME_DARK_GLASS') }}
+          </div>
+        </button>
+
+        <!-- Frosted Light Glass -->
+        <button (click)="settings.theme.set('light-glass')"
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-all duration-300"
+                [ngClass]="settings.theme() === 'light-glass' ? 'bg-white/10 border-white text-white font-semibold' : 'bg-black/25 border-white/5 text-gray-400 hover:bg-black/45 hover:text-white'">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-white border border-gray-300"></span>
+            {{ ts.t('CLOCK.THEME_LIGHT_GLASS') }}
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. POSITION -->
+    <div class="space-y-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.POSITION') }}</label>
+      <select [(ngModel)]="settings.position"
+              class="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-luxury-gold/50 cursor-pointer">
+        <option value="center">{{ ts.t('CLOCK.POS_CENTER') }}</option>
+        <option value="top-left">{{ ts.t('CLOCK.POS_TOP_LEFT') }}</option>
+        <option value="top-right">{{ ts.t('CLOCK.POS_TOP_RIGHT') }}</option>
+        <option value="bottom-left">{{ ts.t('CLOCK.POS_BOTTOM_LEFT') }}</option>
+        <option value="bottom-right">{{ ts.t('CLOCK.POS_BOTTOM_RIGHT') }}</option>
+      </select>
+    </div>
+
+    <!-- 4. ROTATE ANGLE -->
+    <div class="space-y-2">
+      <div class="flex justify-between items-center text-xs">
+        <label class="font-semibold text-gray-400 uppercase tracking-widest">{{ ts.t('CLOCK.ANGLE') }}</label>
+        <span class="text-luxury-mint font-mono font-bold">{{ settings.angle() }}°</span>
+      </div>
+      <input type="range" min="-45" max="45" [(ngModel)]="settings.angle"
+             class="w-full accent-luxury-gold bg-black/45 rounded-lg h-1.5 appearance-none cursor-pointer">
+    </div>
+
+    <!-- 5. SCALE -->
+    <div class="space-y-2">
+      <div class="flex justify-between items-center text-xs">
+        <label class="font-semibold text-gray-400 uppercase tracking-widest">{{ ts.t('CLOCK.SCALE') }}</label>
+        <span class="text-luxury-mint font-mono font-bold">{{ settings.scale() | number:'1.1-1' }}x</span>
+      </div>
+      <input type="range" min="0.5" max="2.0" step="0.1" [(ngModel)]="settings.scale"
+             class="w-full accent-luxury-gold bg-black/45 rounded-lg h-1.5 appearance-none cursor-pointer">
+    </div>
+
+    <!-- 6. TYPOGRAPHY -->
+    <div class="space-y-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.FONT') }}</label>
+      <select [(ngModel)]="settings.font"
+              class="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-luxury-gold/50 cursor-pointer">
+        <option value="outfit">Outfit (Luxury Modern)</option>
+        <option value="orbitron">Orbitron (Chrono Digital)</option>
+        <option value="inter">Inter (Classic Minimalist)</option>
+        <option value="playfair">Playfair Display (Executive Serif)</option>
+      </select>
+    </div>
+
+    <!-- 7. SOUNDSCAPES -->
+    <div class="space-y-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.SOUND') }}</label>
+      <select [(ngModel)]="settings.sound"
+              class="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-luxury-gold/50 cursor-pointer">
+        <option value="none">{{ ts.t('CLOCK.SOUND_NONE') }}</option>
+        <option value="tick">{{ ts.t('CLOCK.SOUND_TICK') }}</option>
+        <option value="rain">{{ ts.t('CLOCK.SOUND_RAIN') }}</option>
+      </select>
+    </div>
+
+    <!-- 8. DISPLAY SETTINGS (CHECKBOXES) -->
+    <div class="space-y-3 pt-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.DISPLAY') }}</label>
+      
+      <!-- Show Seconds -->
+      <label class="flex items-center gap-3 text-xs text-gray-300 cursor-pointer select-none">
+        <input type="checkbox" [checked]="settings.showSeconds()" (change)="settings.showSeconds.set(!settings.showSeconds())"
+               class="accent-luxury-gold rounded bg-black/45 border-white/10 w-4 h-4 cursor-pointer">
+        {{ ts.t('CLOCK.SHOW_SECONDS') }}
+      </label>
+
+      <!-- Show Date -->
+      <label class="flex items-center gap-3 text-xs text-gray-300 cursor-pointer select-none">
+        <input type="checkbox" [checked]="settings.showDate()" (change)="settings.showDate.set(!settings.showDate())"
+               class="accent-luxury-gold rounded bg-black/45 border-white/10 w-4 h-4 cursor-pointer">
+        {{ ts.t('CLOCK.SHOW_DATE') }}
+      </label>
+
+      <!-- 24H military format -->
+      <label class="flex items-center gap-3 text-xs text-gray-300 cursor-pointer select-none">
+        <input type="checkbox" [checked]="settings.militaryTime()" (change)="settings.militaryTime.set(!settings.militaryTime())"
+               class="accent-luxury-gold rounded bg-black/45 border-white/10 w-4 h-4 cursor-pointer">
+        {{ ts.t('CLOCK.MILITARY_TIME') }}
+      </label>
+    </div>
+
+    <!-- 9. INTERFACE LANGUAGE -->
+    <div class="space-y-2 pt-2">
+      <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest block">{{ ts.t('CLOCK.LANGUAGE') }}</label>
+      <div class="grid grid-cols-2 gap-2 bg-black/45 rounded-lg p-1 border border-white/5">
+        <button (click)="changeLang('en')"
+                [class]="ts.currentLang() === 'en' ? 'bg-luxury-gold text-luxury-charcoal font-bold shadow' : 'text-gray-400 hover:text-white'"
+                class="py-1 text-[11px] rounded-md transition-all duration-300">
+          ENGLISH
+        </button>
+        <button (click)="changeLang('pt')"
+                [class]="ts.currentLang() === 'pt' ? 'bg-luxury-gold text-luxury-charcoal font-bold shadow' : 'text-gray-400 hover:text-white'"
+                class="py-1 text-[11px] rounded-md transition-all duration-300">
+          PORTUGUÊS
+        </button>
+      </div>
+    </div>
+
+    <!-- 10. FOUNDERS PREMIUM CALL (MONETIZATION & COFFEE) -->
+    <div class="p-4 rounded-2xl bg-gradient-to-br from-luxury-emerald/40 to-black border border-luxury-gold/30 shadow-[0_4px_15px_rgba(212,175,55,0.1)] text-center space-y-2 mt-8">
+      <span class="text-[10px] font-orbitron font-bold tracking-[0.25em] text-luxury-gold block">{{ ts.t('CLOCK.SUPPORT') }}</span>
+      <p class="text-[10px] text-gray-400 leading-normal">{{ ts.t('CLOCK.SUPPORT_DESC') }}</p>
+      
+      <a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-luxury-gold text-luxury-charcoal font-outfit text-[11px] font-bold shadow-[0_2px_10px_rgba(212,175,55,0.3)] hover:scale-105 transition-all duration-300 w-full justify-center cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.251.11a3.375 3.375 0 004.496-2.253h1.899m-4.786-2.076l.802.287a3.375 3.375 0 003.883-4.582H13.5m-3-3.173L12 3m0 0l1.251 1.155M12 3v18" />
+        </svg>
+        {{ ts.t('CLOCK.BUY_COFFEE') }}
+      </a>
+    </div>
+
+    <!-- CLOSE PANEL BUTTON -->
+    <button (click)="closeSettings()"
+            class="w-full py-2.5 mt-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-outfit text-xs font-semibold tracking-wide transition-all duration-300 uppercase cursor-pointer">
+      {{ ts.t('CLOCK.CLOSE') }}
+    </button>
+
+  </div>
+</div>

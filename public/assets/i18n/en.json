@@ -43,6 +43,12 @@
       "TERMS": "Curation Terms",
       "PRIVACY": "Privacy Details",
       "CONTACT": "Contact Salon"
+    },
+    "LABELS": {
+      "HERO_ACCENT": "of Presence.",
+      "PREVIEW": "Preview",
+      "THE_CONCEPT": "The Concept",
+      "ATMOSPHERES": "Atmospheres"
     }
   },
   "CLOCK": {
@@ -67,8 +73,17 @@
     "SHOW_DATE": "Show Date",
     "MILITARY_TIME": "24-Hour Format",
     "MODE": "Operational Mode",
-    "MODE_CLOCK": "Standard Dial",
-    "MODE_POMODORO": "Pomodoro Focus",
+    "MODE_CLOCK": "Clock",
+    "MODE_POMODORO": "Pomodoro",
+    "MODE_WORLDCLOCK": "World Clock",
+    "MODE_STOPWATCH": "Stopwatch",
+    "MODE_TIMER": "Timer",
+    "MODE_ALARM": "Alarm",
+    "LOCAL_TIME": "Local Time",
+    "NEXT_ALARM": "Next Alarm",
+    "ON": "On",
+    "OFF": "Off",
+    "ACTIVE": "Active",
     "SOUND": "Ambient Soundscape",
     "SOUND_NONE": "None (Silent)",
     "SOUND_TICK": "Mechanical Escapement Tick",

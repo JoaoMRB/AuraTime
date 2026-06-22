@@ -1,9 +1,10 @@
-const CACHE_NAME = 'auratime-v1';
+const CACHE_NAME = 'auratime-v2';
 const urlsToCache = [
   '/',
   '/app',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {

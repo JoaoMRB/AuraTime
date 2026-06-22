@@ -48,6 +48,12 @@ const DEFAULT_EN: any = {
       "TERMS": "Terms of Use",
       "PRIVACY": "Privacy Policy",
       "CONTACT": "Contact Setup"
+    },
+    "LABELS": {
+      "HERO_ACCENT": "of Presence.",
+      "PREVIEW": "Preview",
+      "THE_CONCEPT": "The Concept",
+      "ATMOSPHERES": "Atmospheres"
     }
   },
   "CLOCK": {
@@ -72,12 +78,17 @@ const DEFAULT_EN: any = {
     "SHOW_DATE": "Show Date",
     "MILITARY_TIME": "24-Hour Format",
     "MODE": "Operation Mode",
-    "MODE_CLOCK": "Standard Clock",
-    "MODE_POMODORO": "Pomodoro Focus",
+    "MODE_CLOCK": "Clock",
+    "MODE_POMODORO": "Pomodoro",
     "MODE_WORLDCLOCK": "World Clock",
     "MODE_STOPWATCH": "Stopwatch",
     "MODE_TIMER": "Timer",
     "MODE_ALARM": "Alarm",
+    "LOCAL_TIME": "Local Time",
+    "NEXT_ALARM": "Next Alarm",
+    "ON": "On",
+    "OFF": "Off",
+    "ACTIVE": "Active",
     "SOUND": "Ambient Soundscape",
     "SOUND_NONE": "None (Silent)",
     "SOUND_TICK": "Luxury Watch Ticking",
@@ -153,16 +164,27 @@ export class TranslationService {
 
   // Translates a path string like 'LANDING.HERO.TITLE'
   t(path: string): string {
+    const translated = this.resolvePath(this.translations(), path);
+    if (translated !== undefined) {
+      return translated;
+    }
+
+    const fallback = this.resolvePath(DEFAULT_EN, path);
+    return fallback !== undefined ? fallback : path;
+  }
+
+  private resolvePath(source: any, path: string): string | undefined {
     const keys = path.split('.');
-    let current = this.translations();
-    
+    let current = source;
+
     for (const key of keys) {
       if (current && current[key] !== undefined) {
         current = current[key];
       } else {
-        return path; // Fallback to path key itself if not found
+        return undefined;
       }
     }
-    return current;
+
+    return typeof current === 'string' ? current : undefined;
   }
 }

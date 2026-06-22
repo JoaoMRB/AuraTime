@@ -1,0 +1,93 @@
+{
+  "BRAND": "AURA",
+  "SLOGAN": "DIE KUNST DER ZEIT IM RAUM",
+  "LANDING": {
+    "HERO": {
+      "TITLE": "Eleganz in Jeder Sekunde",
+      "SUBTITLE": "Eine Premium-Ablenkungsfreie Bildschirmuhr, die Ihren Bereich bereichern soll. Tauchen Sie ein in Obsidian-Gold- und Flüssigglas-Ästhetik, während Sie arbeiten, lernen oder sich entspannen.",
+      "START_APP": "App Betreten",
+      "TRY_DEMO": "Demo Ansehen",
+      "SEO_KEYWORDS": "Ästhetische Bildschirmuhr • Minimalistische Schreibtischuhr • Glassmorphismus-Fokus-Tool • Premium Pomodoro-Hintergrund"
+    },
+    "FEATURES": {
+      "TITLE": "Entworfen für Anspruchsvolle Bereiche",
+      "SUBTITLE": "Mehr als ein Dienstprogramm ist AuraTime ein digitales Zentrum Maßgeschneidert, um sich mit Ihrem Setup zu alignieren.",
+      "CARD_THEMES_TITLE": "Flüssiges Glas & Luxus-Themen",
+      "CARD_THEMES_DESC": "Tauchen Sie Ihren Bildschirm in Gold, Obsidian, Smaragd und flüssiges Glas ein. Übergänge sind butterweich und leicht auf Systemressourcen.",
+      "CARD_FLEX_TITLE": "Perfekte Integration",
+      "CARD_FLEX_DESC": "Verschieben Sie die Uhr in jede Ecke, neigen Sie sie bis zu 45 Grad, ändern Sie Schriftarten und passen Sie die Skala an. Ihr Bildschirm ist Ihre Leinwand.",
+      "CARD_FOCUS_TITLE": "Kalibrierter Fokus",
+      "CARD_FOCUS_DESC": "Aktivieren Sie einen minimalistischen Pomodoro-Zyklus oder ambiente Klanglandschaften (Luxus-Uhr-Ticking, sanfter Regen), um Ihre Konzentration zu verankern.",
+      "CARD_SEO_TITLE": "Keine Datenbanken. Sofortiges Laden.",
+      "CARD_SEO_DESC": "Einstellungen werden clientseitig sofort gespeichert. Null Reibung. Schnelle Ladezeiten garantieren perfekte Vercel-Bereitstellungsgeschwindigkeiten."
+    },
+    "THEMES_SHOWCASE": {
+      "TITLE": "Kuratierte Luxus-Paletten",
+      "SUBTITLE": "Ausgewählte Farbpaletten, die hochwertige Executive-Schreibtisch-Setups evozieren.",
+      "LIQUID_GLASS": "Flüssiges Glas",
+      "LIQUID_GLASS_DESC": "Fließende flüssige Hintergründe mit verschwommenen Glasüberlagerungen.",
+      "EMERALD_GOLD": "Smaragd Gold",
+      "EMERALD_GOLD_DESC": "Tiefe Smaragd-Töne hervorgehoben durch metallische Gold-Akzente.",
+      "OBSIDIAN_PLATINUM": "Obsidian Platin",
+      "OBSIDIAN_PLATINUM_DESC": "Klavierschwarz-Oberflächen unter kühlem poliertem Platin-Licht.",
+      "FROSTED_GLASS": "Frostiges Glas",
+      "FROSTED_GLASS_DESC": "Ein klassischer Glassmorphismus-Effekt, der jede Umgebung übernimmt."
+    },
+    "CTA": {
+      "TITLE": "Redefinieren Sie Ihre Bildschirm-Aura",
+      "SUBTITLE": "Keine Werbung. Kein Unordnung. Nur ein wunderschönes Ticking-Begleiter für Ihren Arbeitsbereich.",
+      "BUTTON": "Zenith-Anzeige Jetzt Starten"
+    },
+    "FOOTER": {
+      "RIGHTS": "Alle Rechte vorbehalten.",
+      "TERMS": "Nutzungsbedingungen",
+      "PRIVACY": "Datenschutzrichtlinie",
+      "CONTACT": "Kontakt"
+    }
+  },
+  "CLOCK": {
+    "SETTINGS": "Uhreneinstellungen",
+    "THEME": "Atmosphären-Thema",
+    "THEME_LIGHT_GLASS": "Frostiges Helles Glas",
+    "THEME_DARK_GLASS": "Frostiges Dunkles Glas",
+    "THEME_LIQUID_GLASS": "Flüssiges Glas Fluss",
+    "THEME_EMERALD_GOLD": "Smaragd Gold (Geld)",
+    "THEME_OBSIDIAN_PLATINUM": "Obsidian Platin",
+    "POSITION": "Bildschirmposition",
+    "POS_CENTER": "Mitte",
+    "POS_TOP_LEFT": "Oben Links",
+    "POS_TOP_RIGHT": "Oben Rechts",
+    "POS_BOTTOM_LEFT": "Unten Links",
+    "POS_BOTTOM_RIGHT": "Unten Rechts",
+    "ANGLE": "Neigungswinkel",
+    "SCALE": "Uhr-Skala",
+    "FONT": "Typografie",
+    "DISPLAY": "Anzeigekonfigurationen",
+    "SHOW_SECONDS": "Sekunden Anzeigen",
+    "SHOW_DATE": "Datum Anzeigen",
+    "MILITARY_TIME": "24-Stunden-Format",
+    "MODE": "Betriebsmodus",
+    "MODE_CLOCK": "Standard-Uhr",
+    "MODE_POMODORO": "Pomodoro-Fokus",
+    "MODE_WORLDCLOCK": "Weltuhr",
+    "MODE_STOPWATCH": "Stoppuhr",
+    "MODE_TIMER": "Timer",
+    "MODE_ALARM": "Wecker",
+    "SOUND": "Ambiente Klanglandschaft",
+    "SOUND_NONE": "Keine (Stumm)",
+    "SOUND_TICK": "Luxus-Uhr-Ticking",
+    "SOUND_RAIN": "Beruhigender Büro-Regen",
+    "LANGUAGE": "Oberflächensprache",
+    "SUPPORT": "Gründer-Kreis Beitreten",
+    "SUPPORT_DESC": "Halten Sie AuraTime kostenlos & Entwicklung am Laufen.",
+    "BUY_COFFEE": "Kauf mir einen Kaffee",
+    "CLOSE": "Anwenden & Schließen"
+  },
+  "POMODORO": {
+    "WORK": "Fokus-Sitzung",
+    "BREAK": "Ruhe-Intervall",
+    "START": "Fokus Starten",
+    "PAUSE": "Fokus Pausieren",
+    "RESET": "Zyklus Zurücksetzen"
+  }
+}

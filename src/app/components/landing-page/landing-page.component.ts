@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, effect, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, effect, PLATFORM_ID, HostListener } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
@@ -16,11 +16,22 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   private titleService = inject(Title);
   private metaService = inject(Meta);
   private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
 
   // Mockup clock time
   currentTime = signal<string>('00:00:00');
   currentDate = signal<string>('');
   private timerId: any;
+
+  // WOW Factor 1: Active mockup theme preview
+  mockupTheme = signal<string>('emerald-gold');
+
+  // WOW Factor 2: Interactive background spotlight following cursor
+  spotlightX = signal<number>(-1000);
+  spotlightY = signal<number>(-1000);
+
+  // WOW Factor 3: 3D Parallax Tilt on Card
+  cardTransform = signal<string>('perspective(1000px) rotateX(0deg) rotateY(-3deg) scale3d(1, 1, 1)');
 
   constructor() {
     // Dynamic SEO updating when language changes
@@ -42,7 +53,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.updateClock();
-    if (isPlatformBrowser(this.platformId)) {
+    if (this.isBrowser) {
       this.timerId = setInterval(() => {
         this.updateClock();
       }, 1000);
@@ -75,6 +86,43 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   changeLang(lang: string) {
     this.ts.setLanguage(lang);
+  }
+
+  // Spotlight Mouse Tracking
+  @HostListener('document:mousemove', ['$event'])
+  onDocumentMouseMove(event: MouseEvent) {
+    if (this.isBrowser) {
+      this.spotlightX.set(event.clientX);
+      this.spotlightY.set(event.clientY);
+    }
+  }
+
+  // 3D Parallax Tilt Effect
+  onCardMouseMove(event: MouseEvent, cardElement: HTMLElement) {
+    if (!this.isBrowser) return;
+    const rect = cardElement.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    // Normalize coordinates around center (-0.5 to 0.5)
+    const px = (x / rect.width) - 0.5;
+    const py = (y / rect.height) - 0.5;
+
+    // Calculate rotation angles (max 15 degrees tilt)
+    const tiltX = (py * -15).toFixed(2);
+    const tiltY = (px * 15).toFixed(2);
+
+    this.cardTransform.set(`perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.03, 1.03, 1.03)`);
+  }
+
+  onCardMouseLeave() {
+    // Reset to static resting position
+    this.cardTransform.set('perspective(1000px) rotateX(0deg) rotateY(-3deg) scale3d(1, 1, 1)');
+  }
+
+  // Theme Swapper trigger
+  setMockupTheme(theme: string) {
+    this.mockupTheme.set(theme);
   }
 
   // Generate structured JSON-LD schema

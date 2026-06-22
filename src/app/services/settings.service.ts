@@ -10,7 +10,7 @@ export interface ClockSettings {
   showSeconds: boolean;
   showDate: boolean;
   militaryTime: boolean;
-  mode: string; // 'clock' | 'pomodoro'
+  mode: string; // 'clock' | 'pomodoro' | 'worldclock' | 'stopwatch' | 'timer' | 'alarm'
   sound: string; // 'none' | 'tick' | 'rain'
 }
 

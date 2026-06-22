@@ -74,6 +74,10 @@ const DEFAULT_EN: any = {
     "MODE": "Operation Mode",
     "MODE_CLOCK": "Standard Clock",
     "MODE_POMODORO": "Pomodoro Focus",
+    "MODE_WORLDCLOCK": "World Clock",
+    "MODE_STOPWATCH": "Stopwatch",
+    "MODE_TIMER": "Timer",
+    "MODE_ALARM": "Alarm",
     "SOUND": "Ambient Soundscape",
     "SOUND_NONE": "None (Silent)",
     "SOUND_TICK": "Luxury Watch Ticking",
@@ -133,6 +137,18 @@ export class TranslationService {
         }
       }
     });
+  }
+
+  // Get available languages
+  getAvailableLanguages(): Array<{ code: string; name: string }> {
+    return [
+      { code: 'en', name: 'English' },
+      { code: 'pt', name: 'Português' },
+      { code: 'es', name: 'Español' },
+      { code: 'fr', name: 'Français' },
+      { code: 'de', name: 'Deutsch' },
+      { code: 'it', name: 'Italiano' }
+    ];
   }
 
   // Translates a path string like 'LANDING.HERO.TITLE'

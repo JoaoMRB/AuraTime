@@ -43,6 +43,12 @@
       "TERMS": "Nutzungsbedingungen",
       "PRIVACY": "Datenschutzrichtlinie",
       "CONTACT": "Kontakt"
+    },
+    "LABELS": {
+      "HERO_ACCENT": "der Präsenz.",
+      "PREVIEW": "Vorschau",
+      "THE_CONCEPT": "Das Konzept",
+      "ATMOSPHERES": "Atmosphären"
     }
   },
   "CLOCK": {

@@ -43,6 +43,12 @@
       "TERMS": "Términos de Uso",
       "PRIVACY": "Política de Privacidad",
       "CONTACT": "Contacto"
+    },
+    "LABELS": {
+      "HERO_ACCENT": "de la Presencia.",
+      "PREVIEW": "Vista Previa",
+      "THE_CONCEPT": "El Concepto",
+      "ATMOSPHERES": "Atmósferas"
     }
   },
   "CLOCK": {

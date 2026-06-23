@@ -43,6 +43,12 @@
       "TERMS": "Termos de Curadoria",
       "PRIVACY": "Detalhes de Privacidade",
       "CONTACT": "Contacto Salon"
+    },
+    "LABELS": {
+      "HERO_ACCENT": "da Presença.",
+      "PREVIEW": "Pré-visualização",
+      "THE_CONCEPT": "O Conceito",
+      "ATMOSPHERES": "Atmosferas"
     }
   },
   "CLOCK": {

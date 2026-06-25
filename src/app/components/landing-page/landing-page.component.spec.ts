@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
+import { RouterTestingModule } from '@angular/router/testing';
 import { LandingPageComponent } from './landing-page.component';
 import { TranslationService } from '../../services/translation.service';
 import { Meta, Title } from '@angular/platform-browser';
@@ -16,7 +18,7 @@ describe('LandingPageComponent', () => {
     const metaServiceSpy = jasmine.createSpyObj('Meta', ['updateTag']);
 
     await TestBed.configureTestingModule({
-      imports: [LandingPageComponent],
+      imports: [LandingPageComponent, RouterTestingModule],
       providers: [
         { provide: TranslationService, useValue: translationServiceSpy },
         { provide: Title, useValue: titleServiceSpy },
@@ -118,5 +120,14 @@ describe('LandingPageComponent', () => {
     spyOn(window, 'clearInterval');
     component.ngOnDestroy();
     expect(window.clearInterval).toHaveBeenCalled();
+  });
+
+  it('should navigate to /app with theme query params', () => {
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
+
+    component.goToTheme('emerald-gold');
+
+    expect(router.navigate).toHaveBeenCalledWith(['/app'], { queryParams: { theme: 'emerald-gold' } });
   });
 });

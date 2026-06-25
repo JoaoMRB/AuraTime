@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, effect, PLATFORM_ID, HostListener } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { TranslationService } from '../../services/translation.service';
 
@@ -17,6 +17,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   private metaService = inject(Meta);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private router = inject(Router);
 
   // Mockup clock time
   currentTime = signal<string>('00:00:00');
@@ -145,6 +146,10 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   // Theme Swapper trigger
   setMockupTheme(theme: string) {
     this.mockupTheme.set(theme);
+  }
+
+  goToTheme(theme: string) {
+    this.router.navigate(['/app'], { queryParams: { theme } });
   }
 
   // Generate structured JSON-LD schema

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, HostListener, inject, signal, effect, computed, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { SettingsService } from '../../services/settings.service';
@@ -31,6 +31,7 @@ export class ClockComponent implements OnInit, OnDestroy {
   private alarmService = inject(AlarmService);
   private keyboardService = inject(KeyboardShortcutsService);
   private platformId = inject(PLATFORM_ID);
+  private route = inject(ActivatedRoute);
   private isBrowser = isPlatformBrowser(this.platformId);
 
   // Time States
@@ -108,6 +109,11 @@ export class ClockComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    const themeFromQuery = this.route.snapshot.queryParamMap.get('theme');
+    if (themeFromQuery && ['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'frosted-glass'].includes(themeFromQuery)) {
+      this.settings.theme.set(themeFromQuery);
+    }
+
     this.updateTime();
     
     if (this.isBrowser) {

@@ -10,7 +10,7 @@ import { PomodoroService } from '../../services/pomodoro.service';
 import { WorldClockService } from '../../services/world-clock.service';
 import { StopwatchService } from '../../services/stopwatch.service';
 import { TimerService } from '../../services/timer.service';
-import { AlarmService } from '../../services/alarm.service';
+import { AlarmService, Alarm } from '../../services/alarm.service';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 
 @Component({
@@ -65,8 +65,28 @@ export class ClockComponent implements OnInit, OnDestroy {
 
   // Alarm States (exposed from service)
   alarms = computed(() => this.alarmService.allAlarms());
+  activeAlarms = computed(() => this.alarmService.activeAlarms());
   nextAlarmTime = computed(() => this.alarmService.nextAlarmTime());
   isAlarmRinging = computed(() => this.alarmService.isAlarmRinging());
+
+  // Alarm dialog state
+  alarmDialogOpen = signal<boolean>(false);
+
+  // New alarm form state
+  newAlarm = signal({
+    label: '',
+    time: '08:00',
+    days: [] as number[],
+    sound: 'chime' as 'chime' | 'bell' | 'digital',
+    snoozeMinutes: 10
+  });
+
+  // Edit alarm state
+  editingAlarmId = signal<string | null>(null);
+  editAlarm = signal<Partial<Alarm> | null>(null);
+
+  // Day labels
+  readonly dayLabels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   // HUD visibility control
   hudVisible = signal<boolean>(true);
@@ -253,5 +273,113 @@ export class ClockComponent implements OnInit, OnDestroy {
   // Alarm Operations
   toggleAlarm(id: string) {
     this.alarmService.toggleAlarm(id);
+  }
+
+  // ── Alarm Dialog ──────────────────────────────────────────
+  openAlarmDialog() {
+    this.alarmDialogOpen.set(true);
+  }
+
+  closeAlarmDialog() {
+    this.alarmDialogOpen.set(false);
+    this.editingAlarmId.set(null);
+    this.editAlarm.set(null);
+  }
+
+  // Add new alarm from form
+  addAlarm(): void {
+    const alarm = this.newAlarm();
+    if (!alarm.label.trim()) return;
+    if (!alarm.time) return;
+
+    this.alarmService.addAlarm({
+      label: alarm.label.trim(),
+      time: alarm.time,
+      days: alarm.days.length > 0 ? alarm.days : [new Date().getDay()],
+      enabled: true,
+      snoozeMinutes: alarm.snoozeMinutes,
+      sound: alarm.sound
+    });
+
+    this.newAlarm.set({ label: '', time: '08:00', days: [], sound: 'chime', snoozeMinutes: 10 });
+  }
+
+  // Delete alarm
+  deleteAlarm(id: string): void {
+    this.alarmService.deleteAlarm(id);
+    if (this.editingAlarmId() === id) {
+      this.editingAlarmId.set(null);
+      this.editAlarm.set(null);
+    }
+  }
+
+  // Start editing alarm
+  startEditAlarm(alarm: Alarm): void {
+    this.editingAlarmId.set(alarm.id);
+    this.editAlarm.set({ label: alarm.label, time: alarm.time, days: [...alarm.days], sound: alarm.sound, snoozeMinutes: alarm.snoozeMinutes });
+  }
+
+  // Save edited alarm
+  saveEditAlarm(id: string): void {
+    const edited = this.editAlarm();
+    if (!edited || !edited.label?.trim()) return;
+    this.alarmService.updateAlarm(id, {
+      label: edited.label.trim(),
+      time: edited.time || '08:00',
+      days: edited.days || [],
+      sound: edited.sound as 'chime' | 'bell' | 'digital',
+      snoozeMinutes: edited.snoozeMinutes || 10
+    });
+    this.editingAlarmId.set(null);
+    this.editAlarm.set(null);
+  }
+
+  // Cancel edit
+  cancelEditAlarm(): void {
+    this.editingAlarmId.set(null);
+    this.editAlarm.set(null);
+  }
+
+  // Toggle day on new alarm form
+  toggleDay(day: number): void {
+    const alarm = this.newAlarm();
+    const days = [...alarm.days];
+    const idx = days.indexOf(day);
+    if (idx > -1) days.splice(idx, 1); else days.push(day);
+    this.newAlarm.set({ ...alarm, days });
+  }
+
+  // Toggle day on edit form
+  toggleEditDay(day: number): void {
+    const edited = this.editAlarm();
+    if (!edited) return;
+    const days = edited.days ? [...edited.days] : [];
+    const idx = days.indexOf(day);
+    if (idx > -1) days.splice(idx, 1); else days.push(day);
+    this.editAlarm.set({ ...edited, days });
+  }
+
+  // Day selected check
+  isDaySelected(day: number, days: number[] | undefined): boolean {
+    return days ? days.includes(day) : false;
+  }
+
+  // Get days as readable string
+  getDaysString(days: number[]): string {
+    if (days.length === 0) return 'Once';
+    if (days.length === 7) return 'Daily';
+    if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Weekdays';
+    if (days.length === 2 && days.includes(0) && days.includes(6)) return 'Weekends';
+    return days.map(d => this.dayLabels[d]).join(', ');
+  }
+
+  // Snooze ringing alarm
+  snoozeAlarm(): void {
+    this.alarmService.snooze();
+  }
+
+  // Stop ringing alarm
+  stopAlarmRinging(): void {
+    this.alarmService.stopRinging();
   }
 }

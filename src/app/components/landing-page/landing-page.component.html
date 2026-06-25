@@ -161,6 +161,11 @@
                'bg-white/35 backdrop-blur-md border-white/40 shadow-xl': mockupTheme() === 'frosted-glass'
              }">
 
+          <!-- Light background simulator for frosted-glass theme mockup -->
+          <div *ngIf="mockupTheme() === 'frosted-glass'" 
+               class="absolute inset-0 bg-gradient-to-tr from-gray-200 via-slate-100 to-gray-300 transition-all duration-700 pointer-events-none z-0">
+          </div>
+
           <!-- Mockup Liquid Glass Background inside the card (adapts to active preview theme) -->
           <div class="absolute inset-0 opacity-20 pointer-events-none">
             <ng-container *ngIf="mockupTheme() === 'emerald-gold'">

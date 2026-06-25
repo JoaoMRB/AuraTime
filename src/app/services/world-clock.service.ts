@@ -14,7 +14,7 @@ export interface WorldClock {
 export class WorldClockService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
-  
+
   private clocks = signal<WorldClock[]>([
     {
       id: '1',
@@ -41,6 +41,7 @@ export class WorldClockService {
   constructor() {
     if (this.isBrowser) {
       this.loadFromStorage();
+      this.refreshOffsets();
     }
   }
 
@@ -78,8 +79,10 @@ export class WorldClockService {
 
   // Add a new clock
   addClock(clock: Omit<WorldClock, 'id'>): void {
+    const offsetHours = this.getTimezoneOffsetMinutes(clock.timezone) / 60;
     const newClock: WorldClock = {
       ...clock,
+      offset: offsetHours,
       id: Date.now().toString()
     };
     this.clocks.update(clocks => [...clocks, newClock]);
@@ -118,23 +121,76 @@ export class WorldClockService {
     ];
   }
 
-  // Calculate time difference from local
-  getTimeDifference(timezone: string): string {
+  getTimezoneOffsetMinutes(timezone: string, date = new Date()): number {
     try {
-      const now = new Date();
-      const localOffset = now.getTimezoneOffset() / -60;
-      
-      const targetTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-      const localTime = new Date();
-      
-      const diffHours = Math.round((targetTime.getTime() - localTime.getTime()) / (1000 * 60 * 60));
-      
-      if (diffHours === 0) return 'Same time';
-      if (diffHours > 0) return `+${diffHours}h`;
-      return `${diffHours}h`;
-    } catch (e) {
-      return '';
+      const getParts = (tz: string) => {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        const parts = fmt.formatToParts(date);
+        const value = (type: string) => parseInt(parts.find(p => p.type === type)?.value ?? '0', 10);
+        return {
+          y: value('year'),
+          m: value('month'),
+          d: value('day'),
+          h: value('hour'),
+          min: value('minute'),
+          s: value('second')
+        };
+      };
+
+      const utcParts = getParts('UTC');
+      const tzParts = getParts(timezone);
+      const utcMs = Date.UTC(utcParts.y, utcParts.m - 1, utcParts.d, utcParts.h, utcParts.min, utcParts.s);
+      const tzMs = Date.UTC(tzParts.y, tzParts.m - 1, tzParts.d, tzParts.h, tzParts.min, tzParts.s);
+      return (tzMs - utcMs) / 60000;
+    } catch {
+      return 0;
     }
+  }
+
+  formatOffsetMinutes(minutes: number): string {
+    const sign = minutes >= 0 ? '+' : '-';
+    const abs = Math.abs(minutes);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    if (m === 0) {
+      return `${sign}${h}`;
+    }
+    return `${sign}${h}:${String(m).padStart(2, '0')}`;
+  }
+
+  getUtcOffsetLabel(timezone: string): string {
+    return this.formatOffsetMinutes(this.getTimezoneOffsetMinutes(timezone));
+  }
+
+  getHoursFromLocal(timezone: string): number {
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localOffset = this.getTimezoneOffsetMinutes(localTz);
+    const targetOffset = this.getTimezoneOffsetMinutes(timezone);
+    return Math.round((targetOffset - localOffset) / 60);
+  }
+
+  // Calculate time difference from local (hours, rounded)
+  getTimeDifference(timezone: string): number {
+    return this.getHoursFromLocal(timezone);
+  }
+
+  private refreshOffsets(): void {
+    this.clocks.update(clocks =>
+      clocks.map(c => ({
+        ...c,
+        offset: this.getTimezoneOffsetMinutes(c.timezone) / 60
+      }))
+    );
+    this.saveToStorage();
   }
 
   // Persistence
@@ -182,6 +238,6 @@ export class WorldClockService {
         offset: 9
       }
     ]);
-    this.saveToStorage();
+    this.refreshOffsets();
   }
 }

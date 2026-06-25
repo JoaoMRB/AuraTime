@@ -5,14 +5,14 @@
   <!-- Card -->
   <div class="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-10 shadow-[0_20px_80px_rgba(239,68,68,0.4)] text-center max-w-sm mx-4 border border-red-500/30 animate-[pulse-ring_1.5s_ease-in-out_infinite]">
     <div class="text-6xl mb-4 animate-bounce">⏰</div>
-    <h2 class="text-2xl font-bold text-white mb-2">Alarm!</h2>
-    <p class="text-sm text-gray-400 mb-6">Time to wake up!</p>
+    <h2 class="text-2xl font-bold text-white mb-2">{{ ts.t('ALARM.RINGING') }}</h2>
+    <p class="text-sm text-gray-400 mb-6">{{ ts.t('ALARM.WAKE_UP') }}</p>
     <div class="flex gap-3 justify-center">
       <button (click)="snoozeAlarm()" class="px-6 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/40 text-blue-300 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105">
-        Snooze
+        {{ ts.t('ALARM.SNOOZE') }}
       </button>
       <button (click)="stopAlarmRinging()" class="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-400/40 text-red-300 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105">
-        Stop
+        {{ ts.t('ALARM.STOP') }}
       </button>
     </div>
   </div>
@@ -162,6 +162,8 @@
             <div *ngFor="let clock of worldClocks()" class="text-center p-2 rounded-lg bg-white/5 border border-white/10">
               <div class="text-[10px] text-gray-400 mb-1">{{ clock.label }}</div>
               <div class="text-sm font-mono">{{ worldClockService.getTime(clock.timezone) }}</div>
+              <div class="text-[9px] text-gray-500 mt-0.5">{{ ts.t('WORLD_CLOCK.UTC') }}{{ worldClockService.getUtcOffsetLabel(clock.timezone) }}</div>
+              <div class="text-[9px] text-gray-600">{{ getWorldClockDiffLabel(clock.timezone) }}</div>
             </div>
           </div>
         </div>
@@ -331,7 +333,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
             </svg>
-            Manage Alarms
+            {{ ts.t('ALARM.MANAGE') }}
           </button>
         </div>
 
@@ -533,7 +535,8 @@
         <label class="font-semibold text-gray-400 uppercase tracking-widest">{{ ts.t('CLOCK.ANGLE') }}</label>
         <span class="text-luxury-mint font-mono font-bold">{{ settings.angle() }}deg</span>
       </div>
-      <input type="range" min="-45" max="45" [(ngModel)]="settings.angle"
+      <input type="range" min="-45" max="45"
+             [ngModel]="settings.angle()" (ngModelChange)="settings.angle.set(+$event)"
              class="w-full accent-luxury-gold bg-black/45 rounded-lg h-1.5 appearance-none cursor-pointer">
     </div>
 
@@ -612,18 +615,18 @@
     <!-- 10. ALARMS SECTION -->
     <div class="space-y-3 pt-2">
       <div class="flex items-center justify-between">
-        <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest">⏰ Alarms</label>
+        <label class="text-xs font-semibold text-gray-400 uppercase tracking-widest">⏰ {{ ts.t('ALARM.TITLE') }}</label>
         <button (click)="openAlarmDialog()"
                 class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-luxury-gold/15 border border-luxury-gold/30 text-luxury-gold text-[10px] font-bold hover:bg-luxury-gold/25 transition-all duration-200 cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          New
+          {{ ts.t('ALARM.NEW') }}
         </button>
       </div>
 
       <!-- Alarms list (compact) -->
-      <div *ngIf="alarms().length === 0" class="text-center py-4 text-gray-600 text-[10px]">No alarms yet</div>
+      <div *ngIf="alarms().length === 0" class="text-center py-4 text-gray-600 text-[10px]">{{ ts.t('ALARM.NONE_YET') }}</div>
       <div *ngFor="let alarm of alarms()" class="flex items-center gap-2 p-2.5 rounded-xl bg-black/30 border border-white/5 group">
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2">
@@ -633,10 +636,10 @@
           <div class="text-[9px] text-gray-600 mt-0.5">{{ getDaysString(alarm.days) }}</div>
         </div>
         <button (click)="toggleAlarm(alarm.id)"
-                class="w-8 h-4 rounded-full transition-all duration-300 relative flex-shrink-0"
-                [ngClass]="alarm.enabled ? 'bg-luxury-gold' : 'bg-white/10'">
-          <span class="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-300"
-                [ngClass]="alarm.enabled ? 'left-4.5' : 'left-0.5'"></span>
+                class="w-9 h-5 rounded-full transition-all duration-300 relative flex-shrink-0 cursor-pointer p-0.5"
+                [ngClass]="alarm.enabled ? 'bg-luxury-gold' : 'bg-white/15'">
+          <span class="block w-4 h-4 rounded-full bg-white shadow transition-all duration-300"
+                [ngClass]="alarm.enabled ? 'translate-x-4' : 'translate-x-0'"></span>
         </button>
         <button (click)="startEditAlarm(alarm); openAlarmDialog()"
                 class="p-1 rounded-lg text-gray-500 hover:text-blue-400 transition-colors cursor-pointer">
@@ -692,7 +695,7 @@
   <div class="flex items-center justify-between px-6 py-5 border-b border-white/8 flex-shrink-0">
     <div class="flex items-center gap-2.5">
       <span class="text-xl">⏰</span>
-      <h3 class="font-outfit font-bold text-white text-base tracking-wide uppercase">Alarms</h3>
+      <h3 class="font-outfit font-bold text-white text-base tracking-wide uppercase">{{ ts.t('ALARM.TITLE') }}</h3>
       <span *ngIf="alarms().length > 0" class="px-1.5 py-0.5 rounded-full bg-luxury-gold/20 text-luxury-gold text-[9px] font-bold">{{ alarms().length }}</span>
     </div>
     <button (click)="closeAlarmDialog()" class="text-gray-400 hover:text-white transition-colors cursor-pointer p-1">
@@ -708,85 +711,85 @@
     <!-- ── Add / Edit Form ── -->
     <div class="px-6 py-5 border-b border-white/5">
       <h4 class="text-[10px] font-semibold text-luxury-gold uppercase tracking-widest mb-4">
-        {{ editingAlarmId() ? 'Edit Alarm' : 'New Alarm' }}
+        {{ editingAlarmId() ? ts.t('ALARM.EDIT') : ts.t('ALARM.NEW_ALARM') }}
       </h4>
 
       <!-- === EDIT FORM === -->
       <div *ngIf="editingAlarmId() && editAlarm()" class="space-y-3">
-        <input type="text" [(ngModel)]="editAlarm()!.label" placeholder="Label"
+        <input type="text" [(ngModel)]="editAlarm()!.label" [placeholder]="ts.t('ALARM.LABEL')"
                class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-luxury-gold/50 placeholder-gray-600" />
         <input type="time" [(ngModel)]="editAlarm()!.time"
                class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-luxury-gold/50 [color-scheme:dark]" />
         <div>
-          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">Repeat</p>
+          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">{{ ts.t('ALARM.REPEAT') }}</p>
           <div class="grid grid-cols-7 gap-1">
             <button *ngFor="let day of [0,1,2,3,4,5,6]" (click)="toggleEditDay(day)"
                     class="py-1.5 rounded-lg text-[9px] font-bold border transition-all duration-200"
                     [ngClass]="isDaySelected(day, editAlarm()?.days) ? 'bg-luxury-gold text-luxury-charcoal border-luxury-gold/50' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'">
-              {{ dayLabels[day] }}
+              {{ getDayLabel(day) }}
             </button>
           </div>
         </div>
         <select [(ngModel)]="editAlarm()!.sound"
                 class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none [color-scheme:dark]">
-          <option value="chime">Chime</option>
-          <option value="bell">Bell</option>
-          <option value="digital">Digital</option>
+          <option value="chime">{{ ts.t('ALARM.SOUND_CHIME') }}</option>
+          <option value="bell">{{ ts.t('ALARM.SOUND_BELL') }}</option>
+          <option value="digital">{{ ts.t('ALARM.SOUND_DIGITAL') }}</option>
         </select>
         <div class="flex gap-2">
           <button (click)="saveEditAlarm(editingAlarmId()!)"
                   class="flex-1 py-2 rounded-xl text-xs font-bold bg-luxury-gold text-luxury-charcoal hover:bg-luxury-gold/90 transition-all duration-200">
-            Save
+            {{ ts.t('ALARM.SAVE') }}
           </button>
           <button (click)="cancelEditAlarm()"
                   class="flex-1 py-2 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all duration-200">
-            Cancel
+            {{ ts.t('ALARM.CANCEL') }}
           </button>
         </div>
       </div>
 
       <!-- === ADD FORM === -->
       <div *ngIf="!editingAlarmId()" class="space-y-3">
-        <input type="text" [(ngModel)]="newAlarm().label" placeholder="Label (e.g. Wake up)"
+        <input type="text" [(ngModel)]="newAlarm().label" [placeholder]="ts.t('ALARM.LABEL_PLACEHOLDER')"
                class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-luxury-gold/50 placeholder-gray-600" />
         <input type="time" [(ngModel)]="newAlarm().time"
                class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-luxury-gold/50 [color-scheme:dark]" />
         <div>
-          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">Repeat</p>
+          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">{{ ts.t('ALARM.REPEAT') }}</p>
           <div class="grid grid-cols-7 gap-1">
             <button *ngFor="let day of [0,1,2,3,4,5,6]" (click)="toggleDay(day)"
                     class="py-1.5 rounded-lg text-[9px] font-bold border transition-all duration-200"
                     [ngClass]="newAlarm().days.includes(day) ? 'bg-luxury-gold text-luxury-charcoal border-luxury-gold/50' : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10'">
-              {{ dayLabels[day] }}
+              {{ getDayLabel(day) }}
             </button>
           </div>
-          <p class="text-[9px] text-gray-600 mt-1.5">{{ getDaysString(newAlarm().days) || 'Once (today)' }}</p>
+          <p class="text-[9px] text-gray-600 mt-1.5">{{ getDaysString(newAlarm().days) || ts.t('ALARM.ONCE_TODAY') }}</p>
         </div>
         <select [(ngModel)]="newAlarm().sound"
                 class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none [color-scheme:dark]">
-          <option value="chime">Chime</option>
-          <option value="bell">Bell</option>
-          <option value="digital">Digital</option>
+          <option value="chime">{{ ts.t('ALARM.SOUND_CHIME') }}</option>
+          <option value="bell">{{ ts.t('ALARM.SOUND_BELL') }}</option>
+          <option value="digital">{{ ts.t('ALARM.SOUND_DIGITAL') }}</option>
         </select>
         <div>
-          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">Snooze (min)</p>
+          <p class="text-[9px] text-gray-500 mb-1.5 uppercase tracking-wider">{{ ts.t('ALARM.SNOOZE_MIN') }}</p>
           <input type="number" [(ngModel)]="newAlarm().snoozeMinutes" min="1" max="60"
                  class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none [color-scheme:dark]" />
         </div>
         <button (click)="addAlarm()"
                 class="w-full py-2.5 rounded-xl text-xs font-bold bg-luxury-gold text-luxury-charcoal hover:bg-luxury-gold/90 transition-all duration-200 hover:scale-[1.02]">
-          + Add Alarm
+          + {{ ts.t('ALARM.ADD') }}
         </button>
       </div>
     </div>
 
     <!-- ── Alarms List ── -->
     <div class="px-6 py-5 space-y-2">
-      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Saved Alarms ({{ alarms().length }})</p>
+      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">{{ ts.t('ALARM.SAVED') }} ({{ alarms().length }})</p>
 
       <div *ngIf="alarms().length === 0" class="text-center py-10 text-gray-700 text-xs">
         <div class="text-3xl mb-3 opacity-30">⏰</div>
-        No alarms set
+        {{ ts.t('ALARM.NONE_SET') }}
       </div>
 
       <div *ngFor="let alarm of alarms()"
@@ -805,16 +808,16 @@
             <div class="flex items-center gap-2">
               <span class="text-[9px] text-gray-600">{{ getDaysString(alarm.days) }}</span>
               <span class="text-[9px] text-gray-700">·</span>
-              <span class="text-[9px] text-gray-600">🔔 {{ alarm.sound }}</span>
+              <span class="text-[9px] text-gray-600">🔔 {{ getAlarmSoundLabel(alarm.sound) }}</span>
             </div>
           </div>
           <div class="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
             <!-- Toggle switch -->
             <button (click)="toggleAlarm(alarm.id)"
-                    class="w-9 h-5 rounded-full transition-all duration-300 relative cursor-pointer"
+                    class="w-9 h-5 rounded-full transition-all duration-300 relative cursor-pointer p-0.5"
                     [ngClass]="alarm.enabled ? 'bg-luxury-gold' : 'bg-white/15'">
-              <span class="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-300"
-                    [ngClass]="alarm.enabled ? 'left-5' : 'left-1'"></span>
+              <span class="block w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-300"
+                    [ngClass]="alarm.enabled ? 'translate-x-4' : 'translate-x-0'"></span>
             </button>
             <!-- Edit -->
             <button (click)="startEditAlarm(alarm)"

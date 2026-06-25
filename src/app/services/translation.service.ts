@@ -105,6 +105,46 @@ const DEFAULT_EN: any = {
     "START": "Start Focus",
     "PAUSE": "Pause Focus",
     "RESET": "Reset Cycle"
+  },
+  "ALARM": {
+    "TITLE": "Alarms",
+    "RINGING": "Alarm!",
+    "WAKE_UP": "Time to wake up!",
+    "SNOOZE": "Snooze",
+    "STOP": "Stop",
+    "NONE_YET": "No alarms yet",
+    "NONE_SET": "No alarms set",
+    "NEW": "New",
+    "MANAGE": "Manage Alarms",
+    "EDIT": "Edit Alarm",
+    "NEW_ALARM": "New Alarm",
+    "LABEL": "Label",
+    "LABEL_PLACEHOLDER": "Label (e.g. Wake up)",
+    "REPEAT": "Repeat",
+    "SNOOZE_MIN": "Snooze (min)",
+    "ADD": "Add Alarm",
+    "SAVED": "Saved Alarms",
+    "SAVE": "Save",
+    "CANCEL": "Cancel",
+    "ONCE": "Once",
+    "ONCE_TODAY": "Once (today)",
+    "DAILY": "Daily",
+    "WEEKDAYS": "Weekdays",
+    "WEEKENDS": "Weekends",
+    "SOUND_CHIME": "Chime",
+    "SOUND_BELL": "Bell",
+    "SOUND_DIGITAL": "Digital",
+    "DAY_0": "SUN",
+    "DAY_1": "MON",
+    "DAY_2": "TUE",
+    "DAY_3": "WED",
+    "DAY_4": "THU",
+    "DAY_5": "FRI",
+    "DAY_6": "SAT"
+  },
+  "WORLD_CLOCK": {
+    "UTC": "UTC",
+    "SAME_TIME": "Same time"
   }
 };
 

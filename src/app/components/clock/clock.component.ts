@@ -18,7 +18,6 @@ import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.serv
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './clock.component.html',
-  styleUrl: './clock.component.css'
 })
 export class ClockComponent implements OnInit, OnDestroy {
   public settings = inject(SettingsService);
@@ -85,8 +84,10 @@ export class ClockComponent implements OnInit, OnDestroy {
   editingAlarmId = signal<string | null>(null);
   editAlarm = signal<Partial<Alarm> | null>(null);
 
-  // Day labels
-  readonly dayLabels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  // Day labels (index 0 = Sunday)
+  getDayLabel(day: number): string {
+    return this.ts.t(`ALARM.DAY_${day}`);
+  }
 
   // HUD visibility control
   hudVisible = signal<boolean>(true);
@@ -191,12 +192,28 @@ export class ClockComponent implements OnInit, OnDestroy {
 
     // Update browser tab title
     const appName = this.ts.t('BRAND');
-    if (this.settings.mode() === 'clock') {
+    const mode = this.settings.mode();
+
+    if (mode === 'clock') {
       this.titleService.setTitle(`[${hrsStr}:${mins}] ${appName}`);
-    } else {
+    } else if (mode === 'pomodoro') {
       const pomoTime = this.pomodoroService.currentTime();
-      const phaseSymbol = this.pomodoroService.currentPhase() === 'work' ? 'Focus' : 'Rest';
+      const phaseSymbol = this.pomodoroService.currentPhase() === 'work'
+        ? this.ts.t('POMODORO.WORK')
+        : this.ts.t('POMODORO.BREAK');
       this.titleService.setTitle(`[${pomoTime}] ${phaseSymbol} | ${appName}`);
+    } else if (mode === 'stopwatch') {
+      this.titleService.setTitle(`[${this.stopwatchTime()}] ${this.ts.t('CLOCK.MODE_STOPWATCH')} | ${appName}`);
+    } else if (mode === 'timer') {
+      this.titleService.setTitle(`[${this.timerTime()}] ${this.ts.t('CLOCK.MODE_TIMER')} | ${appName}`);
+    } else if (mode === 'worldclock') {
+      this.titleService.setTitle(`[${hrsStr}:${mins}] ${this.ts.t('CLOCK.MODE_WORLDCLOCK')} | ${appName}`);
+    } else if (mode === 'alarm') {
+      const next = this.nextAlarmTime();
+      const alarmLabel = this.ts.t('CLOCK.MODE_ALARM');
+      this.titleService.setTitle(next ? `[${next}] ${alarmLabel} | ${appName}` : `${alarmLabel} | ${appName}`);
+    } else {
+      this.titleService.setTitle(appName);
     }
   }
 
@@ -366,11 +383,29 @@ export class ClockComponent implements OnInit, OnDestroy {
 
   // Get days as readable string
   getDaysString(days: number[]): string {
-    if (days.length === 0) return 'Once';
-    if (days.length === 7) return 'Daily';
-    if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Weekdays';
-    if (days.length === 2 && days.includes(0) && days.includes(6)) return 'Weekends';
-    return days.map(d => this.dayLabels[d]).join(', ');
+    if (days.length === 0) return this.ts.t('ALARM.ONCE');
+    if (days.length === 7) return this.ts.t('ALARM.DAILY');
+    if (days.length === 5 && !days.includes(0) && !days.includes(6)) return this.ts.t('ALARM.WEEKDAYS');
+    if (days.length === 2 && days.includes(0) && days.includes(6)) return this.ts.t('ALARM.WEEKENDS');
+    return days.map(d => this.getDayLabel(d)).join(', ');
+  }
+
+  getAlarmSoundLabel(sound: string): string {
+    switch (sound) {
+      case 'bell':
+        return this.ts.t('ALARM.SOUND_BELL');
+      case 'digital':
+        return this.ts.t('ALARM.SOUND_DIGITAL');
+      default:
+        return this.ts.t('ALARM.SOUND_CHIME');
+    }
+  }
+
+  getWorldClockDiffLabel(timezone: string): string {
+    const diffHours = this.worldClockService.getTimeDifference(timezone);
+    if (diffHours === 0) return this.ts.t('WORLD_CLOCK.SAME_TIME');
+    if (diffHours > 0) return `+${diffHours}h`;
+    return `${diffHours}h`;
   }
 
   // Snooze ringing alarm

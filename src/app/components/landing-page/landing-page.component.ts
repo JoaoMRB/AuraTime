@@ -33,6 +33,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   // WOW Factor 3: 3D Parallax Tilt on Card
   cardTransform = signal<string>('perspective(1000px) rotateX(0deg) rotateY(-3deg) scale3d(1, 1, 1)');
 
+  // Language dropdown
+  langDropdownOpen = signal<boolean>(false);
+
   constructor() {
     // Dynamic SEO updating when language changes
     effect(() => {
@@ -84,8 +87,19 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     this.currentDate.set(now.toLocaleDateString(lang, options));
   }
 
+  getCurrentLanguageName(): string {
+    const current = this.ts.getAvailableLanguages().find(l => l.code === this.ts.currentLang());
+    return current?.name ?? 'English';
+  }
+
   changeLang(lang: string) {
     this.ts.setLanguage(lang);
+    this.langDropdownOpen.set(false);
+  }
+
+  toggleLangDropdown(event: Event) {
+    event.stopPropagation();
+    this.langDropdownOpen.update(v => !v);
   }
 
   // Spotlight Mouse Tracking
@@ -94,6 +108,14 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     if (this.isBrowser) {
       this.spotlightX.set(event.clientX);
       this.spotlightY.set(event.clientY);
+    }
+  }
+
+  // Close dropdown on click outside
+  @HostListener('document:click')
+  onDocumentClick() {
+    if (this.langDropdownOpen()) {
+      this.langDropdownOpen.set(false);
     }
   }
 

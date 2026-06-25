@@ -38,6 +38,8 @@ export class AlarmService {
 
   // Private interval for checking alarms
   private checkInterval: any = null;
+  private lastMinuteKey = '';
+  private dismissedAlarmIds = new Set<string>();
 
   constructor() {
     if (this.isBrowser) {
@@ -108,8 +110,24 @@ export class AlarmService {
 
   // Stop ringing
   stopRinging(): void {
+    const alarm = this.currentRingingAlarm();
+    if (alarm) {
+      this.markDismissed(alarm.id);
+    }
     this.isRinging.set(false);
     this.currentRingingAlarm.set(null);
+  }
+
+  private syncMinuteWindow(now: Date): void {
+    const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
+    if (minuteKey !== this.lastMinuteKey) {
+      this.lastMinuteKey = minuteKey;
+      this.dismissedAlarmIds.clear();
+    }
+  }
+
+  private markDismissed(alarmId: string): void {
+    this.dismissedAlarmIds.add(alarmId);
   }
 
   // Calculate next alarm to ring
@@ -165,17 +183,24 @@ export class AlarmService {
     if (this.isRinging()) return;
 
     const now = new Date();
+    this.syncMinuteWindow(now);
+
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const currentDay = now.getDay();
 
     const enabledAlarms = this.alarms().filter(a => a.enabled);
 
     for (const alarm of enabledAlarms) {
+      if (this.dismissedAlarmIds.has(alarm.id)) {
+        continue;
+      }
+
       if (alarm.time === currentTime) {
         // Check if it's for today or one-time
         if (alarm.days.length === 0 || alarm.days.includes(currentDay)) {
+          this.markDismissed(alarm.id);
           this.triggerAlarm(alarm);
-          
+
           // If it's a one-time alarm, disable it
           if (alarm.days.length === 0) {
             this.updateAlarm(alarm.id, { enabled: false });

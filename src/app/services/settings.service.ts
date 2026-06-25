@@ -17,7 +17,7 @@ export interface ClockSettings {
 const DEFAULT_SETTINGS: ClockSettings = {
   theme: 'emerald-gold', // The premium default
   position: 'center',
-  angle: -4, // Elegant slight luxury tilt
+  angle: 0,
   scale: 1.0,
   font: 'outfit',
   showSeconds: true,
@@ -26,6 +26,9 @@ const DEFAULT_SETTINGS: ClockSettings = {
   mode: 'clock',
   sound: 'none'
 };
+
+/** Previous factory default tilt; migrate stored values to 0° */
+const LEGACY_DEFAULT_ANGLE = -4;
 
 @Injectable({
   providedIn: 'root'
@@ -76,7 +79,10 @@ export class SettingsService {
         const parsed = JSON.parse(data) as Partial<ClockSettings>;
         if (parsed.theme) this.theme.set(parsed.theme);
         if (parsed.position) this.position.set(parsed.position);
-        if (parsed.angle !== undefined) this.angle.set(parsed.angle);
+        if (parsed.angle !== undefined) {
+          const angle = parsed.angle === LEGACY_DEFAULT_ANGLE ? DEFAULT_SETTINGS.angle : parsed.angle;
+          this.angle.set(angle);
+        }
         if (parsed.scale !== undefined) this.scale.set(parsed.scale);
         if (parsed.font) this.font.set(parsed.font);
         if (parsed.showSeconds !== undefined) this.showSeconds.set(parsed.showSeconds);

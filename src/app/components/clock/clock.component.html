@@ -19,7 +19,7 @@
 </div>
 
 <!-- Dynamic Theme Background Container -->
-<div class="fixed inset-0 -z-50 overflow-hidden transition-all duration-1000"
+<div class="fixed inset-0 z-0 pointer-events-none overflow-hidden transition-all duration-1000"
      [ngClass]="{
        'bg-gradient-to-br from-luxury-darkEmerald via-black to-[#011409] text-white': settings.theme() === 'emerald-gold',
        'bg-gradient-to-tr from-indigo-950 via-slate-950 to-violet-950 text-white': settings.theme() === 'liquid-glass',
@@ -44,7 +44,7 @@
 </div>
 
 <!-- Main Display Area -->
-<div class="w-full h-full flex transition-all duration-500 select-none overflow-hidden"
+<div class="relative z-10 w-full h-full flex transition-all duration-500 select-none overflow-hidden"
      [ngClass]="{
        'justify-center items-center': settings.position() === 'center',
        'justify-start items-start p-10 md:p-20': settings.position() === 'top-left',
@@ -62,7 +62,7 @@
          [ngClass]="{
            'bg-[#07170d]/60 backdrop-blur-2xl border border-luxury-gold/25 shadow-[0_20px_50px_rgba(10,59,31,0.25)]': settings.theme() === 'emerald-gold',
            'bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]': settings.theme() === 'liquid-glass',
-           'bg-white/40 backdrop-blur-md border border-white/50 shadow-[0_15px_30px_rgba(0,0,0,0.05)]': settings.theme() === 'light-glass',
+           'bg-white/65 backdrop-blur-2xl border border-white/80 shadow-[0_20px_40px_rgba(15,23,42,0.08)]': settings.theme() === 'light-glass',
            'bg-white/[0.02] backdrop-blur-xl border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.55)]': settings.theme() === 'dark-glass',
            'bg-zinc-950/40 backdrop-blur-3xl border border-zinc-900/80 shadow-[0_20px_60px_rgba(0,0,0,0.85)]': settings.theme() === 'obsidian-platinum'
          }">
@@ -91,7 +91,8 @@
 
         <!-- Pomodoro Focus Timer View -->
         <div *ngIf="settings.mode() === 'pomodoro'" class="flex flex-col items-center">
-          <span class="text-xs uppercase tracking-[0.25em] mb-3 text-luxury-gold drop-shadow-sm font-semibold">
+          <span class="text-xs uppercase tracking-[0.25em] mb-3 drop-shadow-sm font-semibold"
+                [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-luxury-gold'">
             {{ pomoPhase() === 'work' ? ts.t('POMODORO.WORK') : ts.t('POMODORO.BREAK') }}
           </span>
           
@@ -142,7 +143,8 @@
 
         <!-- World Clock View -->
         <div *ngIf="settings.mode() === 'worldclock'" class="flex flex-col items-center space-y-4">
-          <span class="text-xs uppercase tracking-[0.25em] mb-2 text-luxury-gold drop-shadow-sm font-semibold">
+          <span class="text-xs uppercase tracking-[0.25em] mb-2 drop-shadow-sm font-semibold"
+                [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-luxury-gold'">
             {{ ts.t('CLOCK.MODE_WORLDCLOCK') }}
           </span>
           <div class="text-3xl md:text-5xl font-bold drop-shadow-md tracking-wider"
@@ -155,22 +157,30 @@
                }">
             {{ currentTime() }}
           </div>
-          <div class="text-[10px] text-gray-400 font-mono tracking-wider">
+          <div class="text-[10px] font-mono tracking-wider"
+               [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-gray-400'">
             {{ ts.t('CLOCK.LOCAL_TIME') }}
           </div>
           <div class="grid grid-cols-3 gap-3 mt-4">
-            <div *ngFor="let clock of worldClocks()" class="text-center p-2 rounded-lg bg-white/5 border border-white/10">
-              <div class="text-[10px] text-gray-400 mb-1">{{ clock.label }}</div>
-              <div class="text-sm font-mono">{{ worldClockService.getTime(clock.timezone) }}</div>
-              <div class="text-[9px] text-gray-500 mt-0.5">{{ ts.t('WORLD_CLOCK.UTC') }}{{ worldClockService.getUtcOffsetLabel(clock.timezone) }}</div>
-              <div class="text-[9px] text-gray-600">{{ getWorldClockDiffLabel(clock.timezone) }}</div>
+            <div *ngFor="let clock of worldClocks()" 
+                 class="text-center p-2 rounded-lg border transition-all duration-300"
+                 [ngClass]="settings.theme() === 'light-glass' ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'">
+              <div class="text-[10px] mb-1"
+                   [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-gray-400'">{{ clock.label }}</div>
+              <div class="text-sm font-mono"
+                   [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-800' : 'text-white'">{{ worldClockService.getTime(clock.timezone) }}</div>
+              <div class="text-[9px] mt-0.5"
+                   [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-600' : 'text-gray-500'">{{ ts.t('WORLD_CLOCK.UTC') }}{{ worldClockService.getUtcOffsetLabel(clock.timezone) }}</div>
+              <div class="text-[9px]"
+                   [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-gray-600'">{{ getWorldClockDiffLabel(clock.timezone) }}</div>
             </div>
           </div>
         </div>
 
         <!-- Stopwatch View -->
         <div *ngIf="settings.mode() === 'stopwatch'" class="flex flex-col items-center">
-          <span class="text-xs uppercase tracking-[0.25em] mb-3 text-luxury-gold drop-shadow-sm font-semibold">
+          <span class="text-xs uppercase tracking-[0.25em] mb-3 drop-shadow-sm font-semibold"
+                [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-luxury-gold'">
             {{ ts.t('CLOCK.MODE_STOPWATCH') }}
           </span>
           <div class="text-5xl md:text-7xl font-black drop-shadow-md tracking-wider font-mono"
@@ -226,7 +236,8 @@
 
         <!-- Timer View -->
         <div *ngIf="settings.mode() === 'timer'" class="flex flex-col items-center">
-          <span class="text-xs uppercase tracking-[0.25em] mb-3 text-luxury-gold drop-shadow-sm font-semibold">
+          <span class="text-xs uppercase tracking-[0.25em] mb-3 drop-shadow-sm font-semibold"
+                [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-luxury-gold'">
             {{ ts.t('CLOCK.MODE_TIMER') }}
           </span>
           <div class="text-5xl md:text-7xl font-black drop-shadow-md tracking-wider font-mono"
@@ -298,7 +309,8 @@
 
         <!-- Alarm View -->
         <div *ngIf="settings.mode() === 'alarm'" class="flex flex-col items-center">
-          <span class="text-xs uppercase tracking-[0.25em] mb-3 text-luxury-gold drop-shadow-sm font-semibold">
+          <span class="text-xs uppercase tracking-[0.25em] mb-3 drop-shadow-sm font-semibold"
+                [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-luxury-gold'">
             {{ ts.t('CLOCK.MODE_ALARM') }}
           </span>
           <div class="text-5xl md:text-7xl font-black drop-shadow-md tracking-wider font-mono"
@@ -311,13 +323,17 @@
                }">
             {{ nextAlarmTime() || '--:--' }}
           </div>
-          <div class="text-[10px] text-gray-400 font-mono tracking-wider mt-2">
+          <div class="text-[10px] font-mono tracking-wider mt-2"
+               [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-500' : 'text-gray-400'">
             {{ ts.t('CLOCK.NEXT_ALARM') }}
           </div>
           <div class="mt-4 space-y-2 max-h-40 overflow-y-auto">
-            <div *ngFor="let alarm of alarms()" class="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10">
+            <div *ngFor="let alarm of alarms()" 
+                 class="flex items-center justify-between p-2 rounded-lg border transition-all duration-300"
+                 [ngClass]="settings.theme() === 'light-glass' ? 'bg-black/5 border-black/10 text-slate-800' : 'bg-white/5 border-white/10 text-white'">
               <div class="text-sm font-mono">{{ alarm.time }}</div>
-              <button (click)="toggleAlarm(alarm.id)" class="px-2 py-1 rounded text-[10px] transition-all" [ngClass]="alarm.enabled ? 'bg-luxury-gold text-luxury-charcoal' : 'bg-white/10 text-white'">
+              <button (click)="toggleAlarm(alarm.id)" class="px-2 py-1 rounded text-[10px] transition-all font-semibold" 
+                      [ngClass]="alarm.enabled ? 'bg-luxury-gold text-luxury-charcoal' : (settings.theme() === 'light-glass' ? 'bg-black/10 text-slate-600 hover:bg-black/20' : 'bg-white/10 text-white')">
                 {{ alarm.enabled ? ts.t('CLOCK.ON') : ts.t('CLOCK.OFF') }}
               </button>
             </div>
@@ -345,7 +361,7 @@
            [ngClass]="{
              'text-luxury-mint/70': settings.theme() === 'emerald-gold',
              'text-cyan-200/60': settings.theme() === 'liquid-glass',
-             'text-slate-500': settings.theme() === 'light-glass',
+             'text-slate-600': settings.theme() === 'light-glass',
              'text-white/45': settings.theme() === 'dark-glass',
              'text-zinc-500': settings.theme() === 'obsidian-platinum'
            }">

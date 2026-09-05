@@ -153,7 +153,7 @@ const DEFAULT_EN: any = {
     "PRESETS": "Atmospheric Presets",
     "PRESET_DEEP_WORK": "Deep Work",
     "PRESET_RAINY_EVENING": "Rainy Evening",
-    "PRESET_COZY_LOFI": "Cozy Lo-Fi & Fire",
+    "PRESET_FOCUS_BINAURAL": "Focus Binaural",
     "PRESET_ZEN_BREEZE": "Zen Breeze",
     "RAIN": "Gentle Rain",
     "THUNDER": "Distant Thunder",
@@ -161,7 +161,7 @@ const DEFAULT_EN: any = {
     "WIND": "Gentle Wind",
     "BROWN_NOISE": "Brown Noise",
     "PINK_NOISE": "Pink Noise",
-    "LOFI": "Lo-Fi 24/7 Radio",
+    "BINAURAL": "Binaural Beats (Focus)",
     "STOP_ALL": "Mute All"
   },
   "TASKS": {

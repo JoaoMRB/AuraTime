@@ -148,7 +148,7 @@
     "PRESETS": "Atmosferas Predefinidas",
     "PRESET_DEEP_WORK": "Foco Profundo",
     "PRESET_RAINY_EVENING": "Tarde Chuvosa",
-    "PRESET_COZY_LOFI": "Lo-Fi & Lareira",
+    "PRESET_FOCUS_BINAURAL": "Foco Binaural",
     "PRESET_ZEN_BREEZE": "Brisa Zen",
     "RAIN": "Chuva Suave",
     "THUNDER": "Trovoada Distante",
@@ -156,7 +156,7 @@
     "WIND": "Vento & Brisa",
     "BROWN_NOISE": "Ruído Castanho",
     "PINK_NOISE": "Ruído Rosa",
-    "LOFI": "Rádio Lo-Fi 24/7",
+    "BINAURAL": "Ondas Binaurais (Foco)",
     "STOP_ALL": "Silenciar Tudo"
   },
   "TASKS": {

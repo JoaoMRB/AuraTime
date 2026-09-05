@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "build:extension": "ng build && node scripts/build-extension.js",
     "serve:ssr:AuraTime": "node dist/aura-time/server/server.mjs"
   },
   "private": true,

@@ -368,46 +368,185 @@
         {{ currentDateStr() }}
       </div>
 
+      <!-- Active Focus Task Indicator (Under Date) -->
+      <div *ngIf="settings.mode() === 'pomodoro' && taskService.getActiveTask() as activeTask"
+           (click)="toggleTasks()"
+           class="mt-4 px-3.5 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-luxury-gold/40 flex items-center gap-2 text-[11px] text-luxury-gold tracking-wide hover:scale-105 cursor-pointer transition-transform shadow-md">
+        <span class="w-2 h-2 rounded-full bg-luxury-gold animate-ping"></span>
+        <span class="truncate max-w-[200px]">{{ activeTask.text }}</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-luxury-gold/20 font-mono font-bold">{{ activeTask.pomodoros }}🍅</span>
+      </div>
+
     </div>
   </div>
 </div>
 
 <!-- ================= HUD CONTROLS ================= -->
 
-<!-- Exit / Home Button (Top Left) -->
-<div class="fixed top-6 left-6 z-30 transition-opacity duration-500"
-     [class.opacity-100]="hudVisible()"
-     [class.opacity-0]="!hudVisible() && !settingsOpen()"
-     [class.pointer-events-none]="!hudVisible() && !settingsOpen()">
-  <a routerLink="/" 
-     class="flex items-center justify-center p-3 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105"
-     [ngClass]="{
-       'bg-white/5 border-white/10 hover:bg-white/10 text-white': settings.theme() !== 'light-glass',
-       'bg-black/5 border-black/10 hover:bg-black/10 text-slate-800': settings.theme() === 'light-glass'
-     }">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-    </svg>
-  </a>
+<!-- TOP BAR: Left & Right HUD -->
+<div class="fixed top-6 inset-x-6 z-30 flex items-center justify-between pointer-events-none transition-opacity duration-500"
+     [class.opacity-100]="hudVisible() && !zenMode()"
+     [class.opacity-0]="!hudVisible() || zenMode()">
+
+  <!-- Top Left: Home Link + Weather + Daily Quote -->
+  <div class="flex items-center gap-2.5 pointer-events-auto">
+    <!-- Home Button -->
+    <a routerLink="/" 
+       title="Voltar ao Início"
+       class="flex items-center justify-center p-3 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105"
+       [ngClass]="{
+         'bg-white/5 border-white/10 hover:bg-white/10 text-white': settings.theme() !== 'light-glass',
+         'bg-black/5 border-black/10 hover:bg-black/10 text-slate-800': settings.theme() === 'light-glass'
+       }">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+      </svg>
+    </a>
+
+    <!-- Weather Widget -->
+    <div *ngIf="weatherService.weather() as w"
+         (click)="weatherService.initWeather()"
+         title="Clique para atualizar o tempo"
+         class="flex items-center gap-2 px-3.5 py-2 rounded-full backdrop-blur-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium cursor-pointer transition-all duration-300 hover:scale-105"
+         [ngClass]="settings.theme() === 'light-glass' ? 'text-slate-800 border-black/10 bg-black/5' : 'text-white'">
+      <span>{{ w.icon }}</span>
+      <span>{{ w.temperature }}°C</span>
+      <span class="hidden sm:inline text-white/50">• {{ w.description }}</span>
+    </div>
+
+    <!-- Daily Quote Badge -->
+    <div (click)="dashboardService.nextQuote()"
+         title="Clique para próxima frase"
+         class="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-full backdrop-blur-xl border border-white/10 bg-black/40 hover:bg-black/60 text-[11px] text-gray-300 cursor-pointer transition-all duration-300 hover:scale-105 max-w-xs truncate shadow-sm">
+      <span class="text-luxury-gold font-serif">“</span>
+      <span class="truncate italic">{{ dashboardService.currentQuote().text }}</span>
+      <span class="text-gray-400 font-mono text-[10px]">— {{ dashboardService.currentQuote().author }}</span>
+    </div>
+  </div>
+
+  <!-- Top Right: Soundscape + Quick Links + Zen Mode -->
+  <div class="flex items-center gap-2.5 pointer-events-auto">
+    <!-- Soundscape Button (M) -->
+    <button (click)="toggleSoundscape()"
+            title="Sons de Foco (M)"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105 shadow-md cursor-pointer text-xs font-medium"
+            [ngClass]="{
+              'bg-luxury-emerald border-luxury-gold/50 text-luxury-gold shadow-[0_0_15px_rgba(212,175,55,0.25)]': soundscape.isPlaying(),
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': !soundscape.isPlaying() && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': !soundscape.isPlaying() && settings.theme() === 'light-glass'
+            }">
+      <span class="text-sm" [class.animate-pulse]="soundscape.isPlaying()">🎧</span>
+      <span class="hidden sm:inline">{{ ts.t('SOUNDSCAPE.TITLE') }}</span>
+      <span *ngIf="soundscape.isPlaying()" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+    </button>
+
+    <!-- Quick Links Dock -->
+    <div class="flex items-center gap-1 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-2 py-1 shadow-sm">
+      <a *ngFor="let link of dashboardService.links()"
+         [href]="link.url"
+         target="_blank"
+         [title]="link.title"
+         class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/15 text-xs transition-transform hover:scale-110">
+        {{ link.icon }}
+      </a>
+      <button (click)="toggleLinks()"
+              title="Gerir Atalhos Rápidos"
+              class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/15 text-gray-400 hover:text-white text-xs cursor-pointer">
+        +
+      </button>
+    </div>
+
+    <!-- Zen Mode (Z) -->
+    <button (click)="toggleZenMode()"
+            title="Modo Zen Screensaver (Z)"
+            class="p-2.5 rounded-full backdrop-blur-xl border border-white/10 bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all hover:scale-105 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+      </svg>
+    </button>
+  </div>
 </div>
 
-<!-- Floating Settings Trigger Button (Bottom Left) -->
-<div class="fixed bottom-6 left-6 z-30 transition-opacity duration-500"
-     [class.opacity-100]="hudVisible()"
-     [class.opacity-0]="!hudVisible() && !settingsOpen()"
-     [class.pointer-events-none]="!hudVisible() && !settingsOpen()">
-  <button (click)="toggleSettings()"
-          class="flex items-center justify-center p-3.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer"
-          [ngClass]="{
-            'bg-luxury-emerald/90 border-luxury-gold/40 text-luxury-gold hover:bg-luxury-emerald shadow-[0_4px_20px_rgba(10,59,31,0.4)]': settings.theme() === 'emerald-gold',
-            'bg-white/5 border-white/15 text-white hover:bg-white/10': settings.theme() !== 'emerald-gold' && settings.theme() !== 'light-glass',
-            'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': settings.theme() === 'light-glass'
-          }">
-    <!-- Sliders Minimalist Icon -->
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-    </svg>
-  </button>
+<!-- BOTTOM BAR: Left & Right HUD -->
+<div class="fixed bottom-6 inset-x-6 z-30 flex items-center justify-between pointer-events-none transition-opacity duration-500"
+     [class.opacity-100]="hudVisible() && !zenMode()"
+     [class.opacity-0]="!hudVisible() || zenMode()">
+
+  <!-- Bottom Left: Today's Focus & Scratchpad -->
+  <div class="flex items-center gap-2.5 pointer-events-auto">
+    <!-- Tasks Focus Button (T) -->
+    <button (click)="toggleTasks()"
+            title="Foco do Dia (T)"
+            class="flex items-center gap-2 px-3.5 py-2.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105 shadow-md cursor-pointer text-xs font-medium"
+            [ngClass]="{
+              'bg-luxury-gold/20 border-luxury-gold text-luxury-gold shadow-[0_0_12px_rgba(212,175,55,0.2)]': tasksOpen(),
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': !tasksOpen() && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': !tasksOpen() && settings.theme() === 'light-glass'
+            }">
+      <span>🎯</span>
+      <span class="hidden sm:inline">{{ ts.t('TASKS.TITLE') }}</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-white/15 font-mono">
+        {{ taskService.tasks().length }}
+      </span>
+    </button>
+
+    <!-- Notes Scratchpad Button (N) -->
+    <button (click)="toggleNotes()"
+            title="Bloco de Notas (N)"
+            class="flex items-center gap-1.5 px-3 py-2.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105 shadow-md cursor-pointer text-xs font-medium"
+            [ngClass]="{
+              'bg-luxury-gold/20 border-luxury-gold text-luxury-gold shadow-[0_0_12px_rgba(212,175,55,0.2)]': notesOpen(),
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': !notesOpen() && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': !notesOpen() && settings.theme() === 'light-glass'
+            }">
+      <span>📝</span>
+      <span class="hidden sm:inline">{{ ts.t('NOTES.TITLE') }}</span>
+    </button>
+  </div>
+
+  <!-- Bottom Right: Picture-in-Picture + Analytics + Settings -->
+  <div class="flex items-center gap-2.5 pointer-events-auto">
+    <!-- Picture-in-Picture Floating Window (P) -->
+    <button (click)="togglePip()"
+            title="Mini Relógio Flutuante PiP (P)"
+            class="flex items-center justify-center p-3 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 shadow-md cursor-pointer"
+            [ngClass]="{
+              'bg-luxury-gold text-black border-luxury-gold': pipService.isInPip(),
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': !pipService.isInPip() && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': !pipService.isInPip() && settings.theme() === 'light-glass'
+            }">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+      </svg>
+    </button>
+
+    <!-- Analytics & Streak Button (S) -->
+    <button (click)="toggleAnalytics()"
+            title="Estatísticas & Streaks (S)"
+            class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-105 shadow-md cursor-pointer text-xs font-semibold"
+            [ngClass]="{
+              'bg-orange-500/20 border-orange-400 text-orange-300 shadow-[0_0_12px_rgba(249,115,22,0.2)]': analyticsOpen(),
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': !analyticsOpen() && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': !analyticsOpen() && settings.theme() === 'light-glass'
+            }">
+      <span>🔥</span>
+      <span>{{ analyticsService.currentStreak() }}d</span>
+    </button>
+
+    <!-- Settings Button -->
+    <button (click)="toggleSettings()"
+            title="Definições"
+            class="flex items-center justify-center p-3.5 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer"
+            [ngClass]="{
+              'bg-luxury-emerald/90 border-luxury-gold/40 text-luxury-gold hover:bg-luxury-emerald shadow-[0_4px_20px_rgba(10,59,31,0.4)]': settings.theme() === 'emerald-gold',
+              'bg-white/5 border-white/15 text-white hover:bg-white/10': settings.theme() !== 'emerald-gold' && settings.theme() !== 'light-glass',
+              'bg-black/5 border-black/15 text-slate-800 hover:bg-black/10': settings.theme() === 'light-glass'
+            }">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+      </svg>
+    </button>
+  </div>
 </div>
 
 <!-- ================= SETTINGS SIDEBAR DRAWER ================= -->
@@ -864,3 +1003,257 @@
     </button>
   </div>
 </div>
+
+<!-- ================= SOUNDSCAPE MIXER MODAL ================= -->
+<div *ngIf="soundscapeOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-md" (click)="soundscapeOpen.set(false)"></div>
+  <div class="relative w-full max-w-md bg-[#090e11]/95 backdrop-blur-2xl border border-luxury-gold/30 rounded-3xl p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)] space-y-5 animate-in fade-in zoom-in-95 duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🎧</span>
+        <div>
+          <h3 class="font-outfit font-bold text-base text-luxury-gold">{{ ts.t('SOUNDSCAPE.TITLE') }}</h3>
+          <p class="text-[11px] text-gray-400">{{ ts.t('SOUNDSCAPE.SUBTITLE') }}</p>
+        </div>
+      </div>
+      <button (click)="soundscapeOpen.set(false)" class="text-gray-400 hover:text-white cursor-pointer text-sm p-1">✕</button>
+    </div>
+
+    <!-- Master Volume & Controls -->
+    <div class="flex items-center justify-between gap-4 bg-black/50 p-3.5 rounded-2xl border border-white/10">
+      <div class="flex items-center gap-2.5 flex-1">
+        <button (click)="soundscape.toggleMute()" class="text-base p-1 rounded hover:bg-white/10 cursor-pointer">
+          {{ soundscape.isMuted() ? '🔇' : '🔊' }}
+        </button>
+        <input type="range" min="0" max="100" [ngModel]="soundscape.masterVolume()" (ngModelChange)="soundscape.setMasterVolume($event)" class="w-full accent-luxury-gold cursor-pointer" />
+        <span class="text-xs font-mono w-9 text-right text-gray-300">{{ soundscape.masterVolume() }}%</span>
+      </div>
+      <button *ngIf="soundscape.isPlaying()" (click)="soundscape.stopAll()" class="text-xs px-3 py-1.5 rounded-xl bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer font-medium transition-colors">
+        {{ ts.t('SOUNDSCAPE.STOP_ALL') }}
+      </button>
+    </div>
+
+    <!-- Presets -->
+    <div>
+      <label class="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-2 block">{{ ts.t('SOUNDSCAPE.PRESETS') }}</label>
+      <div class="grid grid-cols-2 gap-2">
+        <button *ngFor="let preset of soundscape.presets"
+                (click)="soundscape.applyPreset(preset)"
+                class="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-left transition-all hover:scale-[1.02] cursor-pointer">
+          <span class="text-base">{{ preset.icon }}</span>
+          <span class="truncate font-medium">{{ ts.t(preset.name) }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Multi-Track Sliders -->
+    <div class="space-y-2.5 max-h-60 overflow-y-auto pr-1 no-scrollbar">
+      <div *ngFor="let track of soundscape.tracks()"
+           class="flex items-center gap-3 p-2.5 rounded-xl border transition-all"
+           [ngClass]="track.active ? 'bg-luxury-gold/15 border-luxury-gold/50 shadow-sm' : 'bg-black/30 border-white/5'">
+        <button (click)="soundscape.toggleTrack(track.id)"
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-transform hover:scale-110 cursor-pointer flex-shrink-0"
+                [ngClass]="track.active ? 'bg-luxury-gold text-black shadow-md font-bold' : 'bg-white/10 text-white'">
+          {{ track.icon }}
+        </button>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between text-xs mb-1">
+            <span [class.text-luxury-gold]="track.active" class="font-medium truncate">{{ ts.t(track.name) }}</span>
+            <span class="text-[10px] text-gray-400 font-mono">{{ track.volume }}%</span>
+          </div>
+          <input type="range" min="0" max="100" [ngModel]="track.volume" (ngModelChange)="soundscape.setTrackVolume(track.id, $event)" class="w-full h-1 accent-luxury-gold cursor-pointer" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TASKS DRAWER ================= -->
+<div *ngIf="tasksOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-md" (click)="tasksOpen.set(false)"></div>
+  <div class="relative w-full max-w-md bg-[#070e0a]/95 backdrop-blur-2xl border border-luxury-gold/30 rounded-3xl p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)] space-y-4 animate-in fade-in zoom-in-95 duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🎯</span>
+        <div>
+          <h3 class="font-outfit font-bold text-base text-luxury-gold">{{ ts.t('TASKS.TITLE') }}</h3>
+          <p class="text-[11px] text-gray-400">{{ ts.t('TASKS.SUBTITLE') }}</p>
+        </div>
+      </div>
+      <button (click)="tasksOpen.set(false)" class="text-gray-400 hover:text-white cursor-pointer text-sm p-1">✕</button>
+    </div>
+
+    <!-- Add Task Input -->
+    <form (submit)="addNewTask(); $event.preventDefault()" class="flex gap-2">
+      <input type="text"
+             [ngModel]="newTaskInput()"
+             (ngModelChange)="newTaskInput.set($event)"
+             name="taskText"
+             [placeholder]="ts.t('TASKS.INPUT_PLACEHOLDER')"
+             class="flex-1 bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-luxury-gold" />
+      <button type="submit" class="px-4 py-2.5 rounded-xl bg-luxury-gold text-black font-bold text-sm hover:scale-105 transition-transform cursor-pointer">
+        +
+      </button>
+    </form>
+
+    <!-- Task List -->
+    <div class="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
+      <div *ngIf="taskService.tasks().length === 0" class="text-center py-8 text-gray-500 text-xs">
+        {{ ts.t('TASKS.NO_TASKS') }}
+      </div>
+
+      <div *ngFor="let task of taskService.tasks()"
+           class="flex items-center justify-between gap-3 p-3 rounded-xl border transition-all"
+           [ngClass]="taskService.activeTaskId() === task.id ? 'bg-luxury-gold/15 border-luxury-gold/50 shadow-md' : 'bg-black/30 border-white/5'">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <input type="checkbox"
+                 [checked]="task.completed"
+                 (change)="taskService.toggleTask(task.id)"
+                 class="w-4 h-4 rounded accent-luxury-gold cursor-pointer" />
+          <span [class.line-through]="task.completed"
+                [class.text-gray-500]="task.completed"
+                class="text-xs truncate cursor-pointer select-none"
+                (click)="taskService.setActiveTask(task.id)">
+            {{ task.text }}
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Active Focus Pin Button -->
+          <button (click)="taskService.setActiveTask(task.id)"
+                  [title]="taskService.activeTaskId() === task.id ? 'Foco Ativo' : 'Definir como Foco Ativo'"
+                  class="p-1 rounded text-xs transition-colors cursor-pointer"
+                  [ngClass]="taskService.activeTaskId() === task.id ? 'text-luxury-gold scale-110 font-bold' : 'text-gray-600 hover:text-gray-300'">
+            🎯
+          </button>
+          <!-- Pomodoros Count Badge -->
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 font-mono text-gray-300">
+            {{ task.pomodoros }} 🍅
+          </span>
+          <!-- Delete button -->
+          <button (click)="taskService.deleteTask(task.id)" class="text-gray-500 hover:text-red-400 text-xs cursor-pointer p-1">
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="flex justify-between items-center pt-2 border-t border-white/5 text-[11px] text-gray-400">
+      <span>{{ taskService.tasks().length }} tarefas</span>
+      <button (click)="taskService.clearCompleted()" class="hover:text-white cursor-pointer transition-colors">
+        {{ ts.t('TASKS.CLEAR_COMPLETED') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SCRATCHPAD NOTES MODAL ================= -->
+<div *ngIf="notesOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-md" (click)="notesOpen.set(false)"></div>
+  <div class="relative w-full max-w-lg bg-[#0a0a0f]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)] space-y-4 animate-in fade-in zoom-in-95 duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">📝</span>
+        <div>
+          <h3 class="font-outfit font-bold text-base text-white">{{ ts.t('NOTES.TITLE') }}</h3>
+          <p class="text-[11px] text-gray-400">{{ ts.t('NOTES.SUBTITLE') }}</p>
+        </div>
+      </div>
+      <button (click)="notesOpen.set(false)" class="text-gray-400 hover:text-white cursor-pointer text-sm p-1">✕</button>
+    </div>
+
+    <textarea [ngModel]="notesService.noteContent()"
+              (ngModelChange)="notesService.updateContent($event)"
+              rows="11"
+              [placeholder]="ts.t('NOTES.PLACEHOLDER')"
+              class="w-full bg-black/50 border border-white/10 rounded-2xl p-4 text-xs font-mono leading-relaxed text-gray-200 placeholder-gray-600 focus:outline-none focus:border-luxury-gold/50 resize-none">
+    </textarea>
+
+    <div class="flex items-center justify-between text-[11px] text-gray-500">
+      <span *ngIf="notesService.lastSaved()">{{ ts.t('NOTES.SAVED_AT') }} {{ notesService.lastSaved() }}</span>
+      <button (click)="notesService.clear()" class="text-red-400/70 hover:text-red-400 cursor-pointer">Limpar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ANALYTICS MODAL ================= -->
+<div *ngIf="analyticsOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-md" (click)="analyticsOpen.set(false)"></div>
+  <div class="relative w-full max-w-md bg-[#090b10]/95 backdrop-blur-2xl border border-orange-500/30 rounded-3xl p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)] space-y-5 animate-in fade-in zoom-in-95 duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🔥</span>
+        <div>
+          <h3 class="font-outfit font-bold text-base text-orange-300">{{ ts.t('ANALYTICS.TITLE') }}</h3>
+          <p class="text-[11px] text-gray-400">{{ ts.t('ANALYTICS.SUBTITLE') }}</p>
+        </div>
+      </div>
+      <button (click)="analyticsOpen.set(false)" class="text-gray-400 hover:text-white cursor-pointer text-sm p-1">✕</button>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-black/50 border border-white/5 rounded-2xl p-4 text-center shadow-inner">
+        <div class="text-2xl font-black text-orange-400">🔥 {{ analyticsService.currentStreak() }}d</div>
+        <div class="text-[10px] uppercase text-gray-400 tracking-wider mt-1">{{ ts.t('ANALYTICS.CURRENT_STREAK') }}</div>
+      </div>
+      <div class="bg-black/50 border border-white/5 rounded-2xl p-4 text-center shadow-inner">
+        <div class="text-2xl font-black text-luxury-gold">🏆 {{ analyticsService.bestStreak() }}d</div>
+        <div class="text-[10px] uppercase text-gray-400 tracking-wider mt-1">{{ ts.t('ANALYTICS.BEST_STREAK') }}</div>
+      </div>
+      <div class="bg-black/50 border border-white/5 rounded-2xl p-4 text-center shadow-inner">
+        <div class="text-2xl font-black text-emerald-400">{{ analyticsService.todayStats().minutes }}m</div>
+        <div class="text-[10px] uppercase text-gray-400 tracking-wider mt-1">{{ ts.t('ANALYTICS.TODAY_FOCUS') }}</div>
+      </div>
+      <div class="bg-black/50 border border-white/5 rounded-2xl p-4 text-center shadow-inner">
+        <div class="text-2xl font-black text-purple-400">{{ analyticsService.totalPomodoros() }} 🍅</div>
+        <div class="text-[10px] uppercase text-gray-400 tracking-wider mt-1">{{ ts.t('ANALYTICS.TOTAL_POMODOROS') }}</div>
+      </div>
+    </div>
+
+    <!-- 7-Day Chart -->
+    <div class="bg-black/50 border border-white/5 rounded-2xl p-4 shadow-inner">
+      <div class="text-xs font-semibold text-gray-300 mb-3">{{ ts.t('ANALYTICS.LAST_7_DAYS') }}</div>
+      <div class="flex items-end justify-between gap-2 h-28 pt-2">
+        <div *ngFor="let day of analyticsService.weeklySummary()" class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+          <div class="w-full rounded-t-md transition-all duration-500"
+               [style.height.%]="day.heightPercent"
+               [ngClass]="day.minutes > 0 ? 'bg-gradient-to-t from-orange-500 to-amber-300 shadow-[0_0_8px_rgba(249,115,22,0.4)]' : 'bg-white/10'">
+          </div>
+          <span class="text-[9px] font-mono text-gray-400">{{ day.label }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= QUICK LINKS MODAL ================= -->
+<div *ngIf="linksOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-md" (click)="linksOpen.set(false)"></div>
+  <div class="relative w-full max-w-sm bg-[#090b10]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-white shadow-[0_20px_80px_rgba(0,0,0,0.8)] space-y-4 animate-in fade-in zoom-in-95 duration-200">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <h3 class="font-outfit font-bold text-base text-white">{{ ts.t('DASHBOARD.QUICK_LINKS') }}</h3>
+      <button (click)="linksOpen.set(false)" class="text-gray-400 hover:text-white cursor-pointer text-sm p-1">✕</button>
+    </div>
+
+    <form (submit)="addNewLink(); $event.preventDefault()" class="space-y-2">
+      <input type="text" [ngModel]="newLinkTitle()" (ngModelChange)="newLinkTitle.set($event)" name="linkTitle" placeholder="Título (ex: Figma)" class="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-luxury-gold" />
+      <input type="text" [ngModel]="newLinkUrl()" (ngModelChange)="newLinkUrl.set($event)" name="linkUrl" placeholder="URL (ex: figma.com)" class="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-luxury-gold" />
+      <button type="submit" class="w-full py-2.5 bg-luxury-gold text-black font-semibold text-xs rounded-xl hover:scale-102 transition-transform cursor-pointer">
+        {{ ts.t('DASHBOARD.ADD_LINK') }}
+      </button>
+    </form>
+
+    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+      <div *ngFor="let link of dashboardService.links()" class="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs">
+        <div class="flex items-center gap-2 truncate">
+          <span>{{ link.icon }}</span>
+          <span class="truncate font-medium">{{ link.title }}</span>
+        </div>
+        <button (click)="dashboardService.removeLink(link.id)" class="text-gray-500 hover:text-red-400 cursor-pointer p-1">✕</button>
+      </div>
+    </div>
+  </div>
+</div>
+

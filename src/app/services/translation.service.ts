@@ -145,6 +145,59 @@ const DEFAULT_EN: any = {
   "WORLD_CLOCK": {
     "UTC": "UTC",
     "SAME_TIME": "Same time"
+  },
+  "SOUNDSCAPE": {
+    "TITLE": "Soundscapes & Focus",
+    "SUBTITLE": "Real-time synthesized ambient audio mixer",
+    "MASTER_VOLUME": "Master Volume",
+    "PRESETS": "Atmospheric Presets",
+    "PRESET_DEEP_WORK": "Deep Work",
+    "PRESET_RAINY_EVENING": "Rainy Evening",
+    "PRESET_COZY_LOFI": "Cozy Lo-Fi & Fire",
+    "PRESET_ZEN_BREEZE": "Zen Breeze",
+    "RAIN": "Gentle Rain",
+    "THUNDER": "Distant Thunder",
+    "FIRE": "Crackling Fireplace",
+    "WIND": "Gentle Wind",
+    "BROWN_NOISE": "Brown Noise",
+    "PINK_NOISE": "Pink Noise",
+    "LOFI": "Lo-Fi 24/7 Radio",
+    "STOP_ALL": "Mute All"
+  },
+  "TASKS": {
+    "TITLE": "Today's Focus (Top 3)",
+    "SUBTITLE": "Priorities aligned with Pomodoro",
+    "INPUT_PLACEHOLDER": "Add a new priority...",
+    "ACTIVE_FOCUS": "In Focus",
+    "NO_TASKS": "No pending tasks. Set your daily goals!",
+    "POMO_COUNT": "Pomodoro Sessions",
+    "CLEAR_COMPLETED": "Clear Completed"
+  },
+  "NOTES": {
+    "TITLE": "Quick Scratchpad",
+    "SUBTITLE": "Instant thoughts saved locally",
+    "PLACEHOLDER": "Type your focus thoughts here...",
+    "SAVED_AT": "Saved at"
+  },
+  "ANALYTICS": {
+    "TITLE": "Focus Analytics",
+    "SUBTITLE": "Track consistency and momentum",
+    "CURRENT_STREAK": "Day Streak",
+    "BEST_STREAK": "Best Streak",
+    "TODAY_FOCUS": "Today's Focus",
+    "TOTAL_FOCUS": "Total Focus Time",
+    "TOTAL_POMODOROS": "Pomodoros Done",
+    "LAST_7_DAYS": "Last 7 Days"
+  },
+  "DASHBOARD": {
+    "WEATHER": "Weather",
+    "QUICK_LINKS": "Quick Links",
+    "ADD_LINK": "Add Link",
+    "NEW_TAB": "New Tab",
+    "NEXT_EVENT": "Next Event"
+  },
+  "PIP": {
+    "TOGGLE": "Mini Floating Display (Picture-in-Picture)"
   }
 };
 

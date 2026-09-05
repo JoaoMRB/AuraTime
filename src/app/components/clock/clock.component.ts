@@ -25,6 +25,9 @@ import { PipService } from '../../services/pip.service';
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './clock.component.html',
+  host: {
+    class: 'block w-full h-screen overflow-hidden'
+  }
 })
 export class ClockComponent implements OnInit, OnDestroy {
   public settings = inject(SettingsService);
@@ -137,13 +140,20 @@ export class ClockComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const themeFromQuery = this.route.snapshot.queryParamMap.get('theme');
-    if (themeFromQuery && ['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'frosted-glass'].includes(themeFromQuery)) {
-      this.settings.theme.set(themeFromQuery);
+    if (themeFromQuery) {
+      const normalizedTheme = themeFromQuery === 'frosted-glass' ? 'light-glass' : themeFromQuery;
+      if (['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'light-glass', 'dark-glass'].includes(normalizedTheme)) {
+        this.settings.theme.set(normalizedTheme);
+      }
     }
 
     this.updateTime();
     
     if (this.isBrowser) {
+      // Ensure viewport resets to top and doesn't scroll inside the clock app
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden';
+
       // Start time update interval
       this.clockIntervalId = setInterval(() => {
         this.updateTime();
@@ -162,6 +172,9 @@ export class ClockComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.isBrowser) {
+      document.body.style.overflow = '';
+    }
     if (this.clockIntervalId) {
       clearInterval(this.clockIntervalId);
     }

@@ -1,5 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { AudioService } from './audio.service';
+import { TaskService } from './task.service';
+import { AnalyticsService } from './analytics.service';
 
 export type PomodoroPhase = 'work' | 'break';
 
@@ -16,6 +18,8 @@ export interface PomodoroSession {
 })
 export class PomodoroService {
   private audioService = inject(AudioService);
+  private taskService = inject(TaskService);
+  private analyticsService = inject(AnalyticsService);
 
   // Timer State
   private minutes = signal<number>(25);
@@ -93,9 +97,15 @@ export class PomodoroService {
 
   private completePhase(): void {
     const wasWork = this.phase() === 'work';
+    const duration = wasWork ? this.workDuration() : this.breakDuration();
     
     // Save session to history
-    this.saveSession(wasWork ? this.workDuration() : this.breakDuration());
+    this.saveSession(duration);
+
+    if (wasWork) {
+      this.taskService.incrementActiveTaskPomodoro();
+      this.analyticsService.recordFocusSession(duration);
+    }
 
     // Play chime sound
     this.audioService.playChimeSound();

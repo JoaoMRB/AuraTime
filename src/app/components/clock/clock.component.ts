@@ -12,6 +12,13 @@ import { StopwatchService } from '../../services/stopwatch.service';
 import { TimerService } from '../../services/timer.service';
 import { AlarmService, Alarm } from '../../services/alarm.service';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
+import { SoundscapeService } from '../../services/soundscape.service';
+import { TaskService } from '../../services/task.service';
+import { NotesService } from '../../services/notes.service';
+import { AnalyticsService } from '../../services/analytics.service';
+import { WeatherService } from '../../services/weather.service';
+import { DashboardService } from '../../services/dashboard.service';
+import { PipService } from '../../services/pip.service';
 
 @Component({
   selector: 'app-clock',
@@ -24,12 +31,19 @@ export class ClockComponent implements OnInit, OnDestroy {
   public ts = inject(TranslationService);
   private titleService = inject(Title);
   private audioService = inject(AudioService);
-  private pomodoroService = inject(PomodoroService);
+  public pomodoroService = inject(PomodoroService);
   public worldClockService = inject(WorldClockService);
-  private stopwatchService = inject(StopwatchService);
-  private timerService = inject(TimerService);
-  private alarmService = inject(AlarmService);
+  public stopwatchService = inject(StopwatchService);
+  public timerService = inject(TimerService);
+  public alarmService = inject(AlarmService);
   private keyboardService = inject(KeyboardShortcutsService);
+  public soundscape = inject(SoundscapeService);
+  public taskService = inject(TaskService);
+  public notesService = inject(NotesService);
+  public analyticsService = inject(AnalyticsService);
+  public weatherService = inject(WeatherService);
+  public dashboardService = inject(DashboardService);
+  public pipService = inject(PipService);
   private platformId = inject(PLATFORM_ID);
   private route = inject(ActivatedRoute);
   private isBrowser = isPlatformBrowser(this.platformId);
@@ -93,6 +107,19 @@ export class ClockComponent implements OnInit, OnDestroy {
   // HUD visibility control
   hudVisible = signal<boolean>(true);
   settingsOpen = signal<boolean>(false);
+  soundscapeOpen = signal<boolean>(false);
+  tasksOpen = signal<boolean>(false);
+  notesOpen = signal<boolean>(false);
+  analyticsOpen = signal<boolean>(false);
+  linksOpen = signal<boolean>(false);
+  zenMode = signal<boolean>(false);
+
+  // Form Inputs
+  newTaskInput = signal<string>('');
+  newLinkTitle = signal<string>('');
+  newLinkUrl = signal<string>('');
+  showAddLinkForm = signal<boolean>(false);
+
   private hudTimeout: any;
 
   // Running interval IDs
@@ -229,28 +256,140 @@ export class ClockComponent implements OnInit, OnDestroy {
     this.triggerHudVisibility();
   }
 
+  isAnyPanelOpen(): boolean {
+    return this.settingsOpen() || this.soundscapeOpen() || this.tasksOpen() || this.notesOpen() || this.analyticsOpen() || this.linksOpen() || this.alarmDialogOpen();
+  }
+
   triggerHudVisibility() {
     this.hudVisible.set(true);
     if (this.hudTimeout) {
       clearTimeout(this.hudTimeout);
     }
 
-    // Only hide HUD if the settings panel is NOT open
-    if (!this.settingsOpen()) {
+    // Only hide HUD if no panel is open and not in Zen Mode
+    if (!this.isAnyPanelOpen()) {
       this.hudTimeout = setTimeout(() => {
         this.hudVisible.set(false);
-      }, 3500); // Hide after 3.5 seconds of absolute stillness
+      }, 3500);
     }
   }
 
-  toggleSettings() {
-    this.settingsOpen.update(v => !v);
+  closeAllPanels() {
+    this.settingsOpen.set(false);
+    this.soundscapeOpen.set(false);
+    this.tasksOpen.set(false);
+    this.notesOpen.set(false);
+    this.analyticsOpen.set(false);
+    this.linksOpen.set(false);
+    this.showAddLinkForm.set(false);
     this.triggerHudVisibility();
+  }
+
+  toggleSettings() {
+    const next = !this.settingsOpen();
+    this.closeAllPanels();
+    this.settingsOpen.set(next);
   }
 
   closeSettings() {
     this.settingsOpen.set(false);
     this.triggerHudVisibility();
+  }
+
+  toggleSoundscape() {
+    const next = !this.soundscapeOpen();
+    this.closeAllPanels();
+    this.soundscapeOpen.set(next);
+  }
+
+  toggleTasks() {
+    const next = !this.tasksOpen();
+    this.closeAllPanels();
+    this.tasksOpen.set(next);
+  }
+
+  toggleNotes() {
+    const next = !this.notesOpen();
+    this.closeAllPanels();
+    this.notesOpen.set(next);
+  }
+
+  toggleAnalytics() {
+    const next = !this.analyticsOpen();
+    this.closeAllPanels();
+    this.analyticsOpen.set(next);
+  }
+
+  toggleLinks() {
+    const next = !this.linksOpen();
+    this.closeAllPanels();
+    this.linksOpen.set(next);
+  }
+
+  toggleZenMode() {
+    this.zenMode.update(z => !z);
+    if (this.zenMode()) {
+      this.closeAllPanels();
+      this.hudVisible.set(false);
+    } else {
+      this.triggerHudVisibility();
+    }
+  }
+
+  togglePip() {
+    this.pipService.togglePip(() => ({
+      time: this.settings.mode() === 'pomodoro' ? this.pomodoroService.currentTime() : this.currentTime(),
+      mode: this.settings.mode().toUpperCase(),
+      subtext: this.taskService.getActiveTask()?.text || this.currentDateStr()
+    }));
+  }
+
+  addNewTask() {
+    const val = this.newTaskInput();
+    if (val.trim()) {
+      this.taskService.addTask(val);
+      this.newTaskInput.set('');
+    }
+  }
+
+  addNewLink() {
+    const title = this.newLinkTitle();
+    const url = this.newLinkUrl();
+    if (title.trim() && url.trim()) {
+      this.dashboardService.addLink(title, url);
+      this.newLinkTitle.set('');
+      this.newLinkUrl.set('');
+      this.showAddLinkForm.set(false);
+    }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeyDown(event: KeyboardEvent) {
+    const target = event.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      this.closeAllPanels();
+      if (this.zenMode()) this.zenMode.set(false);
+      return;
+    }
+
+    const k = event.key.toLowerCase();
+    if (k === 'm') {
+      this.toggleSoundscape();
+    } else if (k === 't') {
+      this.toggleTasks();
+    } else if (k === 'n') {
+      this.toggleNotes();
+    } else if (k === 's') {
+      this.toggleAnalytics();
+    } else if (k === 'p') {
+      this.togglePip();
+    } else if (k === 'z') {
+      this.toggleZenMode();
+    }
   }
 
   // Language update

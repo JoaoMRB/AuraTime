@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "AuraTime - Focus Hub & Luxury New Tab",
+  "version": "1.0.0",
+  "description": "Minimalist luxury screen clock, ambient soundscapes, Pomodoro task focus, and daily dashboard for your new tab.",
+  "chrome_url_overrides": {
+    "newtab": "index.csr.html"
+  },
+  "icons": {
+    "16": "favicon-32.png",
+    "48": "icon-192.png",
+    "128": "icon-512.png"
+  },
+  "permissions": [
+    "storage"
+  ]
+}

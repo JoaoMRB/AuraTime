@@ -140,5 +140,58 @@
   "WORLD_CLOCK": {
     "UTC": "UTC",
     "SAME_TIME": "Mesma hora"
+  },
+  "SOUNDSCAPE": {
+    "TITLE": "Paisagens Sonoras & Foco",
+    "SUBTITLE": "Mixer de áudio ambiente sintetizado em tempo real",
+    "MASTER_VOLUME": "Volume Mestre",
+    "PRESETS": "Atmosferas Predefinidas",
+    "PRESET_DEEP_WORK": "Foco Profundo",
+    "PRESET_RAINY_EVENING": "Tarde Chuvosa",
+    "PRESET_COZY_LOFI": "Lo-Fi & Lareira",
+    "PRESET_ZEN_BREEZE": "Brisa Zen",
+    "RAIN": "Chuva Suave",
+    "THUNDER": "Trovoada Distante",
+    "FIRE": "Lareira Crepitante",
+    "WIND": "Vento & Brisa",
+    "BROWN_NOISE": "Ruído Castanho",
+    "PINK_NOISE": "Ruído Rosa",
+    "LOFI": "Rádio Lo-Fi 24/7",
+    "STOP_ALL": "Silenciar Tudo"
+  },
+  "TASKS": {
+    "TITLE": "Foco do Dia (Top 3)",
+    "SUBTITLE": "Prioridades alinhadas ao Pomodoro",
+    "INPUT_PLACEHOLDER": "Adicionar nova prioridade...",
+    "ACTIVE_FOCUS": "Em Foco",
+    "NO_TASKS": "Sem tarefas pendentes. Defina as suas metas!",
+    "POMO_COUNT": "Ciclos Pomodoro",
+    "CLEAR_COMPLETED": "Limpar Concluídas"
+  },
+  "NOTES": {
+    "TITLE": "Bloco de Notas Rápido",
+    "SUBTITLE": "Apontamentos instantâneos guardados localmente",
+    "PLACEHOLDER": "Escreva aqui os seus pensamentos rápidos...",
+    "SAVED_AT": "Guardado às"
+  },
+  "ANALYTICS": {
+    "TITLE": "Métricas de Produtividade",
+    "SUBTITLE": "A evolução da sua constância e foco",
+    "CURRENT_STREAK": "Dias Consecutivos",
+    "BEST_STREAK": "Melhor Sequência",
+    "TODAY_FOCUS": "Foco Hoje",
+    "TOTAL_FOCUS": "Tempo Total de Foco",
+    "TOTAL_POMODOROS": "Pomodoros Concluídos",
+    "LAST_7_DAYS": "Últimos 7 Dias"
+  },
+  "DASHBOARD": {
+    "WEATHER": "Meteorologia",
+    "QUICK_LINKS": "Atalhos Rápidos",
+    "ADD_LINK": "Adicionar Atalho",
+    "NEW_TAB": "Novo Separador",
+    "NEXT_EVENT": "Próximo Marco"
+  },
+  "PIP": {
+    "TOGGLE": "Mini Mostrador Flutuante (Picture-in-Picture)"
   }
 }

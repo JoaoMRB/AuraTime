@@ -57,6 +57,8 @@ export interface ConnectOptions {
 
 const DEFAULT_HELLO_TIMEOUT_MS = 700;
 const STALL_WARNING_MS = 4000;
+/** A single chunk write that takes longer than this means the port is dead (e.g. after the PC slept). */
+const DEFAULT_WRITE_TIMEOUT_MS = 8000;
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -81,6 +83,8 @@ export class SerialLinkService implements OnDestroy {
   /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
   readonly chunkDelayMs = signal<number>(0);
   readonly lastSend = signal<SendMetrics | null>(null);
+  /** Hard limit for one chunk write; exceeded = the link is treated as broken. Adjustable for tests. */
+  writeTimeoutMs = DEFAULT_WRITE_TIMEOUT_MS;
 
   private port: SerialPortLike | null = null;
   private writer: SerialWriterLike | null = null;
@@ -272,10 +276,16 @@ export class SerialLinkService implements OnDestroy {
       const watchdog = setTimeout(() => {
         this.message.set('The display is not accepting data. Try turning off flow control and reconnect.');
       }, STALL_WARNING_MS);
+      let hardTimer: ReturnType<typeof setTimeout> | undefined;
+      const hardTimeout = new Promise<never>((_, reject) => {
+        hardTimer = setTimeout(() => reject(new Error('The display stopped responding.')), this.writeTimeoutMs);
+      });
       try {
-        await writer.write(part);
+        // Without this a write to a dead port can stay pending forever and freeze the whole output loop.
+        await Promise.race([writer.write(part), hardTimeout]);
       } finally {
         clearTimeout(watchdog);
+        clearTimeout(hardTimer);
       }
       this.bytesCounter += part.length;
       this.lastChunkEnd = performance.now();

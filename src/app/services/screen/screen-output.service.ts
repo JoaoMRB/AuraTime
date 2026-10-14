@@ -28,6 +28,11 @@ export interface ScreenPrefs {
 const STORAGE_KEY = 'auratime_screen';
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
+/** Time between ticks above which we assume the PC slept (ticks are 1 s apart). */
+const SLEEP_GAP_MS = 5000;
+/** Automatic reconnection: first retry after this long, doubling up to the maximum. */
+const RECONNECT_BASE_MS = 5000;
+const RECONNECT_MAX_MS = 30000;
 
 const DEFAULT_PREFS: ScreenPrefs = {
   viewMode: 'auto',
@@ -71,6 +76,12 @@ export class ScreenOutputService implements OnDestroy {
   /** The canvas that is drawn and sent; the /screen page shows it as a live preview. */
   readonly canvas: HTMLCanvasElement | null;
   private ctx: CanvasRenderingContext2D | null = null;
+
+  /** Wait before the first automatic reconnection attempt. Adjustable for tests. */
+  reconnectBaseMs = RECONNECT_BASE_MS;
+  private reconnectFailures = 0;
+  private lastReconnectAttempt = 0;
+  private lastFrameAt = 0;
 
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
@@ -128,11 +139,8 @@ export class ScreenOutputService implements OnDestroy {
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
-    await this.renderFrame();
-
-    if (this.autoConnect && this.link.isSupported()) {
-      await this.zone.runOutsideAngular(() => this.link.reconnect(this.connectOptions()));
-    }
+    // The first frame also kicks off the reconnection to the display used last time (if any).
+    await this.zone.runOutsideAngular(() => this.renderFrame());
   }
 
   stop(): void {
@@ -206,7 +214,19 @@ export class ScreenOutputService implements OnDestroy {
     this.appliedBrightness.set(level);
     drawScreen(this.ctx, snap, view, { shift: pixelShift(now), black });
 
-    if (!this.link.isConnected() || this.busy) return;
+    // A long gap between frames means the PC slept: the display may have lost its picture.
+    const wallNow = Date.now();
+    if (this.lastFrameAt && wallNow - this.lastFrameAt > SLEEP_GAP_MS) {
+      this.invalidateFrame();
+    }
+    this.lastFrameAt = wallNow;
+
+    if (!this.link.isConnected()) {
+      void this.maybeReconnect(wallNow);
+      return;
+    }
+    this.reconnectFailures = 0;
+    if (this.busy) return;
     this.busy = true;
     try {
       if (now.getTime() - this.lastFullRefresh > FULL_REFRESH_MS) {
@@ -224,6 +244,23 @@ export class ScreenOutputService implements OnDestroy {
     } finally {
       this.busy = false;
     }
+  }
+
+  /**
+   * Keeps an always-on display alive: if it was connected before and the link is down
+   * (unplugged, PC slept, write error), retry quietly with a growing delay.
+   */
+  private async maybeReconnect(wallNow: number): Promise<void> {
+    if (!this.autoConnect || !this.link.isSupported()) return;
+    const status = this.link.status();
+    if (status === 'connecting' || status === 'connected' || status === 'unsupported') return;
+
+    const delay = Math.min(this.reconnectBaseMs * 2 ** Math.max(0, this.reconnectFailures - 1), RECONNECT_MAX_MS);
+    if (wallNow - this.lastReconnectAttempt < delay) return;
+    this.lastReconnectAttempt = wallNow;
+
+    const ok = await this.link.reconnect(this.connectOptions());
+    this.reconnectFailures = ok ? 0 : Math.min(this.reconnectFailures + 1, 10);
   }
 
   private async pushFrame(): Promise<void> {

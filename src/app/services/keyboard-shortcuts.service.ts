@@ -43,7 +43,7 @@ export class KeyboardShortcutsService {
         action: () => this.handleResetKey()
       },
       {
-        key: 's',
+        key: ',',
         description: 'Toggle Settings',
         action: () => this.handleSettingsKey()
       },
@@ -53,12 +53,12 @@ export class KeyboardShortcutsService {
         action: () => this.handleFullscreenKey()
       },
       {
-        key: 'm',
+        key: 'c',
         description: 'Cycle Modes',
         action: () => this.handleModeKey()
       },
       {
-        key: 't',
+        key: 'h',
         description: 'Toggle Theme',
         action: () => this.handleThemeKey()
       },
@@ -93,7 +93,11 @@ export class KeyboardShortcutsService {
         return;
       }
 
-      const key = event.key.toLowerCase();
+      // Never hijack browser/OS combos such as Ctrl+R or Ctrl+-
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      // event.key is ' ' for the space bar, not 'Space'
+      const key = event.key === ' ' ? 'space' : event.key.toLowerCase();
       const shortcut = this.shortcuts.find(s => s.key.toLowerCase() === key);
 
       if (shortcut) {
@@ -195,7 +199,7 @@ export class KeyboardShortcutsService {
         );
       default:
         return this.shortcuts.filter(s => 
-          ['s', 'f', 'm', 't', '+', '-', 'Escape'].includes(s.key)
+          [',', 'f', 'c', 'h', '+', '-', 'Escape'].includes(s.key)
         );
     }
   }

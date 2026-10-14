@@ -129,6 +129,30 @@ import { ScreenViewMode } from '../../services/screen/display-snapshot';
           </div>
         </section>
 
+        <section class="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
+          <h2 class="text-sm font-medium text-amber-300">Diagnostics</h2>
+          <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" [checked]="output.alwaysFullFrame()"
+                     (change)="output.alwaysFullFrame.set($any($event.target).checked)">
+              Always send the full screen
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" [checked]="output.slowSend()"
+                     (change)="output.slowSend.set($any($event.target).checked)">
+              Slow send (3 ms per chunk)
+            </label>
+          </div>
+          <p class="mt-2 text-xs text-gray-400">
+            If glitches disappear with "full screen", the problem is in the partial updates; if they
+            disappear with "slow send", the display needs more time between chunks.
+          </p>
+          <p *ngIf="link.lastSend() as s" class="mt-2 font-mono text-xs text-gray-300">
+            Last send: {{ s.width }}×{{ s.height }} px · {{ s.bytes }} B · {{ s.ms }} ms ·
+            longest gap between chunks {{ s.maxGapMs }} ms
+          </p>
+        </section>
+
         <p class="mt-5 text-xs text-gray-500">
           The theme, font, 12/24h clock, Pomodoro and tasks follow the app; change them in the clock window
           and they appear here within a second.

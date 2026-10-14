@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, PLATFORM_ID, effect, inject, signal, untracked } from '@angular/core';
+import { Injectable, NgZone, OnDestroy, PLATFORM_ID, effect, inject, signal, untracked } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { DisplayStateService } from './display-state.service';
 import { SerialLinkService } from './serial-link.service';
@@ -15,6 +15,10 @@ export interface ScreenPrefs {
   viewMode: ScreenViewMode;
   brightness: BrightnessConfig;
   flowControl: boolean;
+  /** Diagnostic: resend the whole 480x320 frame every second instead of only the changed rectangle. */
+  alwaysFullFrame: boolean;
+  /** Diagnostic: pause 3 ms after every chunk (what the prototype called "slow send"). */
+  slowSend: boolean;
   /** The display was connected last time: try to reconnect on startup. */
   autoConnect: boolean;
 }
@@ -27,8 +31,13 @@ const DEFAULT_PREFS: ScreenPrefs = {
   viewMode: 'auto',
   brightness: DEFAULT_BRIGHTNESS_CONFIG,
   flowControl: true,
+  alwaysFullFrame: false,
+  slowSend: false,
   autoConnect: false
 };
+
+/** Pause per chunk in slow-send diagnostic mode. */
+const SLOW_SEND_CHUNK_DELAY_MS = 3;
 
 /**
  * Draws the DisplaySnapshot onto a 480x320 canvas once per second and, when the display is
@@ -42,10 +51,13 @@ export class ScreenOutputService implements OnDestroy {
   private display = inject(DisplayStateService);
   private link = inject(SerialLinkService);
   private tick = inject(TickService);
+  private zone = inject(NgZone);
 
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   readonly brightness = signal<BrightnessConfig>(DEFAULT_PREFS.brightness);
   readonly flowControl = signal<boolean>(DEFAULT_PREFS.flowControl);
+  readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
+  readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
   /** The view currently on screen (useful for the preview UI). */
   readonly activeView = signal<ScreenView>('clock');
   /** Backlight actually applied right now (after the night schedule). */
@@ -59,6 +71,11 @@ export class ScreenOutputService implements OnDestroy {
   private started = false;
   private busy = false;
   private prevFrame: Uint16Array | null = null;
+  /**
+   * Bumped whenever prevFrame is invalidated. A send that was already in flight must not
+   * re-install its (now stale) frame as the reference when it finishes.
+   */
+  private epoch = 0;
   private lastFullRefresh = 0;
   private lastSentBrightness: number | null = null;
   private unsubscribeTick: (() => void) | null = null;
@@ -72,12 +89,16 @@ export class ScreenOutputService implements OnDestroy {
       this.loadPrefs();
 
       effect(() => this.persistPrefs());
+      effect(() => {
+        const delay = this.slowSend() ? SLOW_SEND_CHUNK_DELAY_MS : 0;
+        untracked(() => this.link.chunkDelayMs.set(delay));
+      });
 
       // A fresh connection starts from a blank display: resend everything.
       effect(() => {
         if (this.link.status() === 'connected') {
           untracked(() => {
-            this.prevFrame = null;
+            this.invalidateFrame();
             this.lastSentBrightness = null;
             void this.renderFrame();
           });
@@ -99,11 +120,13 @@ export class ScreenOutputService implements OnDestroy {
       /* fonts missing: the renderer falls back to system fonts */
     }
 
-    this.unsubscribeTick = this.tick.onTick(() => void this.renderFrame());
+    // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
+    // would open gaps in the serial stream, which the display may not tolerate.
+    this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     await this.renderFrame();
 
     if (this.autoConnect && this.link.isSupported()) {
-      await this.link.reconnect(this.connectOptions());
+      await this.zone.runOutsideAngular(() => this.link.reconnect(this.connectOptions()));
     }
   }
 
@@ -115,7 +138,7 @@ export class ScreenOutputService implements OnDestroy {
 
   /** Must be called from a click: opens the browser's device picker. */
   async connect(): Promise<boolean> {
-    const ok = await this.link.connect(this.connectOptions());
+    const ok = await this.zone.runOutsideAngular(() => this.link.connect(this.connectOptions()));
     if (ok) this.autoConnect = true;
     this.persistPrefs();
     return ok;
@@ -129,7 +152,12 @@ export class ScreenOutputService implements OnDestroy {
 
   /** Forces the next frame to be sent in full. */
   refreshAll(): void {
+    this.invalidateFrame();
+  }
+
+  private invalidateFrame(): void {
     this.prevFrame = null;
+    this.epoch++;
   }
 
   setBrightnessBase(level: number): void {
@@ -168,7 +196,7 @@ export class ScreenOutputService implements OnDestroy {
     this.busy = true;
     try {
       if (now.getTime() - this.lastFullRefresh > FULL_REFRESH_MS) {
-        this.prevFrame = null;
+        this.invalidateFrame();
         this.lastFullRefresh = now.getTime();
       }
       if (level !== this.lastSentBrightness) {
@@ -177,6 +205,7 @@ export class ScreenOutputService implements OnDestroy {
       }
       await this.pushFrame();
     } catch (e) {
+      this.invalidateFrame();
       await this.link.fail(e);
     } finally {
       this.busy = false;
@@ -186,10 +215,13 @@ export class ScreenOutputService implements OnDestroy {
   private async pushFrame(): Promise<void> {
     const ctx = this.ctx!;
     const cur = rgbaToRgb565(ctx.getImageData(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT).data);
-    const rect = diffRect(this.prevFrame, cur, SCREEN_WIDTH, SCREEN_HEIGHT);
+    const epoch = this.epoch;
+    const reference = this.alwaysFullFrame() ? null : this.prevFrame;
+    const rect = diffRect(reference, cur, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (!rect) return;
     await this.link.sendBitmap(rect, extractRect(cur, SCREEN_WIDTH, rect));
-    this.prevFrame = cur;
+    // Only after the whole bitmap was written, and only if nobody invalidated the reference meanwhile.
+    if (epoch === this.epoch) this.prevFrame = cur;
   }
 
   /* ------------------------------ preferences ------------------------------ */
@@ -206,6 +238,8 @@ export class ScreenOutputService implements OnDestroy {
       if (p.viewMode) this.viewMode.set(p.viewMode);
       if (p.brightness) this.brightness.set({ ...DEFAULT_BRIGHTNESS_CONFIG, ...p.brightness });
       if (typeof p.flowControl === 'boolean') this.flowControl.set(p.flowControl);
+      if (typeof p.alwaysFullFrame === 'boolean') this.alwaysFullFrame.set(p.alwaysFullFrame);
+      if (typeof p.slowSend === 'boolean') this.slowSend.set(p.slowSend);
       if (typeof p.autoConnect === 'boolean') this.autoConnect = p.autoConnect;
     } catch {
       /* corrupted prefs: keep defaults */
@@ -217,6 +251,8 @@ export class ScreenOutputService implements OnDestroy {
       viewMode: this.viewMode(),
       brightness: this.brightness(),
       flowControl: this.flowControl(),
+      alwaysFullFrame: this.alwaysFullFrame(),
+      slowSend: this.slowSend(),
       autoConnect: this.autoConnect
     };
     try {

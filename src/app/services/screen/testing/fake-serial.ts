@@ -22,13 +22,18 @@ export class FakePort implements SerialPortLike {
   openArgs: unknown = null;
   closed = false;
   failOpen: string | null = null;
+  /** When set, writes wait for it: lets a test hold a bitmap "in flight". */
+  gate: Promise<void> | null = null;
   reader = new FakeReader();
   constructor(public info: { usbVendorId?: number; usbProductId?: number } = { usbVendorId: 0x1a86, usbProductId: 0x5722 }) {}
 
   readable = { getReader: () => this.reader };
   writable = {
     getWriter: (): SerialWriterLike => ({
-      write: async (chunk: Uint8Array) => { this.writes.push(chunk.slice()); },
+      write: async (chunk: Uint8Array) => {
+        if (this.gate) await this.gate;
+        this.writes.push(chunk.slice());
+      },
       releaseLock: () => {}
     })
   };

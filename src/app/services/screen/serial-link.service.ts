@@ -33,6 +33,17 @@ export const SERIAL_API = new InjectionToken<SerialApiLike | null>('SERIAL_API',
   factory: () => (typeof navigator !== 'undefined' && 'serial' in navigator ? (navigator as unknown as { serial: SerialApiLike }).serial : null)
 });
 
+/** Timing of the last bitmap sent, to diagnose transfer problems. */
+export interface SendMetrics {
+  width: number;
+  height: number;
+  bytes: number;
+  /** Total time to hand the bitmap to the port. */
+  ms: number;
+  /** Longest pause between two consecutive chunk writes (JS-side stalls show up here). */
+  maxGapMs: number;
+}
+
 export type SerialStatus = 'unsupported' | 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface ConnectOptions {
@@ -67,6 +78,9 @@ export class SerialLinkService implements OnDestroy {
   readonly model = signal<string>('');
   readonly framesSent = signal<number>(0);
   readonly bytesSent = signal<number>(0);
+  /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
+  readonly chunkDelayMs = signal<number>(0);
+  readonly lastSend = signal<SendMetrics | null>(null);
 
   private port: SerialPortLike | null = null;
   private writer: SerialWriterLike | null = null;
@@ -74,6 +88,9 @@ export class SerialLinkService implements OnDestroy {
   private queue: Promise<unknown> = Promise.resolve();
   private lastOptions: ConnectOptions | null = null;
   private autoReconnect = false;
+  private bytesCounter = 0;
+  private lastChunkEnd: number | null = null;
+  private gapMax = 0;
 
   private onDeviceDisconnect = (event: Event) => {
     // Per spec the event target is the SerialPort that went away.
@@ -152,14 +169,32 @@ export class SerialLinkService implements OnDestroy {
   /** Sends a rectangle of RGB565 pixels. Writes are serialised. */
   sendBitmap(rect: Rect, pixels: Uint16Array): Promise<void> {
     return this.enqueue(async () => {
-      await this.write(cmdDisplayBitmap(rect));
-      await this.write(rgb565ToBytes(pixels));
+      // Header and pixels are one atomic job: nothing else can be written in between.
+      const started = performance.now();
+      this.lastChunkEnd = null;
+      this.gapMax = 0;
+      const header = cmdDisplayBitmap(rect);
+      const body = rgb565ToBytes(pixels);
+      await this.write(header);
+      await this.write(body);
       this.framesSent.update(n => n + 1);
+      // Signals are updated once per bitmap, not per chunk, to keep the write loop tight.
+      this.bytesSent.set(this.bytesCounter);
+      this.lastSend.set({
+        width: rect.x1 - rect.x0 + 1,
+        height: rect.y1 - rect.y0 + 1,
+        bytes: header.length + body.length,
+        ms: Math.round(performance.now() - started),
+        maxGapMs: Math.round(this.gapMax)
+      });
     });
   }
 
   setBrightness(level: number): Promise<void> {
-    return this.enqueue(() => this.write(cmdBrightness(level)));
+    return this.enqueue(async () => {
+      await this.write(cmdBrightness(level));
+      this.bytesSent.set(this.bytesCounter);
+    });
   }
 
   /** Called by the output loop when a write fails: drops the port but keeps auto-reconnect armed. */
@@ -193,6 +228,8 @@ export class SerialLinkService implements OnDestroy {
       this.reader = port.readable.getReader();
       this.framesSent.set(0);
       this.bytesSent.set(0);
+      this.bytesCounter = 0;
+      this.lastSend.set(null);
       this.lastOptions = options;
 
       await this.enqueue(async () => {
@@ -204,6 +241,7 @@ export class SerialLinkService implements OnDestroy {
         await sleep(150);
         await this.write(cmdBrightness(options.brightness));
       });
+      this.bytesSent.set(this.bytesCounter);
 
       this.autoReconnect = true;
       this.status.set('connected');
@@ -229,6 +267,8 @@ export class SerialLinkService implements OnDestroy {
     if (!writer) throw new Error('Not connected.');
     for (let i = 0; i < bytes.length; i += WRITE_CHUNK_BYTES) {
       const part = bytes.subarray(i, i + WRITE_CHUNK_BYTES);
+      const startedAt = performance.now();
+      if (this.lastChunkEnd !== null) this.gapMax = Math.max(this.gapMax, startedAt - this.lastChunkEnd);
       const watchdog = setTimeout(() => {
         this.message.set('The display is not accepting data. Try turning off flow control and reconnect.');
       }, STALL_WARNING_MS);
@@ -237,7 +277,10 @@ export class SerialLinkService implements OnDestroy {
       } finally {
         clearTimeout(watchdog);
       }
-      this.bytesSent.update(n => n + part.length);
+      this.bytesCounter += part.length;
+      this.lastChunkEnd = performance.now();
+      const delay = this.chunkDelayMs();
+      if (delay > 0) await sleep(delay);
     }
   }
 

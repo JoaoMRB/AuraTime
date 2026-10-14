@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { SettingsService } from './settings.service';
 import { PomodoroService } from './pomodoro.service';
 import { AudioService } from './audio.service';
+import { THEME_IDS, resolveThemeId } from './screen/theme-tokens';
 
 export interface Shortcut {
   key: string;
@@ -151,11 +152,10 @@ export class KeyboardShortcutsService {
   }
 
   private handleThemeKey(): void {
-    const themes = ['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'dark-glass', 'light-glass'];
-    const currentTheme = this.settingsService.theme();
-    const currentIndex = themes.indexOf(currentTheme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    this.settingsService.theme.set(themes[nextIndex]);
+    const currentTheme = resolveThemeId(this.settingsService.theme());
+    const currentIndex = THEME_IDS.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % THEME_IDS.length;
+    this.settingsService.theme.set(THEME_IDS[nextIndex]);
   }
 
   private handleScaleUp(): void {

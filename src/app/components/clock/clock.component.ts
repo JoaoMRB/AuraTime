@@ -21,6 +21,7 @@ import { DashboardService } from '../../services/dashboard.service';
 import { PipService } from '../../services/pip.service';
 import { TickService } from '../../services/screen/tick.service';
 import { formatClock } from '../../services/screen/clock-format';
+import { isThemeId, resolveThemeId } from '../../services/screen/theme-tokens';
 
 @Component({
   selector: 'app-clock',
@@ -143,9 +144,9 @@ export class ClockComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const themeFromQuery = this.route.snapshot.queryParamMap.get('theme');
     if (themeFromQuery) {
-      const normalizedTheme = themeFromQuery === 'frosted-glass' ? 'light-glass' : themeFromQuery;
-      if (['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'light-glass', 'dark-glass'].includes(normalizedTheme)) {
-        this.settings.theme.set(normalizedTheme);
+      // Only apply known ids (or the legacy 'frosted-glass' alias)
+      if (isThemeId(themeFromQuery) || themeFromQuery === 'frosted-glass') {
+        this.settings.theme.set(resolveThemeId(themeFromQuery));
       }
     }
 

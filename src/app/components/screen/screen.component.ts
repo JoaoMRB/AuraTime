@@ -1,12 +1,14 @@
 import {
-  AfterViewInit, Component, ElementRef, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject
+  AfterViewInit, Component, ElementRef, OnDestroy, OnInit, PLATFORM_ID, ViewChild, computed, inject
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
 import { SerialLinkService } from '../../services/screen/serial-link.service';
-import { ScreenViewMode } from '../../services/screen/display-snapshot';
+import { ScreenView, ScreenViewMode } from '../../services/screen/display-snapshot';
+import { DisplayStateService } from '../../services/screen/display-state.service';
+import { viewHasContent } from '../../services/screen/screen-logic';
 import { AlarmService } from '../../services/alarm.service';
 
 /**
@@ -77,7 +79,8 @@ import { AlarmService } from '../../services/alarm.service';
               <option *ngFor="let v of views" [value]="v.value">{{ v.label }}</option>
             </select>
             <p class="mt-2 text-xs text-gray-500">
-              Auto rotates every 20 s; the focus view stays on while a Pomodoro is running.
+              Auto rotates every 20 s through the views ticked below that have something to show; the
+              focus view stays on while a Pomodoro is running.
             </p>
           </div>
 
@@ -88,6 +91,24 @@ import { AlarmService } from '../../services/alarm.service';
             <input id="brightness" type="range" min="0" max="100" class="w-full"
                    [value]="output.brightness().base"
                    (input)="output.setBrightnessBase(+$any($event.target).value)">
+          </div>
+
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:col-span-2">
+            <h2 class="text-sm">In the automatic rotation</h2>
+            <div class="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-3">
+              <label *ngFor="let v of rotationViews" class="flex items-center gap-2 text-sm">
+                <input type="checkbox" [checked]="output.rotation().includes(v.value)"
+                       (change)="output.setInRotation(v.value, $any($event.target).checked)">
+                <span>{{ v.label }}</span>
+                <span *ngIf="!content()[v.value]" class="whitespace-nowrap rounded bg-white/10 px-1.5 text-[10px] text-gray-400">
+                  no data yet
+                </span>
+              </label>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">
+              Views with no data (no alarms, no active countdown, no world clocks, no focus this week) are
+              skipped automatically.
+            </p>
           </div>
 
           <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:col-span-2">
@@ -175,11 +196,22 @@ export class ScreenComponent implements OnInit, AfterViewInit, OnDestroy {
     inject(AlarmService).stopChecker();
   }
 
-  readonly views: { value: ScreenViewMode; label: string }[] = [
-    { value: 'auto', label: 'Automatic rotation' },
+  private display = inject(DisplayStateService);
+
+  /** Which views currently have something to show (drives the "no data yet" hints). */
+  readonly content = computed(() => viewHasContent(this.display.snapshot()));
+
+  readonly rotationViews: { value: ScreenView; label: string }[] = [
     { value: 'clock', label: 'Clock' },
     { value: 'focus', label: 'Focus (Pomodoro + tasks)' },
+    { value: 'week', label: 'Week (last 7 days)' },
+    { value: 'alarm', label: 'Next alarm / countdown' },
+    { value: 'world', label: 'World clocks' },
     { value: 'weather', label: 'Weather + quote' }
+  ];
+  readonly views: { value: ScreenViewMode; label: string }[] = [
+    { value: 'auto', label: 'Automatic rotation' },
+    ...this.rotationViews
   ];
   readonly hours = Array.from({ length: 24 }, (_, h) => h);
 

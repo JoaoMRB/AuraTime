@@ -150,6 +150,57 @@ describe('ScreenOutputService', () => {
     expect(service.activeView()).toBe('focus');
   });
 
+  describe('rotation choice', () => {
+    const worldClocks = [{ label: 'Tokyo', hhmm: '09:00', ampm: '', dayOffset: 0, utc: 'UTC+9' }];
+    const at = (slot: number) => new Date(2026, 0, 15, 12, 0, slot * 20 + 1);
+
+    it('includes every view by default and keeps the canonical order when toggling', () => {
+      expect(service.rotation()).toEqual(['clock', 'focus', 'week', 'alarm', 'world', 'weather']);
+      service.setInRotation('week', false);
+      service.setInRotation('clock', false);
+      expect(service.rotation()).toEqual(['focus', 'alarm', 'world', 'weather']);
+      service.setInRotation('week', true);
+      service.setInRotation('clock', true);
+      expect(service.rotation()).toEqual(['clock', 'focus', 'week', 'alarm', 'world', 'weather']);
+    });
+
+    it('rotates only through enabled views that have data', async () => {
+      service.rotation.set(['clock', 'world', 'alarm']); // alarm has no data -> skipped
+      const seen: string[] = [];
+      for (let slot = 0; slot < 4; slot++) {
+        state.set(snap({ now: at(slot), worldClocks }));
+        await service.renderFrame();
+        seen.push(service.activeView());
+      }
+      expect(seen).toEqual(['clock', 'world', 'clock', 'world']);
+    });
+
+    it('falls back to the clock when its only enabled view has no data', async () => {
+      service.rotation.set(['world']);
+      state.set(snap({ worldClocks: [] }));
+      await service.renderFrame();
+      expect(service.activeView()).toBe('clock');
+    });
+
+    it('remembers the rotation and ignores unknown views from old preferences', () => {
+      service.setInRotation('weather', false);
+      TestBed.flushEffects();
+      expect(JSON.parse(localStorage.getItem('auratime_screen')!).rotation).toEqual(['clock', 'focus', 'week', 'alarm', 'world']);
+
+      localStorage.setItem('auratime_screen', JSON.stringify({ rotation: ['world', 'bogus', 'clock'], viewMode: 'nope' }));
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
+          { provide: SERIAL_API, useValue: new FakeSerial() }
+        ]
+      });
+      const restored = TestBed.inject(ScreenOutputService);
+      expect(restored.rotation()).toEqual(['clock', 'world']);
+      expect(restored.viewMode()).toBe('auto'); // invalid mode ignored
+    });
+  });
+
   it('resends everything on demand', async () => {
     await connect();
     const before = bitmapHeaders().length;

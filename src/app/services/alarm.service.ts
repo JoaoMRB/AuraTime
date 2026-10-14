@@ -300,14 +300,37 @@ export class AlarmService {
 
   private loadFromStorage(): void {
     try {
-      const data = localStorage.getItem('auratime_alarms');
-      if (data) {
-        const parsed = JSON.parse(data) as Alarm[];
-        this.alarms.set(parsed);
-        this.calculateNextAlarm();
-      }
+      this.applyRaw(localStorage.getItem('auratime_alarms'));
     } catch (e) {
       console.warn('Could not load alarms from localStorage', e);
+    }
+
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_alarms' && event.newValue) {
+        try {
+          this.applyRaw(event.newValue);
+        } catch (e) {}
+      }
+    });
+  }
+
+  private applyRaw(data: string | null): void {
+    if (!data) return;
+    const parsed = JSON.parse(data) as Alarm[];
+    if (!Array.isArray(parsed)) return;
+    this.alarms.set(parsed);
+    this.calculateNextAlarm();
+  }
+
+  /**
+   * Stops the once-a-second ring check. Windows that only *display* alarms (the /screen page)
+   * call this so the alarm does not also sound there.
+   */
+  stopChecker(): void {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
     }
   }
 

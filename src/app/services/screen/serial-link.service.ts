@@ -162,6 +162,13 @@ export class SerialLinkService implements OnDestroy {
     return this.enqueue(() => this.write(cmdBrightness(level)));
   }
 
+  /** Called by the output loop when a write fails: drops the port but keeps auto-reconnect armed. */
+  async fail(error: unknown): Promise<void> {
+    await this.teardown('');
+    this.status.set('error');
+    this.message.set(this.describeError(error));
+  }
+
   isConnected(): boolean {
     return this.status() === 'connected';
   }

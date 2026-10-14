@@ -113,7 +113,8 @@ export class DisplayStateService {
         ? {
             tempC: weather.temperature,
             condition: weather.condition,
-            description: weather.description,
+            // Translated from the condition; the service's own text is Portuguese-only.
+            description: labels.weather[weather.condition] ?? weather.description,
             icon: weather.icon,
             city: weather.cityName
           }

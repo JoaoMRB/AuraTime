@@ -23,6 +23,8 @@ export interface ScreenLabels {
   dayToday: string;
   dayTomorrow: string;
   inWord: string;
+  /** Weather description by WeatherService condition (sunny, cloudy, rainy, ...). */
+  weather: Record<string, string>;
 }
 
 export interface ScreenTask {

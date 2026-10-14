@@ -121,13 +121,21 @@ const LABELS: Record<'en' | 'pt', ScreenLabels> = {
     focus: 'FOCUS', break: 'BREAK', paused: 'PAUSED', ready: 'READY',
     noTasks: 'No open tasks', today: 'TODAY', streak: 'DAY STREAK', minutes: 'min',
     last7Days: 'LAST 7 DAYS', nextAlarm: 'NEXT ALARM', countdown: 'COUNTDOWN', worldClocks: 'WORLD CLOCKS',
-    dayToday: 'Today', dayTomorrow: 'Tomorrow', inWord: 'in'
+    dayToday: 'Today', dayTomorrow: 'Tomorrow', inWord: 'in',
+    weather: {
+      sunny: 'Clear sky', 'clear-night': 'Clear night', cloudy: 'Cloudy',
+      rainy: 'Rain', snowy: 'Snow', stormy: 'Thunderstorm'
+    }
   },
   pt: {
     focus: 'FOCO', break: 'PAUSA', paused: 'EM PAUSA', ready: 'PRONTO',
     noTasks: 'Sem tarefas abertas', today: 'HOJE', streak: 'DIAS SEGUIDOS', minutes: 'min',
     last7Days: 'ÚLTIMOS 7 DIAS', nextAlarm: 'PRÓXIMO ALARME', countdown: 'CONTAGEM',
-    worldClocks: 'RELÓGIOS MUNDIAIS', dayToday: 'Hoje', dayTomorrow: 'Amanhã', inWord: 'em'
+    worldClocks: 'RELÓGIOS MUNDIAIS', dayToday: 'Hoje', dayTomorrow: 'Amanhã', inWord: 'em',
+    weather: {
+      sunny: 'Céu limpo', 'clear-night': 'Noite limpa', cloudy: 'Nublado',
+      rainy: 'Chuva', snowy: 'Neve', stormy: 'Trovoada'
+    }
   }
 };
 

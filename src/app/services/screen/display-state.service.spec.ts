@@ -10,6 +10,7 @@ import { WeatherService } from '../weather.service';
 import { AnalyticsService } from '../analytics.service';
 import { AlarmService } from '../alarm.service';
 import { DashboardService } from '../dashboard.service';
+import { TranslationService } from '../translation.service';
 
 describe('DisplayStateService', () => {
   const START = new Date(2026, 0, 15, 21, 5, 33);
@@ -148,6 +149,19 @@ describe('DisplayStateService', () => {
       expect(clocks.map(c => c.utc)).toEqual(['UTC-5', 'UTC+0', 'UTC+9']);
       expect(clocks.every(c => [-1, 0, 1].includes(c.dayOffset))).toBeTrue();
     });
+  });
+
+  it('describes the weather in the app language, not in the service language', () => {
+    const weatherService = TestBed.inject(WeatherService) as unknown as { weather: () => unknown };
+    weatherService.weather = () => ({ temperature: 18, condition: 'rainy', description: 'Chuva', icon: 'x', cityName: 'Lisboa' });
+    expect(service.snapshot().weather!.description).toBe('Rain');
+
+    TestBed.inject(TranslationService).currentLang.set('pt');
+    expect(service.snapshot().weather!.description).toBe('Chuva');
+
+    weatherService.weather = () => ({ temperature: 5, condition: 'something-new', description: 'Raw', icon: 'x', cityName: 'x' });
+    TestBed.inject(TranslationService).currentLang.set('en'); // changes a signal, so the snapshot is recomputed
+    expect(service.snapshot().weather!.description).toBe('Raw'); // unknown condition: keep the service text
   });
 
   it('omits weather when unavailable and always provides a quote and labels', () => {

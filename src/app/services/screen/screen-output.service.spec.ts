@@ -190,6 +190,113 @@ describe('ScreenOutputService', () => {
     restored.stop();
   });
 
+  describe('wire integrity', () => {
+    /**
+     * Walks everything written to the port and checks the framing: each bitmap header (cmd 197) must be
+     * followed by exactly width*height*2 pixel bytes, with nothing (brightness, another header...) in between.
+     */
+    function assertWellFramed(writes: Uint8Array[]): number {
+      let bitmaps = 0;
+      let remaining = 0;
+      for (const w of writes) {
+        if (remaining > 0) {
+          remaining -= w.length;
+          expect(remaining).withContext('pixel payload overran its rectangle').toBeGreaterThanOrEqual(0);
+        } else if (w.length === 6 && w[5] === 197) {
+          const r = headerRect(w);
+          remaining = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1) * 2;
+          bitmaps++;
+        } else {
+          expect(w.length).withContext('stray write between bitmaps').toBe(6);
+          expect([109, 110, 69]).toContain(w[5]);
+        }
+      }
+      expect(remaining).withContext('last bitmap is incomplete').toBe(0);
+      return bitmaps;
+    }
+
+    it('never interleaves anything inside a bitmap, even with concurrent renders, brightness and refreshes', async () => {
+      await connect();
+      port.writes.length = 0;
+
+      const at = (h: number, s: number) => snap({
+        now: new Date(2026, 0, 16, h, 0, s),
+        clock: { ...snap().clock, seconds: s },
+        focus: { phase: 'idle', remainingSec: 1500, totalSec: 1500, tasks: [{ text: 'a', done: false, active: true }] }
+      });
+      const jobs: Promise<void>[] = [];
+      for (let i = 0; i < 6; i++) {
+        state.set(at(i % 2 ? 2 : 12, i)); // alternates night/day => brightness commands in the mix
+        jobs.push(service.renderFrame(), service.renderFrame());
+        if (i === 2) service.refreshAll();
+        service.viewMode.set(i % 2 ? 'focus' : 'clock');
+        await flush(0);
+      }
+      await Promise.all(jobs);
+      await flush(100);
+
+      expect(assertWellFramed(port.writes)).toBeGreaterThan(1);
+    });
+
+    it('writes full 2560-byte chunks (320 x 8) for large bitmaps', async () => {
+      await connect();
+      const sizes = port.writes.filter(w => w.length > 6).map(w => w.length);
+      expect(Math.max(...sizes)).toBe(2560);
+      expect(sizes.slice(0, -1).every(n => n === 2560 || n < 2560)).toBeTrue();
+    });
+
+    it('does not reinstall a stale reference frame when a refresh happens during a send', async () => {
+      await connect();
+
+      let release!: () => void;
+      port.gate = new Promise<void>(res => (release = res));
+      state.set(snap({ now: new Date(2026, 0, 15, 12, 0, 7), clock: { ...snap().clock, seconds: 7 } }));
+      const inFlight = service.renderFrame(); // blocked on the gate, mid-send
+      await flush(10);
+      service.refreshAll(); // invalidates the reference while the send is pending
+      port.gate = null;
+      release();
+      await inFlight;
+
+      const before = bitmapHeaders().length;
+      await service.renderFrame(); // nothing changed on canvas, but the display must get a full frame
+      const headers = bitmapHeaders();
+      expect(headers.length).toBe(before + 1);
+      expect(headerRect(headers[headers.length - 1])).toEqual({ x0: 0, y0: 0, x1: 479, y1: 319 });
+    });
+
+    it('"always send the full screen" sends 480x320 every time, even if nothing changed', async () => {
+      await connect();
+      service.alwaysFullFrame.set(true);
+      const before = bitmapHeaders().length;
+      await service.renderFrame();
+      await service.renderFrame();
+      const headers = bitmapHeaders().slice(before);
+      expect(headers.length).toBe(2);
+      for (const h of headers) expect(headerRect(h)).toEqual({ x0: 0, y0: 0, x1: 479, y1: 319 });
+    });
+
+    it('"slow send" sets a per-chunk pause on the link and is remembered', async () => {
+      service.slowSend.set(true);
+      TestBed.flushEffects();
+      expect(link.chunkDelayMs()).toBe(3);
+      expect(JSON.parse(localStorage.getItem('auratime_screen')!).slowSend).toBeTrue();
+      service.slowSend.set(false);
+      TestBed.flushEffects();
+      expect(link.chunkDelayMs()).toBe(0);
+    });
+
+    it('reports the size and timing of the last send', async () => {
+      await connect();
+      const m = link.lastSend()!;
+      expect(m.width).toBe(480);
+      expect(m.height).toBe(320);
+      expect(m.bytes).toBe(6 + 480 * 320 * 2);
+      expect(m.ms).toBeGreaterThanOrEqual(0);
+      expect(m.maxGapMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   it('does not auto-reconnect after an explicit disconnect', async () => {
     await connect();
     await service.disconnect();

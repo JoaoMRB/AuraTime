@@ -131,6 +131,152 @@ describe('screen-renderer', () => {
     expect([a[0], a[1], a[2]]).toEqual([b[0], b[1], b[2]]);
   });
 
+  describe('new views (week, alarm, world)', () => {
+    const newViews: ScreenView[] = ['week', 'alarm', 'world'];
+
+    /** Number of pixels that differ between two renders. */
+    function changedPixels(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+      let n = 0;
+      for (let i = 0; i < a.length; i += 4) {
+        if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++;
+      }
+      return n;
+    }
+
+    it('draw something non-trivial in every theme', () => {
+      for (const theme of THEME_IDS as readonly ThemeId[]) {
+        for (const view of newViews) {
+          expect(distinctColors(render(snapshot({ theme }), view))).withContext(`${theme}/${view}`).toBeGreaterThan(10);
+        }
+      }
+    });
+
+    it('look different from each other and from the older views', () => {
+      const frames = (['clock', 'focus', 'weather', 'week', 'alarm', 'world'] as ScreenView[]).map(v => render(snapshot(), v));
+      for (let i = 0; i < frames.length; i++) {
+        for (let j = i + 1; j < frames.length; j++) {
+          expect(differs(frames[i], frames[j])).withContext(`views ${i} vs ${j}`).toBeTrue();
+        }
+      }
+    });
+
+    it('are deterministic and honour the night-black frame and the anti burn-in shift', () => {
+      for (const view of newViews) {
+        expect(differs(render(snapshot(), view), render(snapshot(), view))).toBeFalse();
+        const black = render(snapshot(), view, { black: true });
+        expect(black.slice(0, 2000).every((v, i) => i % 4 === 3 || v === 0)).toBeTrue();
+        expect(differs(render(snapshot(), view), render(snapshot(), view, { shift: { x: 5, y: -4 } }))).toBeTrue();
+      }
+    });
+
+    describe('week', () => {
+      const withDays = (minutes: number[], todayIndex = 6) => snapshot({
+        week: {
+          days: minutes.map((m, i) => ({ label: 'D' + i, minutes: m, isToday: i === todayIndex })),
+          totalMin: minutes.reduce((a, b) => a + b, 0),
+          streak: 2
+        }
+      });
+
+      it('scales the bars with the minutes and highlights today', () => {
+        const small = render(withDays([10, 0, 0, 0, 0, 0, 20]), 'week');
+        const big = render(withDays([10, 0, 0, 0, 0, 0, 120]), 'week');
+        expect(differs(small, big)).toBeTrue();
+        const notToday = render(withDays([10, 0, 0, 0, 0, 0, 20], -1), 'week');
+        expect(differs(small, notToday)).toBeTrue();
+      });
+
+      it('shows a thin marker for empty days (no bar)', () => {
+        const empty = render(withDays([0, 0, 0, 0, 0, 0, 0]), 'week');
+        const one = render(withDays([0, 0, 0, 0, 0, 0, 40]), 'week');
+        const added = changedPixels(empty, one);
+        expect(added).toBeGreaterThan(300); // a bar + its label
+        expect(distinctColors(empty)).toBeGreaterThan(10);
+      });
+
+      it('does not change from one second to the next (nothing to resend)', () => {
+        const a = render(snapshot(), 'week');
+        const b = render(snapshot({ clock: { ...snapshot().clock, seconds: 34 } }), 'week');
+        expect(differs(a, b)).toBeFalse();
+      });
+    });
+
+    describe('alarm', () => {
+      it('falls back to the clock when there is neither an alarm nor a countdown', () => {
+        const none = render(snapshot({ alarm: undefined, countdown: undefined }), 'alarm');
+        expect(differs(none, render(snapshot({ alarm: undefined, countdown: undefined }), 'clock'))).toBeFalse();
+      });
+
+      it('lays out alarm only, countdown only, and both differently', () => {
+        const both = render(snapshot(), 'alarm');
+        const alarmOnly = render(snapshot({ countdown: undefined }), 'alarm');
+        const countdownOnly = render(snapshot({ alarm: undefined }), 'alarm');
+        expect(differs(both, alarmOnly)).toBeTrue();
+        expect(differs(both, countdownOnly)).toBeTrue();
+        expect(differs(alarmOnly, countdownOnly)).toBeTrue();
+      });
+
+      it('only redraws the countdown digits as it ticks', () => {
+        const a = render(snapshot(), 'alarm');
+        const b = render(snapshot({ countdown: { title: 'Release', remainingSec: 3724 } }), 'alarm');
+        const changed = changedPixels(a, b);
+        expect(changed).toBeGreaterThan(0);
+        expect(changed).toBeLessThan(480 * 320 * 0.06);
+      });
+
+      it('shows AM/PM and truncates very long labels inside the card', () => {
+        const long = 'An extremely long alarm label that can never fit on the display in one line '.repeat(3);
+        const withLong = render(snapshot({ alarm: { ...snapshot().alarm!, label: long, ampm: 'AM' } }), 'alarm');
+        const short = render(snapshot({ alarm: { ...snapshot().alarm!, label: 'x', ampm: 'AM' } }), 'alarm');
+        // The margin outside the card (x < 20 or x > 460) must be identical: nothing spills out.
+        for (let y = 0; y < 320; y++) {
+          for (const x of [0, 5, 15, 466, 475, 479]) {
+            const i = (y * 480 + x) * 4;
+            expect([withLong[i], withLong[i + 1], withLong[i + 2]]).toEqual([short[i], short[i + 1], short[i + 2]]);
+          }
+        }
+        const noSuffix = render(snapshot({ alarm: { ...snapshot().alarm!, ampm: '' } }), 'alarm');
+        const suffix = render(snapshot({ alarm: { ...snapshot().alarm!, ampm: 'PM' } }), 'alarm');
+        expect(differs(noSuffix, suffix)).toBeTrue();
+      });
+    });
+
+    describe('world', () => {
+      const clocks = snapshot().worldClocks;
+
+      it('falls back to the clock when there are no world clocks', () => {
+        const none = render(snapshot({ worldClocks: [] }), 'world');
+        expect(differs(none, render(snapshot({ worldClocks: [] }), 'clock'))).toBeFalse();
+      });
+
+      it('draws 1, 2 and 3 rows differently and ignores anything past 3', () => {
+        const one = render(snapshot({ worldClocks: clocks.slice(0, 1) }), 'world');
+        const two = render(snapshot({ worldClocks: clocks.slice(0, 2) }), 'world');
+        const three = render(snapshot({ worldClocks: clocks }), 'world');
+        expect(differs(one, two)).toBeTrue();
+        expect(differs(two, three)).toBeTrue();
+        const extra = [...clocks, { label: 'Sydney', hhmm: '08:05', ampm: '', dayOffset: 1, utc: 'UTC+11' }];
+        expect(differs(three, render(snapshot({ worldClocks: extra }), 'world'))).toBeFalse();
+      });
+
+      it('marks a different day and shows AM/PM', () => {
+        const same = render(snapshot({ worldClocks: [{ ...clocks[2], dayOffset: 0 }] }), 'world');
+        const nextDay = render(snapshot({ worldClocks: [{ ...clocks[2], dayOffset: 1 }] }), 'world');
+        const prevDay = render(snapshot({ worldClocks: [{ ...clocks[2], dayOffset: -1 }] }), 'world');
+        expect(differs(same, nextDay)).toBeTrue();
+        expect(differs(nextDay, prevDay)).toBeTrue();
+        const pm = render(snapshot({ worldClocks: [{ ...clocks[2], ampm: 'PM' }] }), 'world');
+        expect(differs(same, pm)).toBeTrue();
+      });
+
+      it('is static between seconds (nothing to resend)', () => {
+        const a = render(snapshot(), 'world');
+        const b = render(snapshot({ clock: { ...snapshot().clock, seconds: 40 } }), 'world');
+        expect(differs(a, b)).toBeFalse();
+      });
+    });
+  });
+
   describe('helpers', () => {
     it('formats mm:ss and clamps negatives', () => {
       expect(formatMmSs(1500)).toBe('25:00');

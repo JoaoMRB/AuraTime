@@ -126,7 +126,7 @@ const LABELS: Record<'en' | 'pt', ScreenLabels> = {
   pt: {
     focus: 'FOCO', break: 'PAUSA', paused: 'EM PAUSA', ready: 'PRONTO',
     noTasks: 'Sem tarefas abertas', today: 'HOJE', streak: 'DIAS SEGUIDOS', minutes: 'min',
-    last7Days: 'ÚLTIMOS 7 DIAS', nextAlarm: 'PRÓXIMO ALARME', countdown: 'CONTAGEM DECRESCENTE',
+    last7Days: 'ÚLTIMOS 7 DIAS', nextAlarm: 'PRÓXIMO ALARME', countdown: 'CONTAGEM',
     worldClocks: 'RELÓGIOS MUNDIAIS', dayToday: 'Hoje', dayTomorrow: 'Amanhã', inWord: 'em'
   }
 };

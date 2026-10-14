@@ -150,6 +150,105 @@ describe('ScreenOutputService', () => {
     expect(service.activeView()).toBe('focus');
   });
 
+  describe('always-on resilience', () => {
+    beforeEach(() => {
+      service.reconnectBaseMs = 0; // no waiting in tests unless a test sets it
+    });
+
+    it('reconnects by itself after the display is unplugged and plugged back', async () => {
+      await connect();
+      serial.unplug(port);
+      await flush(20);
+      expect(link.status()).toBe('disconnected');
+
+      port.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+      await service.renderFrame(); // next tick notices the link is down and retries
+      await flush(400); // init sequence has a 150 ms pause
+      expect(link.status()).toBe('connected');
+    });
+
+    it('recovers from a write error: drops the port, then reconnects', async () => {
+      await connect();
+      state.set(snap({ now: new Date(2026, 0, 15, 12, 0, 6), clock: { ...snap().clock, seconds: 6 } }));
+      link.writeTimeoutMs = 30;
+      port.gate = new Promise<void>(() => { /* port went dead */ });
+      await service.renderFrame();
+      expect(link.status()).toBe('error');
+      expect(link.message().length).toBeGreaterThan(0);
+
+      port.gate = null;
+      link.writeTimeoutMs = 8000;
+      port.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+      await service.renderFrame();
+      await flush(400);
+      expect(link.status()).toBe('connected');
+      // everything is resent after a reconnection
+      const headers = bitmapHeaders();
+      expect(headerRect(headers[headers.length - 1])).toEqual({ x0: 0, y0: 0, x1: 479, y1: 319 });
+    });
+
+    it('backs off between failed attempts (5 s, 10 s, 20 s, 30 s max)', async () => {
+      await connect();
+      serial.unplug(port);
+      await flush(20);
+      serial.ports = []; // the display never comes back
+
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(2026, 0, 15, 12, 0, 0));
+        service.reconnectBaseMs = 5000;
+        const spy = spyOn(link, 'reconnect').and.resolveTo(false);
+        const t0 = new Date(2026, 0, 15, 12, 0, 0).getTime();
+        const attemptsAt = async (seconds: number) => {
+          jasmine.clock().mockDate(new Date(t0 + seconds * 1000));
+          await service.renderFrame();
+          return spy.calls.count();
+        };
+        // [seconds since start, expected total attempts]: immediate, then 5 s, 10 s, 20 s, 30 s (cap)
+        const expected: [number, number][] = [
+          [0, 1], [4, 1], [5, 2], [14, 2], [15, 3], [34, 3], [35, 4], [64, 4], [65, 5], [94, 5], [95, 6]
+        ];
+        for (const [seconds, attempts] of expected) {
+          expect(await attemptsAt(seconds)).withContext('t=' + seconds + 's').toBe(attempts);
+        }
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    });
+
+    it('does not retry unless it was connected before, nor after an explicit disconnect', async () => {
+      const spy = spyOn(link, 'reconnect').and.resolveTo(false);
+      await service.renderFrame();
+      await service.renderFrame();
+      expect(spy).not.toHaveBeenCalled(); // never connected in this profile
+
+      await connect();
+      await service.disconnect();
+      spy.calls.reset();
+      await service.renderFrame();
+      await service.renderFrame();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('resends the whole picture after a long gap between frames (PC woke up)', async () => {
+      await connect();
+      const before = bitmapHeaders().length;
+      await service.renderFrame();
+      expect(bitmapHeaders().length).toBe(before); // nothing changed, nothing sent
+
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(Date.now() + 60_000)); // a minute passed without ticks
+        await service.renderFrame();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+      const headers = bitmapHeaders();
+      expect(headers.length).toBe(before + 1);
+      expect(headerRect(headers[headers.length - 1])).toEqual({ x0: 0, y0: 0, x1: 479, y1: 319 });
+    });
+  });
+
   describe('rotation choice', () => {
     const worldClocks = [{ label: 'Tokyo', hhmm: '09:00', ampm: '', dayOffset: 0, utc: 'UTC+9' }];
     const at = (slot: number) => new Date(2026, 0, 15, 12, 0, slot * 20 + 1);
@@ -240,7 +339,7 @@ describe('ScreenOutputService', () => {
     expect(restored.brightness().base).toBe(80);
 
     await restored.start();
-    await flush(400);
+    await flush(1200); // HELLO gets no reply from this fake port: wait out its 700 ms timeout + init
     expect(TestBed.inject(SerialLinkService).status()).toBe('connected');
     expect(port2.writes.length).toBeGreaterThan(0);
     restored.stop();

@@ -70,6 +70,16 @@ describe('SerialLinkService', () => {
     expect(service.bytesSent()).toBeGreaterThan(10000);
   });
 
+  it('gives up on a write that never completes instead of freezing (dead port after sleep)', async () => {
+    const service = create();
+    await service.connect(OPTIONS);
+    service.writeTimeoutMs = 40;
+    port.gate = new Promise<void>(() => { /* never resolves */ });
+
+    await expectAsync(service.sendBitmap({ x0: 0, y0: 0, x1: 1, y1: 0 }, new Uint16Array([1, 2])))
+      .toBeRejectedWithError(/stopped responding/);
+  });
+
   it('keeps writes in order when several frames are queued', async () => {
     const service = create();
     await service.connect(OPTIONS);

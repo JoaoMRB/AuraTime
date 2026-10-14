@@ -24,6 +24,11 @@ interface PomodoroPersistedState {
   remainingSec: number;
   workDuration: number;
   breakDuration: number;
+  /**
+   * End time of the last phase whose credit (task + analytics) was already granted.
+   * Shared between tabs so two open windows never credit the same phase twice.
+   */
+  lastCompletedEnd?: number;
 }
 
 const STORAGE_KEY = 'auratime_pomodoro';
@@ -46,6 +51,7 @@ export class PomodoroService {
   private phase = signal<PomodoroPhase>('work');
   /** Epoch ms at which the running phase ends. Source of truth while running. */
   private endTime = signal<number | null>(null);
+  private lastCompletedEnd = signal<number>(0);
 
   // Configuration
   private workDuration = signal<number>(25);
@@ -73,18 +79,14 @@ export class PomodoroService {
     if (this.isBrowser) {
       this.restore();
 
-      effect(() => {
-        const state: PomodoroPersistedState = {
-          phase: this.phase(),
-          running: this.running(),
-          endTime: this.endTime(),
-          remainingSec: this.remaining(),
-          workDuration: this.workDuration(),
-          breakDuration: this.breakDuration()
-        };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        } catch (e) {}
+      effect(() => this.persist());
+
+      // Keep several open tabs/windows (app + /screen) in sync
+      window.addEventListener('storage', (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY && event.newValue) {
+          this.applyRaw(event.newValue);
+          this.syncRemaining();
+        }
       });
 
       // Driven by the shared tick so it keeps running without any component mounted.
@@ -93,9 +95,29 @@ export class PomodoroService {
     }
   }
 
+  private persist(): void {
+    const state: PomodoroPersistedState = {
+      phase: this.phase(),
+      running: this.running(),
+      endTime: this.endTime(),
+      remainingSec: this.remaining(),
+      workDuration: this.workDuration(),
+      breakDuration: this.breakDuration(),
+      lastCompletedEnd: this.lastCompletedEnd()
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
   private restore(): void {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
+      this.applyRaw(localStorage.getItem(STORAGE_KEY));
+    } catch (e) {}
+  }
+
+  private applyRaw(data: string | null): void {
+    try {
       if (!data) return;
       const s = JSON.parse(data) as Partial<PomodoroPersistedState>;
 
@@ -104,9 +126,14 @@ export class PomodoroService {
       if (s.phase === 'work' || s.phase === 'break') this.phase.set(s.phase);
       if (typeof s.remainingSec === 'number' && s.remainingSec >= 0) this.remaining.set(Math.floor(s.remainingSec));
 
+      if (typeof s.lastCompletedEnd === 'number') this.lastCompletedEnd.set(s.lastCompletedEnd);
+
       if (s.running && typeof s.endTime === 'number') {
         this.endTime.set(s.endTime);
         this.running.set(true);
+      } else {
+        this.running.set(false);
+        this.endTime.set(null);
       }
     } catch (e) {}
   }
@@ -146,15 +173,32 @@ export class PomodoroService {
     if (!this.running()) return;
 
     let completed = 0;
-    while (this.running() && completed < MAX_CATCH_UP_PHASES) {
+    let guard = 0;
+    while (this.running() && completed < MAX_CATCH_UP_PHASES && guard++ < MAX_CATCH_UP_PHASES * 2) {
       const end = this.endTime();
       if (end === null) return;
       if (Date.now() < end) break;
+      // Another tab may already have completed (and credited) this phase.
+      if (this.adoptIfCompletedElsewhere(end)) continue;
       this.completePhase(end);
       completed++;
     }
 
     this.syncRemaining();
+  }
+
+  /** If the shared state shows this phase was already completed, adopt it instead of crediting again. */
+  private adoptIfCompletedElsewhere(phaseEnd: number): boolean {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const stored = JSON.parse(raw) as Partial<PomodoroPersistedState>;
+      if (typeof stored.lastCompletedEnd === 'number' && stored.lastCompletedEnd >= phaseEnd) {
+        this.applyRaw(raw);
+        return true;
+      }
+    } catch (e) {}
+    return false;
   }
 
   private syncRemaining(): void {
@@ -185,6 +229,9 @@ export class PomodoroService {
     this.phase.set(nextPhase);
     this.remaining.set(nextDuration * 60);
     this.endTime.set(phaseEnd + nextDuration * 60000);
+    this.lastCompletedEnd.set(phaseEnd);
+    // Write synchronously so other tabs see it before their own next tick
+    this.persist();
   }
 
   // Configuration

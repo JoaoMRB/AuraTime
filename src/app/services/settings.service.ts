@@ -74,25 +74,42 @@ export class SettingsService {
 
   private loadSettings() {
     try {
-      const data = localStorage.getItem('auratime_settings');
-      if (data) {
-        const parsed = JSON.parse(data) as Partial<ClockSettings>;
-        if (parsed.theme) this.theme.set(parsed.theme);
-        if (parsed.position) this.position.set(parsed.position);
-        if (parsed.angle !== undefined) {
-          const angle = parsed.angle === LEGACY_DEFAULT_ANGLE ? DEFAULT_SETTINGS.angle : parsed.angle;
-          this.angle.set(angle);
-        }
-        if (parsed.scale !== undefined) this.scale.set(parsed.scale);
-        if (parsed.font) this.font.set(parsed.font);
-        if (parsed.showSeconds !== undefined) this.showSeconds.set(parsed.showSeconds);
-        if (parsed.showDate !== undefined) this.showDate.set(parsed.showDate);
-        if (parsed.militaryTime !== undefined) this.militaryTime.set(parsed.militaryTime);
-        if (parsed.mode) this.mode.set(parsed.mode);
-        if (parsed.sound) this.sound.set(parsed.sound);
-      }
+      this.applyRaw(localStorage.getItem('auratime_settings'));
     } catch (e) {
       console.error('Error loading settings from localStorage', e);
+    }
+
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_settings' && event.newValue) {
+        try {
+          this.applyRaw(event.newValue, true);
+        } catch (e) {}
+      }
+    });
+  }
+
+  /**
+   * Applies stored settings. When `fromOtherTab` is true, `mode` and `sound` are skipped:
+   * they drive per-tab side effects (audio, active panel) that must not leak between windows.
+   */
+  private applyRaw(data: string | null, fromOtherTab = false) {
+    if (!data) return;
+    const parsed = JSON.parse(data) as Partial<ClockSettings>;
+    if (parsed.theme) this.theme.set(parsed.theme);
+    if (parsed.position) this.position.set(parsed.position);
+    if (parsed.angle !== undefined) {
+      const angle = parsed.angle === LEGACY_DEFAULT_ANGLE ? DEFAULT_SETTINGS.angle : parsed.angle;
+      this.angle.set(angle);
+    }
+    if (parsed.scale !== undefined) this.scale.set(parsed.scale);
+    if (parsed.font) this.font.set(parsed.font);
+    if (parsed.showSeconds !== undefined) this.showSeconds.set(parsed.showSeconds);
+    if (parsed.showDate !== undefined) this.showDate.set(parsed.showDate);
+    if (parsed.militaryTime !== undefined) this.militaryTime.set(parsed.militaryTime);
+    if (!fromOtherTab) {
+      if (parsed.mode) this.mode.set(parsed.mode);
+      if (parsed.sound) this.sound.set(parsed.sound);
     }
   }
 

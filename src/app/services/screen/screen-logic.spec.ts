@@ -1,32 +1,79 @@
 import {
   DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, isNight, labelsFor, localeForLang,
-  pickView, pixelShift, selectTodayTasks, VIEW_ROTATION_SECONDS
+  pickView, pixelShift, selectTodayTasks, viewHasContent, VIEW_ROTATION_SECONDS
 } from './screen-logic';
+import { ALL_SCREEN_VIEWS, DisplaySnapshot, ScreenView } from './display-snapshot';
 
 describe('screen-logic', () => {
   describe('pickView', () => {
-    const base = { mode: 'auto' as const, focusRunning: false, hasWeather: true, nowMs: 0 };
+    const content = (on: ScreenView[]): Record<ScreenView, boolean> =>
+      Object.fromEntries(
+        ALL_SCREEN_VIEWS.map(v => [v, v === 'clock' || v === 'focus' || on.includes(v)])
+      ) as Record<ScreenView, boolean>;
 
-    it('rotates clock -> focus -> weather every 20 s', () => {
-      const at = (slot: number) => pickView({ ...base, nowMs: slot * VIEW_ROTATION_SECONDS * 1000 + 500 });
-      expect([at(0), at(1), at(2), at(3)]).toEqual(['clock', 'focus', 'weather', 'clock']);
+    const base = {
+      mode: 'auto' as const,
+      focusRunning: false,
+      enabled: ALL_SCREEN_VIEWS as readonly ScreenView[],
+      hasContent: content(['week', 'alarm', 'world', 'weather']),
+      nowMs: 0
+    };
+    const seq = (input: Partial<typeof base>, slots = 8) =>
+      Array.from({ length: slots }, (_, slot) =>
+        pickView({ ...base, ...input, nowMs: slot * VIEW_ROTATION_SECONDS * 1000 + 500 }));
+
+    it('rotates through every view with content, in a fixed order, every 20 s', () => {
+      expect(seq({}, 7)).toEqual(['clock', 'focus', 'week', 'alarm', 'world', 'weather', 'clock']);
     });
 
-    it('skips weather when there is no weather data', () => {
-      const at = (slot: number) => pickView({ ...base, hasWeather: false, nowMs: slot * 20_000 });
-      expect([at(0), at(1), at(2)]).toEqual(['clock', 'focus', 'clock']);
+    it('skips views without content', () => {
+      expect(seq({ hasContent: content(['weather']) }, 4)).toEqual(['clock', 'focus', 'weather', 'clock']);
+      expect(seq({ hasContent: content(['alarm', 'world']) }, 5)).toEqual(['clock', 'focus', 'alarm', 'world', 'clock']);
+      expect(seq({ hasContent: content([]) }, 3)).toEqual(['clock', 'focus', 'clock']);
     });
 
-    it('pins focus while a pomodoro is running', () => {
-      for (let slot = 0; slot < 4; slot++) {
-        expect(pickView({ ...base, focusRunning: true, nowMs: slot * 20_000 })).toBe('focus');
-      }
+    it('only rotates through the views the user enabled', () => {
+      expect(seq({ enabled: ['clock', 'world'] }, 3)).toEqual(['clock', 'world', 'clock']);
+      expect(seq({ enabled: ['week'] }, 2)).toEqual(['week', 'week']);
     });
 
-    it('honours a fixed view, falling back to clock for weather without data', () => {
+    it('falls back to the clock when nothing is enabled or nothing has content', () => {
+      expect(seq({ enabled: [] }, 2)).toEqual(['clock', 'clock']);
+      expect(seq({ enabled: ['week'], hasContent: content([]) }, 2)).toEqual(['clock', 'clock']);
+    });
+
+    it('pins focus while a pomodoro is running, unless focus is not in the rotation', () => {
+      expect(new Set(seq({ focusRunning: true }, 6))).toEqual(new Set(['focus']));
+      expect(seq({ focusRunning: true, enabled: ['clock', 'week'] }, 2)).toEqual(['clock', 'week']);
+    });
+
+    it('honours a fixed view, falling back to the clock when it has no content', () => {
       expect(pickView({ ...base, mode: 'clock', focusRunning: true })).toBe('clock');
-      expect(pickView({ ...base, mode: 'weather' })).toBe('weather');
-      expect(pickView({ ...base, mode: 'weather', hasWeather: false })).toBe('clock');
+      expect(pickView({ ...base, mode: 'world' })).toBe('world');
+      expect(pickView({ ...base, mode: 'world', hasContent: content([]) })).toBe('clock');
+      expect(pickView({ ...base, mode: 'week', enabled: [] })).toBe('week'); // a fixed view ignores the rotation list
+    });
+  });
+
+  describe('viewHasContent', () => {
+    const snap = (over: Partial<DisplaySnapshot>) =>
+      ({ week: { days: [], totalMin: 0, streak: 0 }, worldClocks: [], ...over }) as DisplaySnapshot;
+
+    it('reports what each view can show', () => {
+      expect(viewHasContent(snap({}))).toEqual({
+        clock: true, focus: true, week: false, alarm: false, world: false, weather: false
+      });
+      const full = viewHasContent(snap({
+        week: { days: [], totalMin: 30, streak: 1 },
+        alarm: { label: 'a', hhmm: '07:00', ampm: '', minutesUntil: 5, whenLabel: 'Today' },
+        worldClocks: [{ label: 'Tokyo', hhmm: '09:00', ampm: '', dayOffset: 0, utc: 'UTC+9' }],
+        weather: { tempC: 1, condition: 'x', description: 'x', icon: 'x', city: 'x' }
+      }));
+      expect(Object.values(full).every(Boolean)).toBeTrue();
+    });
+
+    it('counts an active countdown as alarm-view content', () => {
+      expect(viewHasContent(snap({ countdown: { title: 'x', remainingSec: 10 } })).alarm).toBeTrue();
     });
   });
 

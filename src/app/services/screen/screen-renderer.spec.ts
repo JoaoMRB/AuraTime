@@ -21,6 +21,23 @@ function snapshot(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
     weather: { tempC: 18, condition: 'sunny', description: 'Clear sky', icon: '☀️', city: 'Lisbon' },
     quote: { text: 'Simplicity is the ultimate sophistication.', author: 'Leonardo da Vinci' },
     stats: { todayMin: 75, streak: 3 },
+    week: {
+      days: [
+        { label: 'FRI', minutes: 0, isToday: false }, { label: 'SAT', minutes: 25, isToday: false },
+        { label: 'SUN', minutes: 0, isToday: false }, { label: 'MON', minutes: 75, isToday: false },
+        { label: 'TUE', minutes: 50, isToday: false }, { label: 'WED', minutes: 100, isToday: false },
+        { label: 'THU', minutes: 75, isToday: true }
+      ],
+      totalMin: 325,
+      streak: 3
+    },
+    alarm: { label: 'Wake up', hhmm: '07:30', ampm: '', minutesUntil: 553, whenLabel: 'Tomorrow' },
+    countdown: { title: 'Release', remainingSec: 3725 },
+    worldClocks: [
+      { label: 'New York', hhmm: '16:05', ampm: '', dayOffset: 0, utc: 'UTC-5' },
+      { label: 'London', hhmm: '21:05', ampm: '', dayOffset: 0, utc: 'UTC+0' },
+      { label: 'Tokyo', hhmm: '06:05', ampm: '', dayOffset: 1, utc: 'UTC+9' }
+    ],
     labels: labelsFor('en'),
     ...overrides
   };

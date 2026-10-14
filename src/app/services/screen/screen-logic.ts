@@ -1,25 +1,43 @@
-import { ScreenLabels, ScreenTask, ScreenView, ScreenViewMode } from './display-snapshot';
+import { ALL_SCREEN_VIEWS, DisplaySnapshot, ScreenLabels, ScreenTask, ScreenView, ScreenViewMode } from './display-snapshot';
 
 /** How long each view stays on screen while rotating automatically. */
 export const VIEW_ROTATION_SECONDS = 20;
+
+/** Which views have something to show right now. Clock and focus always do. */
+export function viewHasContent(snap: DisplaySnapshot): Record<ScreenView, boolean> {
+  return {
+    clock: true,
+    focus: true,
+    week: snap.week.totalMin > 0,
+    alarm: !!snap.alarm || !!snap.countdown,
+    world: snap.worldClocks.length > 0,
+    weather: !!snap.weather
+  };
+}
 
 export interface ViewInputs {
   mode: ScreenViewMode;
   /** True while a Pomodoro is running: the focus view stays pinned. */
   focusRunning: boolean;
-  hasWeather: boolean;
+  /** Views the user allows in the automatic rotation. */
+  enabled: readonly ScreenView[];
+  hasContent: Record<ScreenView, boolean>;
   nowMs: number;
 }
 
-/** Chooses the view for the current second. Fixed modes win; otherwise rotate, pinning Focus during a Pomodoro. */
+/**
+ * Chooses the view for the current second. A fixed mode wins (falling back to the clock when it has
+ * nothing to show); otherwise rotate through the enabled views that have content, pinning Focus
+ * during a Pomodoro.
+ */
 export function pickView(input: ViewInputs): ScreenView {
   if (input.mode !== 'auto') {
-    return input.mode === 'weather' && !input.hasWeather ? 'clock' : input.mode;
+    return input.hasContent[input.mode] ? input.mode : 'clock';
   }
-  if (input.focusRunning) return 'focus';
+  if (input.focusRunning && input.enabled.includes('focus')) return 'focus';
 
-  const views: ScreenView[] = ['clock', 'focus'];
-  if (input.hasWeather) views.push('weather');
+  const views = ALL_SCREEN_VIEWS.filter(v => input.enabled.includes(v) && input.hasContent[v]);
+  if (views.length === 0) return 'clock';
   const slot = Math.floor(input.nowMs / 1000 / VIEW_ROTATION_SECONDS);
   return views[slot % views.length];
 }
@@ -101,11 +119,15 @@ export function localeForLang(lang: string): string {
 const LABELS: Record<'en' | 'pt', ScreenLabels> = {
   en: {
     focus: 'FOCUS', break: 'BREAK', paused: 'PAUSED', ready: 'READY',
-    noTasks: 'No open tasks', today: 'TODAY', streak: 'DAY STREAK', minutes: 'min'
+    noTasks: 'No open tasks', today: 'TODAY', streak: 'DAY STREAK', minutes: 'min',
+    last7Days: 'LAST 7 DAYS', nextAlarm: 'NEXT ALARM', countdown: 'COUNTDOWN', worldClocks: 'WORLD CLOCKS',
+    dayToday: 'Today', dayTomorrow: 'Tomorrow', inWord: 'in'
   },
   pt: {
     focus: 'FOCO', break: 'PAUSA', paused: 'EM PAUSA', ready: 'PRONTO',
-    noTasks: 'Sem tarefas abertas', today: 'HOJE', streak: 'DIAS SEGUIDOS', minutes: 'min'
+    noTasks: 'Sem tarefas abertas', today: 'HOJE', streak: 'DIAS SEGUIDOS', minutes: 'min',
+    last7Days: 'ÚLTIMOS 7 DIAS', nextAlarm: 'PRÓXIMO ALARME', countdown: 'CONTAGEM DECRESCENTE',
+    worldClocks: 'RELÓGIOS MUNDIAIS', dayToday: 'Hoje', dayTomorrow: 'Amanhã', inWord: 'em'
   }
 };
 

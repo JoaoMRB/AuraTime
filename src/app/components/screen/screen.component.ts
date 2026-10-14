@@ -7,6 +7,7 @@ import { Title } from '@angular/platform-browser';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
 import { SerialLinkService } from '../../services/screen/serial-link.service';
 import { ScreenViewMode } from '../../services/screen/display-snapshot';
+import { AlarmService } from '../../services/alarm.service';
 
 /**
  * /screen: chromeless page that drives the USB display. Keep it open (a dedicated window works
@@ -168,6 +169,11 @@ export class ScreenComponent implements OnInit, AfterViewInit, OnDestroy {
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   @ViewChild('preview', { static: true }) previewHost!: ElementRef<HTMLElement>;
+
+  constructor() {
+    // This page only *shows* the next alarm; ringing stays with the clock window.
+    inject(AlarmService).stopChecker();
+  }
 
   readonly views: { value: ScreenViewMode; label: string }[] = [
     { value: 'auto', label: 'Automatic rotation' },

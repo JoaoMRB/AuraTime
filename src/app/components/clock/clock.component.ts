@@ -371,6 +371,8 @@ export class ClockComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
     if (event.key === 'Escape') {
       this.closeAllPanels();
       if (this.zenMode()) this.zenMode.set(false);

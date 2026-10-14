@@ -36,16 +36,17 @@ export class TaskService {
   }
 
   private loadTasks() {
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_tasks' && event.newValue) {
+        this.applyRaw(event.newValue);
+      }
+    });
+
     try {
       const data = localStorage.getItem('auratime_tasks');
       if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed.tasks)) {
-          this.tasks.set(parsed.tasks);
-        }
-        if (parsed.activeTaskId) {
-          this.activeTaskId.set(parsed.activeTaskId);
-        }
+        this.applyRaw(data);
       } else {
         // Starter sample tasks
         this.tasks.set([
@@ -54,6 +55,16 @@ export class TaskService {
         ]);
         this.activeTaskId.set('1');
       }
+    } catch (e) {}
+  }
+
+  private applyRaw(data: string): void {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed.tasks)) {
+        this.tasks.set(parsed.tasks);
+      }
+      this.activeTaskId.set(parsed.activeTaskId ?? null);
     } catch (e) {}
   }
 

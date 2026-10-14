@@ -1,7 +1,8 @@
 import { DisplaySnapshot, ScreenView } from './display-snapshot';
 import {
-  FONT_TOKENS, ThemeTokens, THEME_TOKENS, fontShorthand
+  FONT_TOKENS, FontTokens, ThemeTokens, THEME_TOKENS, fontShorthand
 } from './theme-tokens';
+import { formatDuration, formatHms } from './screen-data';
 
 export interface DrawOptions {
   width: number;
@@ -60,6 +61,15 @@ export function drawScreen(ctx: Ctx, snap: DisplaySnapshot, view: ScreenView, op
     case 'weather':
       drawWeatherView(ctx, snap, theme, W);
       break;
+    case 'week':
+      drawWeekView(ctx, snap, theme, W);
+      break;
+    case 'alarm':
+      drawAlarmView(ctx, snap, theme, W);
+      break;
+    case 'world':
+      drawWorldView(ctx, snap, theme, W);
+      break;
     default:
       drawClockView(ctx, snap, theme, W);
   }
@@ -79,26 +89,8 @@ function drawClockView(ctx: Ctx, snap: DisplaySnapshot, theme: ThemeTokens, W: n
   setLetterSpacing(ctx, '0px');
 
   // Time (+ small AM/PM), centred together, shrunk to fit the card
-  const ampm = snap.clock.ampm;
-  const maxWidth = 360;
-  const ampmFont = `600 22px ${BODY_FONT}`;
-  ctx.font = ampmFont;
-  const ampmWidth = ampm ? ctx.measureText(ampm).width + 10 : 0;
-  const size = fitFontSize(ctx, snap.clock.hhmm, size => fontShorthand(font, size), 128, maxWidth - ampmWidth);
-  ctx.font = fontShorthand(font, size);
-  const timeWidth = ctx.measureText(snap.clock.hhmm).width;
-  const startX = cx - (timeWidth + ampmWidth) / 2;
   const baseline = 190;
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = textFill(ctx, theme.text.primary, startX, timeWidth);
-  ctx.fillText(snap.clock.hhmm, startX, baseline);
-  if (ampm) {
-    ctx.font = ampmFont;
-    ctx.fillStyle = theme.text.accent;
-    ctx.fillText(ampm, startX + timeWidth + 10, baseline);
-  }
-  ctx.textAlign = 'center';
+  drawTimeWithSuffix(ctx, theme, font, snap.clock.hhmm, snap.clock.ampm, cx, baseline, 360, 128);
 
   // Seconds progress line
   const lineW = 300;
@@ -228,7 +220,194 @@ function drawWeatherView(ctx: Ctx, snap: DisplaySnapshot, theme: ThemeTokens, W:
   }
 }
 
+function drawWeekView(ctx: Ctx, snap: DisplaySnapshot, theme: ThemeTokens, W: number): void {
+  const cx = W / 2;
+  const { week, labels } = snap;
+
+  setLetterSpacing(ctx, '3px');
+  ctx.fillStyle = theme.text.accent;
+  ctx.font = `600 15px ${BODY_FONT}`;
+  ctx.fillText(labels.last7Days, cx, 58);
+  setLetterSpacing(ctx, '0px');
+
+  const days = week.days.slice(-7);
+  const barW = 36;
+  const gap = 18;
+  const totalW = days.length * barW + Math.max(0, days.length - 1) * gap;
+  const x0 = cx - totalW / 2;
+  const baseline = 228;
+  const maxBarH = 118;
+  const scaleMax = Math.max(60, ...days.map(d => d.minutes));
+
+  days.forEach((day, i) => {
+    const x = x0 + i * (barW + gap);
+    const h = day.minutes > 0 ? Math.max(5, Math.round((day.minutes / scaleMax) * maxBarH)) : 0;
+
+    if (h === 0) {
+      ctx.fillStyle = withAlpha(theme.text.muted, 0.3);
+      ctx.fillRect(x, baseline - 2, barW, 2);
+    } else {
+      ctx.fillStyle = day.isToday ? theme.text.accent : withAlpha(theme.text.muted, 0.55);
+      roundRect(ctx, x, baseline - h, barW, h, 5);
+      ctx.fill();
+
+      ctx.font = `${day.isToday ? 700 : 500} 12px ${BODY_FONT}`;
+      ctx.fillStyle = day.isToday ? theme.text.accent : theme.text.muted;
+      ctx.fillText(String(day.minutes), x + barW / 2, baseline - h - 7);
+    }
+
+    setLetterSpacing(ctx, '1px');
+    ctx.font = `${day.isToday ? 700 : 500} 13px ${BODY_FONT}`;
+    ctx.fillStyle = day.isToday ? theme.text.accent : theme.text.muted;
+    ctx.fillText(day.label, x + barW / 2, baseline + 24);
+    setLetterSpacing(ctx, '0px');
+  });
+
+  setLetterSpacing(ctx, '1px');
+  ctx.fillStyle = theme.text.muted;
+  ctx.font = `500 14px ${BODY_FONT}`;
+  ctx.fillText(`${week.streak} ${labels.streak}  ·  ${formatDuration(week.totalMin)}`, cx, 284);
+  setLetterSpacing(ctx, '0px');
+}
+
+function drawAlarmView(ctx: Ctx, snap: DisplaySnapshot, theme: ThemeTokens, W: number): void {
+  const { alarm, countdown, labels } = snap;
+  if (!alarm && !countdown) {
+    drawClockView(ctx, snap, theme, W);
+    return;
+  }
+  const font = FONT_TOKENS[snap.fontId];
+  const both = !!alarm && !!countdown;
+  const centers = both ? [150, 330] : [W / 2];
+  const maxWidth = both ? 150 : 340;
+  const size = both ? 56 : 104;
+  const captionY = both ? 82 : 70;
+  const valueY = both ? 152 : 170;
+  const subY = both ? 184 : 208;
+
+  const blocks: { caption: string; value: string; suffix: string; sub: string; detail: string }[] = [];
+  if (alarm) {
+    blocks.push({
+      caption: labels.nextAlarm,
+      value: alarm.hhmm,
+      suffix: alarm.ampm,
+      sub: alarm.label,
+      detail: `${alarm.whenLabel}  ·  ${labels.inWord} ${formatDuration(alarm.minutesUntil)}`
+    });
+  }
+  if (countdown) {
+    blocks.push({
+      caption: labels.countdown,
+      value: formatHms(countdown.remainingSec),
+      suffix: '',
+      sub: countdown.title,
+      detail: ''
+    });
+  }
+
+  blocks.forEach((b, i) => {
+    const cx = centers[i];
+    setLetterSpacing(ctx, '3px');
+    ctx.fillStyle = theme.text.accent;
+    ctx.font = `600 ${both ? 12 : 15}px ${BODY_FONT}`;
+    ctx.fillText(ellipsize(ctx, b.caption, maxWidth + 20), cx, captionY);
+    setLetterSpacing(ctx, '0px');
+
+    drawTimeWithSuffix(ctx, theme, font, b.value, b.suffix, cx, valueY, maxWidth, size, both ? 16 : 22);
+
+    ctx.fillStyle = strongText(theme);
+    ctx.font = `600 ${both ? 17 : 21}px ${BODY_FONT}`;
+    ctx.fillText(ellipsize(ctx, b.sub, maxWidth + 20), cx, subY);
+
+    if (b.detail) {
+      ctx.fillStyle = theme.text.muted;
+      ctx.font = `500 ${both ? 13 : 16}px ${BODY_FONT}`;
+      ctx.fillText(ellipsize(ctx, b.detail, maxWidth + 20), cx, subY + (both ? 24 : 30));
+    }
+  });
+
+  if (both) {
+    ctx.fillStyle = withAlpha(theme.text.muted, 0.3);
+    ctx.fillRect(W / 2, 62, 1, 196);
+  }
+}
+
+function drawWorldView(ctx: Ctx, snap: DisplaySnapshot, theme: ThemeTokens, W: number): void {
+  const clocks = snap.worldClocks.slice(0, 3);
+  if (clocks.length === 0) {
+    drawClockView(ctx, snap, theme, W);
+    return;
+  }
+  const cx = W / 2;
+  const font = FONT_TOKENS[snap.fontId];
+
+  setLetterSpacing(ctx, '3px');
+  ctx.fillStyle = theme.text.accent;
+  ctx.font = `600 15px ${BODY_FONT}`;
+  ctx.fillText(snap.labels.worldClocks, cx, 58);
+  setLetterSpacing(ctx, '0px');
+
+  const left = 64;
+  const right = W - 64;
+  const pitch = 66;
+  const top0 = 76 + ((3 - clocks.length) * pitch) / 2;
+
+  clocks.forEach((clock, i) => {
+    const top = top0 + i * pitch;
+    if (i > 0) {
+      ctx.fillStyle = withAlpha(theme.text.muted, 0.2);
+      ctx.fillRect(left, top, right - left, 1);
+    }
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = strongText(theme);
+    ctx.font = `600 22px ${BODY_FONT}`;
+    ctx.fillText(ellipsize(ctx, clock.label, 190), left, top + 31);
+
+    const day = clock.dayOffset === 0 ? '' : `  ·  ${clock.dayOffset > 0 ? '+' : ''}${clock.dayOffset}d`;
+    ctx.fillStyle = theme.text.muted;
+    ctx.font = `500 13px ${BODY_FONT}`;
+    setLetterSpacing(ctx, '1px');
+    ctx.fillText(`${clock.utc}${day}`, left, top + 52);
+    setLetterSpacing(ctx, '0px');
+
+    ctx.textAlign = 'center';
+    drawTimeWithSuffix(ctx, theme, font, clock.hhmm, clock.ampm, right, top + 48, 190, 46, 15, 'right');
+  });
+}
+
 /* ----------------------------- primitives ----------------------------- */
+
+/** Time text with an optional small suffix (AM/PM), fitted to maxWidth and filled with the theme gradient. */
+function drawTimeWithSuffix(
+  ctx: Ctx, theme: ThemeTokens, font: FontTokens, text: string, suffix: string,
+  anchorX: number, baseline: number, maxWidth: number, maxSize: number,
+  suffixPx = 22, anchor: 'center' | 'right' = 'center'
+): void {
+  const suffixFont = `600 ${suffixPx}px ${BODY_FONT}`;
+  ctx.font = suffixFont;
+  const suffixWidth = suffix ? ctx.measureText(suffix).width + 10 : 0;
+  const size = fitFontSize(ctx, text, s => fontShorthand(font, s), maxSize, maxWidth - suffixWidth);
+  ctx.font = fontShorthand(font, size);
+  const textWidth = ctx.measureText(text).width;
+  const total = textWidth + suffixWidth;
+  const startX = anchor === 'right' ? anchorX - total : anchorX - total / 2;
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = textFill(ctx, theme.text.primary, startX, textWidth);
+  ctx.fillText(text, startX, baseline);
+  if (suffix) {
+    ctx.font = suffixFont;
+    ctx.fillStyle = theme.text.accent;
+    ctx.fillText(suffix, startX + textWidth + 10, baseline);
+  }
+  ctx.textAlign = 'center';
+}
+
+/** High-contrast text colour for labels that must stand out on the card. */
+function strongText(theme: ThemeTokens): string {
+  return theme.isLight ? theme.text.primary[0] : '#FFFFFF';
+}
 
 function drawBackground(ctx: Ctx, theme: ThemeTokens, W: number, H: number): void {
   const { x0, y0, x1, y1 } = gradientLine(theme.background.angleDeg, W, H);

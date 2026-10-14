@@ -8,6 +8,7 @@ import { TickService } from './tick.service';
 import { DisplaySnapshot } from './display-snapshot';
 import { labelsFor } from './screen-logic';
 import { FakePort, FakeSerial } from './testing/fake-serial';
+import { REQUIRED_FONT_SHORTHANDS } from './screen-renderer';
 
 function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
   return {
@@ -52,6 +53,8 @@ describe('ScreenOutputService', () => {
   }
 
   beforeEach(async () => {
+    // Web fonts load lazily: without this the text can change between two frames and look like a diff.
+    await Promise.all(REQUIRED_FONT_SHORTHANDS.map(f => document.fonts.load(f)));
     localStorage.clear();
     state = signal(snap());
     serial = new FakeSerial();

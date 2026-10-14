@@ -204,15 +204,26 @@ export class WorldClockService {
 
   private loadFromStorage(): void {
     try {
-      const data = localStorage.getItem('auratime_worldclocks');
-      if (data) {
-        const parsed = JSON.parse(data) as WorldClock[];
-        if (parsed.length > 0) {
-          this.clocks.set(parsed);
-        }
-      }
+      this.applyRaw(localStorage.getItem('auratime_worldclocks'));
     } catch (e) {
       console.warn('Could not load world clocks from localStorage', e);
+    }
+
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_worldclocks' && event.newValue) {
+        try {
+          this.applyRaw(event.newValue);
+        } catch (e) {}
+      }
+    });
+  }
+
+  private applyRaw(data: string | null): void {
+    if (!data) return;
+    const parsed = JSON.parse(data) as WorldClock[];
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      this.clocks.set(parsed);
     }
   }
 

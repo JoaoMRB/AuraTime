@@ -74,8 +74,18 @@ export class DashboardService {
   }
 
   private loadDashboardData() {
+    this.applyRaw(localStorage.getItem('auratime_dashboard'));
+
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_dashboard' && event.newValue) {
+        this.applyRaw(event.newValue);
+      }
+    });
+  }
+
+  private applyRaw(data: string | null) {
     try {
-      const data = localStorage.getItem('auratime_dashboard');
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed.links)) this.links.set(parsed.links);

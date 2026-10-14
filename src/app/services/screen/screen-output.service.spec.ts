@@ -17,6 +17,8 @@ function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
     clock: { hhmm: '12:00', seconds: 5, ampm: '', dateLabel: 'Thursday, January 15', use24h: true },
     focus: { phase: 'idle', remainingSec: 1500, totalSec: 1500, tasks: [] },
     stats: { todayMin: 0, streak: 0 },
+    week: { days: [], totalMin: 0, streak: 0 },
+    worldClocks: [],
     labels: labelsFor('en'),
     ...overrides
   };

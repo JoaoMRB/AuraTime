@@ -4,15 +4,17 @@ import { DisplayStateService } from './display-state.service';
 import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
-import { ScreenView, ScreenViewMode } from './display-snapshot';
+import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
-  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift
+  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
 } from './screen-logic';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
 
 /** User preferences for the screen, persisted under `auratime_screen`. */
 export interface ScreenPrefs {
   viewMode: ScreenViewMode;
+  /** Views allowed in the automatic rotation. */
+  rotation: ScreenView[];
   brightness: BrightnessConfig;
   flowControl: boolean;
   /** Diagnostic: resend the whole 480x320 frame every second instead of only the changed rectangle. */
@@ -29,6 +31,7 @@ const FULL_REFRESH_MS = 5 * 60 * 1000;
 
 const DEFAULT_PREFS: ScreenPrefs = {
   viewMode: 'auto',
+  rotation: [...ALL_SCREEN_VIEWS],
   brightness: DEFAULT_BRIGHTNESS_CONFIG,
   flowControl: true,
   alwaysFullFrame: false,
@@ -54,6 +57,8 @@ export class ScreenOutputService implements OnDestroy {
   private zone = inject(NgZone);
 
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
+  /** Views that take part in the automatic rotation (only those with content are actually shown). */
+  readonly rotation = signal<ScreenView[]>(DEFAULT_PREFS.rotation);
   readonly brightness = signal<BrightnessConfig>(DEFAULT_PREFS.brightness);
   readonly flowControl = signal<boolean>(DEFAULT_PREFS.flowControl);
   readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
@@ -160,6 +165,14 @@ export class ScreenOutputService implements OnDestroy {
     this.epoch++;
   }
 
+  /** Adds or removes a view from the automatic rotation. */
+  setInRotation(view: ScreenView, included: boolean): void {
+    this.rotation.update(list => {
+      const without = list.filter(v => v !== view);
+      return included ? ALL_SCREEN_VIEWS.filter(v => v === view || without.includes(v)) : without;
+    });
+  }
+
   setBrightnessBase(level: number): void {
     this.brightness.update(b => ({ ...b, base: level }));
   }
@@ -183,7 +196,8 @@ export class ScreenOutputService implements OnDestroy {
     const view = pickView({
       mode: this.viewMode(),
       focusRunning: snap.focus.phase !== 'idle',
-      hasWeather: !!snap.weather,
+      enabled: this.rotation(),
+      hasContent: viewHasContent(snap),
       nowMs: now.getTime()
     });
     const { level, black } = effectiveBrightness(now, this.brightness());
@@ -235,7 +249,10 @@ export class ScreenOutputService implements OnDestroy {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const p = JSON.parse(raw) as Partial<ScreenPrefs>;
-      if (p.viewMode) this.viewMode.set(p.viewMode);
+      if (p.viewMode && (p.viewMode === 'auto' || ALL_SCREEN_VIEWS.includes(p.viewMode))) this.viewMode.set(p.viewMode);
+      if (Array.isArray(p.rotation)) {
+        this.rotation.set(ALL_SCREEN_VIEWS.filter(v => p.rotation!.includes(v)));
+      }
       if (p.brightness) this.brightness.set({ ...DEFAULT_BRIGHTNESS_CONFIG, ...p.brightness });
       if (typeof p.flowControl === 'boolean') this.flowControl.set(p.flowControl);
       if (typeof p.alwaysFullFrame === 'boolean') this.alwaysFullFrame.set(p.alwaysFullFrame);
@@ -249,6 +266,7 @@ export class ScreenOutputService implements OnDestroy {
   private persistPrefs(): void {
     const prefs: ScreenPrefs = {
       viewMode: this.viewMode(),
+      rotation: this.rotation(),
       brightness: this.brightness(),
       flowControl: this.flowControl(),
       alwaysFullFrame: this.alwaysFullFrame(),

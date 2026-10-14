@@ -7,6 +7,9 @@ import { PomodoroService } from '../pomodoro.service';
 import { TaskService } from '../task.service';
 import { AudioService } from '../audio.service';
 import { WeatherService } from '../weather.service';
+import { AnalyticsService } from '../analytics.service';
+import { AlarmService } from '../alarm.service';
+import { DashboardService } from '../dashboard.service';
 
 describe('DisplayStateService', () => {
   const START = new Date(2026, 0, 15, 21, 5, 33);
@@ -76,6 +79,75 @@ describe('DisplayStateService', () => {
     ]);
     tasks.activeTaskId.set('2');
     expect(service.snapshot().focus.tasks.map(t => t.text)).toEqual(['two', 'one']);
+  });
+
+  describe('screen views data', () => {
+    it('builds the last 7 days of focus with the streak', () => {
+      const analytics = TestBed.inject(AnalyticsService);
+      analytics.dailyRecords.set({
+        '2026-01-15': { date: '2026-01-15', minutes: 50, pomodoros: 2 },
+        '2026-01-13': { date: '2026-01-13', minutes: 25, pomodoros: 1 },
+        '2025-12-01': { date: '2025-12-01', minutes: 999, pomodoros: 9 } // outside the window
+      });
+      analytics.currentStreak.set(4);
+      const week = service.snapshot().week;
+      expect(week.days.length).toBe(7);
+      expect(week.days.map(d => d.minutes)).toEqual([0, 0, 0, 0, 25, 0, 50]);
+      expect(week.days[6].isToday).toBeTrue();
+      expect(week.totalMin).toBe(75);
+      expect(week.streak).toBe(4);
+    });
+
+    it('reports the next alarm (12h and 24h) with a relative day label', () => {
+      TestBed.inject(AlarmService).stopChecker();
+      TestBed.inject(AlarmService).addAlarm({
+        label: 'Evening', time: '22:00', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime'
+      });
+      TestBed.inject(AlarmService).addAlarm({
+        label: 'Early', time: '07:30', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime'
+      });
+
+      settings.militaryTime.set(true);
+      let alarm = service.snapshot().alarm!;
+      expect(alarm.label).toBe('Evening'); // 21:05 -> 22:00 is sooner than tomorrow 07:30
+      expect(alarm.hhmm).toBe('22:00');
+      expect(alarm.minutesUntil).toBe(55);
+      expect(alarm.whenLabel).toBe('Today');
+
+      settings.militaryTime.set(false);
+      alarm = service.snapshot().alarm!;
+      expect(alarm.hhmm).toBe('10:00');
+      expect(alarm.ampm).toBe('PM');
+    });
+
+    it('has no alarm without enabled alarms', () => {
+      TestBed.inject(AlarmService).stopChecker();
+      expect(service.snapshot().alarm).toBeUndefined();
+    });
+
+    it('reports an active dashboard countdown and drops it when inactive', () => {
+      const dashboard = TestBed.inject(DashboardService);
+      expect(service.snapshot().countdown).toBeUndefined();
+      dashboard.setCountdown('Standup', '22:30', true);
+      expect(service.snapshot().countdown).toEqual({ title: 'Standup', remainingSec: 5067 });
+      dashboard.setCountdown('Standup', '22:30', false);
+      expect(service.snapshot().countdown).toBeUndefined();
+    });
+
+    it('lists at most 3 world clocks with the right local time', () => {
+      settings.militaryTime.set(true);
+      const utcHour = START.getUTCHours();
+      const utcMin = String(START.getUTCMinutes()).padStart(2, '0');
+      const hh = (h: number) => String((h + 24) % 24).padStart(2, '0');
+
+      const clocks = service.snapshot().worldClocks;
+      expect(clocks.map(c => c.label)).toEqual(['New York', 'London', 'Tokyo']);
+      expect(clocks.map(c => c.hhmm)).toEqual([
+        `${hh(utcHour - 5)}:${utcMin}`, `${hh(utcHour)}:${utcMin}`, `${hh(utcHour + 9)}:${utcMin}`
+      ]);
+      expect(clocks.map(c => c.utc)).toEqual(['UTC-5', 'UTC+0', 'UTC+9']);
+      expect(clocks.every(c => [-1, 0, 1].includes(c.dayOffset))).toBeTrue();
+    });
   });
 
   it('omits weather when unavailable and always provides a quote and labels', () => {

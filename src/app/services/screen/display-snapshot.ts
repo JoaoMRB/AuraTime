@@ -1,7 +1,8 @@
 import { FontId, ThemeId } from './theme-tokens';
 
-/** Views the screen can show. 'system' (PC stats) arrives with the hardware monitor. */
-export type ScreenView = 'clock' | 'focus' | 'weather';
+/** Views the screen can show, in rotation order. */
+export const ALL_SCREEN_VIEWS = ['clock', 'focus', 'week', 'alarm', 'world', 'weather'] as const;
+export type ScreenView = (typeof ALL_SCREEN_VIEWS)[number];
 
 /** What the user picked: a fixed view, or automatic rotation. */
 export type ScreenViewMode = 'auto' | ScreenView;
@@ -15,6 +16,13 @@ export interface ScreenLabels {
   today: string;
   streak: string;
   minutes: string;
+  last7Days: string;
+  nextAlarm: string;
+  countdown: string;
+  worldClocks: string;
+  dayToday: string;
+  dayTomorrow: string;
+  inWord: string;
 }
 
 export interface ScreenTask {
@@ -48,6 +56,18 @@ export interface DisplaySnapshot {
     /** "Today's 3": the active task first, then the next unfinished ones. */
     tasks: ScreenTask[];
   };
+  /** Last 7 days of focus, oldest first. */
+  week: {
+    days: { label: string; minutes: number; isToday: boolean }[];
+    totalMin: number;
+    streak: number;
+  };
+  /** Next enabled alarm. */
+  alarm?: { label: string; hhmm: string; ampm: string; minutesUntil: number; whenLabel: string };
+  /** Active dashboard countdown. */
+  countdown?: { title: string; remainingSec: number };
+  /** Up to 3 world clocks. */
+  worldClocks: { label: string; hhmm: string; ampm: string; dayOffset: number; utc: string }[];
   weather?: { tempC: number; condition: string; description: string; icon: string; city: string };
   quote?: { text: string; author: string };
   stats: { todayMin: number; streak: number };

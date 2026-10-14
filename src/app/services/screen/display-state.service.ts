@@ -5,11 +5,14 @@ import { TaskService } from '../task.service';
 import { AnalyticsService } from '../analytics.service';
 import { WeatherService } from '../weather.service';
 import { DashboardService } from '../dashboard.service';
+import { AlarmService } from '../alarm.service';
+import { WorldClockService } from '../world-clock.service';
 import { TranslationService } from '../translation.service';
 import { TickService } from './tick.service';
 import { DisplaySnapshot } from './display-snapshot';
 import { formatClock } from './clock-format';
 import { labelsFor, localeForLang, selectTodayTasks } from './screen-logic';
+import { buildWeek, findNextAlarm, resolveCountdown, zonedTime } from './screen-data';
 import { resolveFont, resolveThemeId } from './theme-tokens';
 
 /**
@@ -28,6 +31,8 @@ export class DisplayStateService {
   private weatherService = inject(WeatherService);
   private dashboard = inject(DashboardService);
   private translation = inject(TranslationService);
+  private alarms = inject(AlarmService);
+  private worldClocks = inject(WorldClockService);
 
   /** Recomputed every second (tick) and whenever a source signal changes. */
   readonly snapshot = computed<DisplaySnapshot>(() => {
@@ -39,6 +44,31 @@ export class DisplayStateService {
     const running = this.pomodoro.isRunning();
     const pomoPhase = this.pomodoro.currentPhase();
     const phaseMinutes = pomoPhase === 'work' ? this.pomodoro.getWorkDuration() : this.pomodoro.getBreakDuration();
+
+    const labels = labelsFor(lang);
+    const locale = localeForLang(lang);
+    const clockOptions = { use24h, showSeconds: false };
+
+    const week = buildWeek(this.analytics.dailyRecords(), now, locale);
+
+    const next = findNextAlarm(this.alarms.allAlarms(), now);
+    const nextClock = next ? formatClock(next.at, clockOptions) : null;
+    const countdown = resolveCountdown(this.dashboard.countdown(), now);
+
+    const worldClocks: DisplaySnapshot['worldClocks'] = [];
+    for (const wc of this.worldClocks.allClocks()) {
+      const zoned = zonedTime(now, wc.timezone);
+      if (!zoned) continue;
+      const shown = formatClock(new Date(2000, 0, 1, zoned.hours, zoned.minutes), clockOptions);
+      worldClocks.push({
+        label: wc.label,
+        hhmm: `${shown.hours}:${shown.minutes}`,
+        ampm: shown.ampm.trim(),
+        dayOffset: zoned.dayOffset,
+        utc: `UTC${this.worldClocks.getUtcOffsetLabel(wc.timezone)}`
+      });
+      if (worldClocks.length === 3) break;
+    }
 
     const weather = this.weatherService.weather();
     const quote = this.dashboard.currentQuote();
@@ -60,6 +90,25 @@ export class DisplayStateService {
         totalSec: phaseMinutes * 60,
         tasks: selectTodayTasks(this.tasks.tasks(), this.tasks.activeTaskId())
       },
+      week: {
+        days: week.map(d => ({ label: d.label, minutes: d.minutes, isToday: d.isToday })),
+        totalMin: week.reduce((sum, d) => sum + d.minutes, 0),
+        streak: this.analytics.currentStreak()
+      },
+      alarm: next && nextClock
+        ? {
+            label: next.label,
+            hhmm: `${nextClock.hours}:${nextClock.minutes}`,
+            ampm: nextClock.ampm.trim(),
+            minutesUntil: next.minutesUntil,
+            whenLabel:
+              next.dayOffset === 0 ? labels.dayToday
+              : next.dayOffset === 1 ? labels.dayTomorrow
+              : capitalize(next.at.toLocaleDateString(locale, { weekday: 'long' }))
+          }
+        : undefined,
+      countdown: countdown ?? undefined,
+      worldClocks,
       weather: weather
         ? {
             tempC: weather.temperature,
@@ -74,7 +123,11 @@ export class DisplayStateService {
         todayMin: this.analytics.todayStats().minutes,
         streak: this.analytics.currentStreak()
       },
-      labels: labelsFor(lang)
+      labels
     };
   });
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

@@ -19,6 +19,8 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { WeatherService } from '../../services/weather.service';
 import { DashboardService } from '../../services/dashboard.service';
 import { PipService } from '../../services/pip.service';
+import { TickService } from '../../services/screen/tick.service';
+import { formatClock } from '../../services/screen/clock-format';
 
 @Component({
   selector: 'app-clock',
@@ -47,6 +49,7 @@ export class ClockComponent implements OnInit, OnDestroy {
   public weatherService = inject(WeatherService);
   public dashboardService = inject(DashboardService);
   public pipService = inject(PipService);
+  private tickService = inject(TickService);
   private platformId = inject(PLATFORM_ID);
   private route = inject(ActivatedRoute);
   private isBrowser = isPlatformBrowser(this.platformId);
@@ -125,8 +128,7 @@ export class ClockComponent implements OnInit, OnDestroy {
 
   private hudTimeout: any;
 
-  // Running interval IDs
-  private clockIntervalId: any;
+  private unsubscribeTick?: () => void;
 
   constructor() {
     // Watch settings changes to control background sounds
@@ -154,14 +156,14 @@ export class ClockComponent implements OnInit, OnDestroy {
       window.scrollTo(0, 0);
       document.body.style.overflow = 'hidden';
 
-      // Start time update interval
-      this.clockIntervalId = setInterval(() => {
+      // Subscribe to the shared per-second tick
+      this.unsubscribeTick = this.tickService.onTick(() => {
         this.updateTime();
         this.pomodoroService.tick();
         if (this.settings.sound() === 'tick') {
           this.audioService.playTickSound();
         }
-      }, 1000);
+      });
 
       // Start mouse inactivity listener
       this.triggerHudVisibility();
@@ -175,9 +177,7 @@ export class ClockComponent implements OnInit, OnDestroy {
     if (this.isBrowser) {
       document.body.style.overflow = '';
     }
-    if (this.clockIntervalId) {
-      clearInterval(this.clockIntervalId);
-    }
+    this.unsubscribeTick?.();
     if (this.hudTimeout) {
       clearTimeout(this.hudTimeout);
     }
@@ -208,22 +208,11 @@ export class ClockComponent implements OnInit, OnDestroy {
   // Update Time and Date
   updateTime() {
     const now = new Date();
-    let hrs = now.getHours();
-    const mins = String(now.getMinutes()).padStart(2, '0');
-    const secs = String(now.getSeconds()).padStart(2, '0');
-    
-    let ampm = '';
-    if (!this.settings.militaryTime()) {
-      ampm = hrs >= 12 ? ' PM' : ' AM';
-      hrs = hrs % 12;
-      hrs = hrs ? hrs : 12; // 0 should be 12
-    }
-    
-    const hrsStr = String(hrs).padStart(2, '0');
-    const timeStr = this.settings.showSeconds() 
-      ? `${hrsStr}:${mins}:${secs}${ampm}` 
-      : `${hrsStr}:${mins}${ampm}`;
-    
+    const { hours: hrsStr, minutes: mins, text: timeStr } = formatClock(now, {
+      use24h: this.settings.militaryTime(),
+      showSeconds: this.settings.showSeconds()
+    });
+
     this.currentTime.set(timeStr);
 
     // Format Date

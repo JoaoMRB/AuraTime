@@ -159,7 +159,6 @@ export class ClockComponent implements OnInit, OnDestroy {
       // Subscribe to the shared per-second tick
       this.unsubscribeTick = this.tickService.onTick(() => {
         this.updateTime();
-        this.pomodoroService.tick();
         if (this.settings.sound() === 'tick') {
           this.audioService.playTickSound();
         }

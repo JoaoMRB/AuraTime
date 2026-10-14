@@ -30,6 +30,44 @@ AuraTime is a minimalist luxury screen clock and ambient focus hub designed to e
 | `P` | Toggle Picture-in-Picture Mini Window |
 | `Z` | Toggle Zen Mode (Screensaver) |
 | `Esc` | Close all open drawers & panels |
+| `Space` / `R` | Start-pause / reset the Pomodoro (Pomodoro mode) |
+| `,` | Toggle Settings |
+| `C` / `H` | Cycle clock mode / theme |
+| `F` | Toggle fullscreen |
+| `+` / `-` | Scale the clock up / down |
+
+## USB Screen (Turing / TURZX 3.5")
+
+AuraTime can drive a 480x320 USB display (Turing Smart Screen / TURZX 3.5", USB `1A86:5722`, "rev. A" /
+UsbMonitor protocol) from the browser, using Web Serial (Chrome or Edge). No driver or extra software is
+needed; close the vendor software first, as only one program can use the port.
+
+1. Run the app and open `/screen` (for example `http://localhost:4200/screen`).
+2. Click **Connect display** and pick the screen. The next time it reconnects by itself.
+3. The display follows the app: theme, font, 12/24h clock, Pomodoro, today's tasks, focus stats, alarms,
+   world clocks and weather. Change them in the clock window (`/app`) and they update within a second.
+
+Views: clock, focus (Pomodoro + today's 3 tasks), week (last 7 days), next alarm / countdown, world clocks
+and weather + quote. They rotate every 20 s (focus stays on while a Pomodoro runs); views without content
+are skipped, and you choose which ones rotate in `/screen`. Brightness drops at night (23:00-07:00 by
+default) and the picture shifts a few pixels every minute against burn-in. Only the changed part of the
+image is sent. `/screen` also has a *Diagnostics* box ("always send the full screen", "slow send") for
+troubleshooting a flaky cable or display.
+
+### Always on (start with Windows)
+
+```powershell
+npm run build                                    # once
+.\scripts\screen-startup.ps1 -ServeLocal -Minimized # creates a shortcut in your Startup folder
+.\scripts\screen-startup.ps1 -Remove                # undo
+```
+
+At login the shortcut starts the local server, waits until the page answers and opens it in a dedicated
+Chrome/Edge window (own profile, timer throttling disabled so the clock keeps running when the window is
+minimized or covered). Click **Connect display** once in that window the first time. Use `-Url https://...`
+instead of `-ServeLocal` for a hosted copy (Web Serial needs HTTPS or `localhost`); add `-DryRun` to see
+what would be created. If the display is unplugged or the PC wakes from sleep, the page reconnects and
+redraws on its own.
 
 ## Quick Start
 

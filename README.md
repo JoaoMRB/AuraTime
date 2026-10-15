@@ -18,6 +18,8 @@ AuraTime is a minimalist luxury screen clock and ambient focus hub designed to e
 - **Chrome / Edge New Tab Extension:** Packaged Manifest V3 extension to transform every new tab into your zen dashboard.
 - **Luxury Aesthetics:** Emerald Gold, Liquid Glass, Obsidian Platinum, and Frosted Glass themes with customizable angles, scales, and fonts.
 - **Zen Screensaver Mode:** Anti-burn-in minimal immersion for OLED/ultrawide displays.
+- **Desk Display (USB screen):** Show your clock, focus session, tasks, alarms, world clocks and weather on a small 480x320 USB screen, straight from Chrome or Edge. See [Desk Display](#desk-display-usb-screen).
+- **Six languages:** English, Portuguese, Spanish, French, German and Italian.
 
 ## Keyboard Shortcuts
 
@@ -36,23 +38,28 @@ AuraTime is a minimalist luxury screen clock and ambient focus hub designed to e
 | `F` | Toggle fullscreen |
 | `+` / `-` | Scale the clock up / down |
 
-## USB Screen (Turing / TURZX 3.5")
+## Desk Display (USB screen)
 
-AuraTime can drive a 480x320 USB display (Turing Smart Screen / TURZX 3.5", USB `1A86:5722`, "rev. A" /
-UsbMonitor protocol) from the browser, using Web Serial (Chrome or Edge). No driver or extra software is
-needed; close the vendor software first, as only one program can use the port.
+**AuraTime Desk Display** shows your clock on a small 480x320 USB screen next to your keyboard. It is
+compatible with Turing Smart Screen 3.5" (USB) displays ("rev. A" / UsbMonitor protocol, USB `1A86:5722`) and
+runs entirely in the browser through Web Serial: **Google Chrome or Microsoft Edge on a computer**, no driver
+and no extra software. AuraTime is an independent project, not affiliated with any display manufacturer.
 
-1. Run the app and open `/screen` (for example `http://localhost:4200/screen`).
-2. Click **Connect display** and pick the screen. The next time it reconnects by itself.
-3. The display follows the app: theme, font, 12/24h clock, Pomodoro, today's tasks, focus stats, alarms,
-   world clocks and weather. Change them in the clock window (`/app`) and they update within a second.
+1. Open `/screen` (the **Desk Display** button on the landing page, or the entry in the clock's settings;
+   locally `http://localhost:4200/screen`).
+2. **Check your browser**, then **Connect the display**: plug it in, close the display's original software
+   (only one program can use it), press *Connect display* and pick it. Next time it reconnects by itself.
+3. **Choose the views.** Without a display the preview runs in *demo mode* with sample data, so you can try
+   everything first. Firefox, Safari and phones get an explanation instead of buttons that cannot work.
 
-Views: clock, focus (Pomodoro + today's 3 tasks), week (last 7 days), next alarm / countdown, world clocks
-and weather + quote. They rotate every 20 s (focus stays on while a Pomodoro runs); views without content
-are skipped, and you choose which ones rotate in `/screen`. Brightness drops at night (23:00-07:00 by
-default) and the picture shifts a few pixels every minute against burn-in. Only the changed part of the
-image is sent. `/screen` also has a *Diagnostics* box ("always send the full screen", "slow send") for
-troubleshooting a flaky cable or display.
+The display follows the app (theme, font, 12/24h clock, Pomodoro, today's tasks, focus stats, alarms, world
+clocks and weather) or pins its own theme and font. Views: clock, focus (Pomodoro + today's 3 tasks), week
+(last 7 days), next alarm / countdown, world clocks, and weather + quote. They rotate every 20 s (focus stays
+on while a Pomodoro runs); views without content are skipped and you choose which ones rotate. Brightness
+drops at night (23:00-07:00 by default, or a black screen), the picture drifts a few pixels every minute
+against burn-in, and only the changed part of the image is sent. The *Advanced* section holds flow control and
+troubleshooting options ("always send the full screen", "slow send"). Everything is available in English,
+Portuguese, Spanish, French, German and Italian.
 
 ### Always on (start with Windows)
 
@@ -87,7 +94,7 @@ npm run build:extension
 1. Open `chrome://extensions` (or `edge://extensions`) in your browser.
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select the generated `dist-extension` folder.
-4. Open a new tab!
+4. Open a new tab! It shows the clock; the monitor button in the top-right corner opens the Desk Display.
 
 ## Support
 

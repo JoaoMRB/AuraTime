@@ -100,8 +100,13 @@
             @if (supported) {
               <p class="mt-3 text-sm text-emerald-300/90">{{ ts.t('SCREEN.PAGE.S1.OK') }}</p>
             } @else {
-              <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
-              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
+              @if (link.isInsecureContext()) {
+                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug" data-testid="insecure-context">{{ ts.t('SCREEN.PAGE.INSECURE.TITLE') }}</h3>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.INSECURE.TEXT') }}</p>
+              } @else {
+                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
+              }
             }
           </article>
 

@@ -5,7 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { ScreenComponent } from './screen.component';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
-import { SERIAL_API } from '../../services/screen/serial-link.service';
+import { SECURE_CONTEXT, SERIAL_API } from '../../services/screen/serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../../services/web-locks';
 import { FakeLockManager, flushLocks } from '../../services/testing/fake-locks';
 import { TranslationService } from '../../services/translation.service';
@@ -353,5 +353,38 @@ describe('ScreenComponent: a second window', () => {
     expect(el.querySelector('[data-testid="other-window"]')).toBeNull();
     expect(hasConnectButton(el)).toBeTrue();
     fixture.destroy();
+  });
+});
+
+describe('ScreenComponent: Web Serial missing because of plain http', () => {
+  function render(secure: boolean): HTMLElement {
+    TestBed.configureTestingModule({
+      imports: [ScreenComponent],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: SERIAL_API, useValue: null },
+        { provide: SECURE_CONTEXT, useValue: secure },
+        { provide: LOCKS_API, useValue: null }
+      ]
+    });
+    const fixture = TestBed.createComponent(ScreenComponent);
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ');
+
+  it('says it needs HTTPS or localhost, not "use Chrome"', () => {
+    const el = render(false);
+    expect(el.querySelector('[data-testid="insecure-context"]')).toBeTruthy();
+    expect(text(el)).toContain('Web Serial needs HTTPS or localhost');
+    expect(text(el)).not.toContain('needs Chrome or Edge');
+  });
+
+  it('a secure page in a browser without Web Serial still says to use Chrome or Edge', () => {
+    const el = render(true);
+    expect(el.querySelector('[data-testid="insecure-context"]')).toBeNull();
+    expect(text(el)).toContain('needs Chrome or Edge');
   });
 });

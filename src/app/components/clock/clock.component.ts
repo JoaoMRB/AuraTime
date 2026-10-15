@@ -22,6 +22,8 @@ import { PipService } from '../../services/pip.service';
 import { TickService } from '../../services/screen/tick.service';
 import { formatClock } from '../../services/screen/clock-format';
 import { isThemeId, resolveThemeId } from '../../services/screen/theme-tokens';
+import { DeskDisplayStatusService } from '../../services/screen/desk-display-status.service';
+import { isExtensionPage } from '../../extension-context';
 
 @Component({
   selector: 'app-clock',
@@ -50,6 +52,10 @@ export class ClockComponent implements OnInit, OnDestroy {
   public weatherService = inject(WeatherService);
   public dashboardService = inject(DashboardService);
   public pipService = inject(PipService);
+  /** Whether the Desk Display (USB screen) page has a display connected, in another window. */
+  public deskStatus = inject(DeskDisplayStatusService);
+  /** Running as the browser's new tab page (extension): shows a Desk Display shortcut in the HUD. */
+  public isExtension = isExtensionPage;
   private tickService = inject(TickService);
   private platformId = inject(PLATFORM_ID);
   private route = inject(ActivatedRoute);

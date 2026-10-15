@@ -151,6 +151,83 @@ describe('ScreenOutputService', () => {
     expect(service.activeView()).toBe('focus');
   });
 
+  describe('a hidden page (throttled timers)', () => {
+    const setHidden = (hidden: boolean) =>
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    const fullFrames = () => bitmapHeaders().filter(h => {
+      const r = headerRect(h);
+      return r.x1 === 479 && r.y1 === 319 && r.x0 === 0 && r.y0 === 0;
+    }).length;
+
+    afterEach(() => {
+      delete (document as unknown as { hidden?: boolean }).hidden; // back to the browser's own value
+    });
+
+    it('does not take a throttled gap for a sleeping PC: nothing is resent', async () => {
+      await connect();
+      const before = bitmapHeaders().length;
+      await service.renderFrame();
+
+      setHidden(true);
+      jasmine.clock().install();
+      try {
+        for (let i = 1; i <= 4; i++) {
+          jasmine.clock().mockDate(new Date(Date.now() + i * 60_000)); // about one tick a minute
+          await service.renderFrame();
+        }
+      } finally {
+        jasmine.clock().uninstall();
+      }
+      expect(bitmapHeaders().length).toBe(before);
+    });
+
+    it('does not force a full resend when the page comes back into view either', async () => {
+      await connect();
+      const full = fullFrames();
+      await service.renderFrame();
+      setHidden(true);
+      (service as unknown as { onVisibilityChange(): void }).onVisibilityChange();
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(Date.now() + 90_000));
+        await service.renderFrame();
+        setHidden(false);
+        (service as unknown as { onVisibilityChange(): void }).onVisibilityChange();
+        jasmine.clock().mockDate(new Date(Date.now() + 90_000));
+        await service.renderFrame();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+      expect(fullFrames()).toBe(full);
+    });
+
+    it('a visible page with a long gap is still treated as a PC that slept: full resend', async () => {
+      await connect();
+      const full = fullFrames();
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(Date.now() + 90_000));
+        await service.renderFrame();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+      expect(fullFrames()).toBe(full + 1);
+    });
+
+    it('tells the other windows whether it is hidden, and when that changes', async () => {
+      await connect();
+      const stored = () => JSON.parse(localStorage.getItem(DESK_STATUS_KEY)!);
+      expect(stored().hidden).toBeFalse();
+      setHidden(true);
+      (service as unknown as { onVisibilityChange(): void }).onVisibilityChange();
+      expect(stored().hidden).toBeTrue();
+      expect(stored().connected).toBeTrue();
+      setHidden(false);
+      (service as unknown as { onVisibilityChange(): void }).onVisibilityChange();
+      expect(stored().hidden).toBeFalse();
+    });
+  });
+
   describe('always-on resilience', () => {
     beforeEach(() => {
       service.reconnectBaseMs = 0; // no waiting in tests unless a test sets it

@@ -1,8 +1,11 @@
-import { Injectable, NgZone, OnDestroy, PLATFORM_ID, effect, inject, signal, untracked } from '@angular/core';
+import { Injectable, NgZone, OnDestroy, PLATFORM_ID, computed, effect, inject, signal, untracked } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { DisplayStateService } from './display-state.service';
 import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
+import { DESK_STATUS_HEARTBEAT_MS, DeskDisplayStatusService } from './desk-display-status.service';
+import { fillDemoData } from './demo-data';
+import { FONT_TOKENS, FontId, ThemeId, isThemeId } from './theme-tokens';
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
 import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
@@ -17,6 +20,12 @@ export interface ScreenPrefs {
   rotation: ScreenView[];
   brightness: BrightnessConfig;
   flowControl: boolean;
+  /** Pin the display's theme (null = follow the app). */
+  themePin: ThemeId | null;
+  /** Pin the display's font (null = follow the app). */
+  fontPin: FontId | null;
+  /** Show sample data while no display is connected. */
+  demo: boolean;
   /** Diagnostic: resend the whole 480x320 frame every second instead of only the changed rectangle. */
   alwaysFullFrame: boolean;
   /** Diagnostic: pause 3 ms after every chunk (what the prototype called "slow send"). */
@@ -39,6 +48,9 @@ const DEFAULT_PREFS: ScreenPrefs = {
   rotation: [...ALL_SCREEN_VIEWS],
   brightness: DEFAULT_BRIGHTNESS_CONFIG,
   flowControl: true,
+  themePin: null,
+  fontPin: null,
+  demo: true,
   alwaysFullFrame: false,
   slowSend: false,
   autoConnect: false
@@ -60,12 +72,20 @@ export class ScreenOutputService implements OnDestroy {
   private link = inject(SerialLinkService);
   private tick = inject(TickService);
   private zone = inject(NgZone);
+  private deskStatus = inject(DeskDisplayStatusService);
 
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   /** Views that take part in the automatic rotation (only those with content are actually shown). */
   readonly rotation = signal<ScreenView[]>(DEFAULT_PREFS.rotation);
   readonly brightness = signal<BrightnessConfig>(DEFAULT_PREFS.brightness);
   readonly flowControl = signal<boolean>(DEFAULT_PREFS.flowControl);
+  /** Pinned theme / font; null means "follow the app". */
+  readonly themePin = signal<ThemeId | null>(DEFAULT_PREFS.themePin);
+  readonly fontPin = signal<FontId | null>(DEFAULT_PREFS.fontPin);
+  /** The user allows sample data while no display is connected. */
+  readonly demoEnabled = signal<boolean>(DEFAULT_PREFS.demo);
+  /** True while the preview is showing sample data (demo allowed and no display connected). */
+  readonly demoActive = computed(() => this.demoEnabled() && this.link.status() !== 'connected');
   readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
   /** The view currently on screen (useful for the preview UI). */
@@ -82,6 +102,7 @@ export class ScreenOutputService implements OnDestroy {
   private reconnectFailures = 0;
   private lastReconnectAttempt = 0;
   private lastFrameAt = 0;
+  private lastHeartbeat = 0;
 
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
@@ -108,6 +129,12 @@ export class ScreenOutputService implements OnDestroy {
       effect(() => {
         const delay = this.slowSend() ? SLOW_SEND_CHUNK_DELAY_MS : 0;
         untracked(() => this.link.chunkDelayMs.set(delay));
+      });
+
+      // Tell the other windows (the clock's settings) whether a display is connected.
+      effect(() => {
+        const connected = this.link.status() === 'connected';
+        untracked(() => this.publishStatus(connected));
       });
 
       // A fresh connection starts from a blank display: resend everything.
@@ -138,6 +165,7 @@ export class ScreenOutputService implements OnDestroy {
 
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
+    window.addEventListener('pagehide', this.onPageHide);
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     // The first frame also kicks off the reconnection to the display used last time (if any).
     await this.zone.runOutsideAngular(() => this.renderFrame());
@@ -147,6 +175,18 @@ export class ScreenOutputService implements OnDestroy {
     this.unsubscribeTick?.();
     this.unsubscribeTick = null;
     this.started = false;
+    if (this.isBrowser) {
+      window.removeEventListener('pagehide', this.onPageHide);
+      this.deskStatus.publish(false);
+    }
+  }
+
+  /** The Desk Display window is going away: other windows must not keep showing "connected". */
+  private onPageHide = () => this.deskStatus.publish(false);
+
+  private publishStatus(connected: boolean): void {
+    this.lastHeartbeat = Date.now();
+    this.deskStatus.publish(connected);
   }
 
   /** Must be called from a click: opens the browser's device picker. */
@@ -199,7 +239,11 @@ export class ScreenOutputService implements OnDestroy {
   async renderFrame(): Promise<void> {
     if (!this.ctx || !this.canvas) return;
 
-    const snap = this.display.snapshot();
+    let snap = this.display.snapshot();
+    if (this.demoActive()) snap = fillDemoData(snap);
+    const themePin = this.themePin();
+    const fontPin = this.fontPin();
+    if (themePin || fontPin) snap = { ...snap, theme: themePin ?? snap.theme, fontId: fontPin ?? snap.fontId };
     const now = snap.now;
     const view = pickView({
       mode: this.viewMode(),
@@ -213,6 +257,10 @@ export class ScreenOutputService implements OnDestroy {
     this.activeView.set(view);
     this.appliedBrightness.set(level);
     drawScreen(this.ctx, snap, view, { shift: pixelShift(now), black });
+
+    if (Date.now() - this.lastHeartbeat >= DESK_STATUS_HEARTBEAT_MS) {
+      this.publishStatus(this.link.isConnected());
+    }
 
     // A long gap between frames means the PC slept: the display may have lost its picture.
     const wallNow = Date.now();
@@ -292,6 +340,9 @@ export class ScreenOutputService implements OnDestroy {
       }
       if (p.brightness) this.brightness.set({ ...DEFAULT_BRIGHTNESS_CONFIG, ...p.brightness });
       if (typeof p.flowControl === 'boolean') this.flowControl.set(p.flowControl);
+      if (p.themePin && isThemeId(p.themePin)) this.themePin.set(p.themePin);
+      if (p.fontPin && p.fontPin in FONT_TOKENS) this.fontPin.set(p.fontPin);
+      if (typeof p.demo === 'boolean') this.demoEnabled.set(p.demo);
       if (typeof p.alwaysFullFrame === 'boolean') this.alwaysFullFrame.set(p.alwaysFullFrame);
       if (typeof p.slowSend === 'boolean') this.slowSend.set(p.slowSend);
       if (typeof p.autoConnect === 'boolean') this.autoConnect = p.autoConnect;
@@ -306,6 +357,9 @@ export class ScreenOutputService implements OnDestroy {
       rotation: this.rotation(),
       brightness: this.brightness(),
       flowControl: this.flowControl(),
+      themePin: this.themePin(),
+      fontPin: this.fontPin(),
+      demo: this.demoEnabled(),
       alwaysFullFrame: this.alwaysFullFrame(),
       slowSend: this.slowSend(),
       autoConnect: this.autoConnect

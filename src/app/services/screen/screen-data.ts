@@ -137,6 +137,37 @@ export function zonedTime(date: Date, timeZone: string): ZonedTime | null {
   }
 }
 
+/** Offset of an IANA time zone from UTC, in minutes, at the given instant (0 for an unknown zone). */
+export function zoneOffsetMinutes(date: Date, timeZone: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric'
+    }).formatToParts(date);
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value ?? '0', 10);
+    const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'));
+    const truncated = Math.floor(date.getTime() / 1000) * 1000;
+    return Math.round((asUtc - truncated) / 60000);
+  } catch {
+    return 0;
+  }
+}
+
+/** "+1", "-5", "+5:30" (hours, with minutes only when needed). */
+export function formatUtcOffset(minutes: number): string {
+  const sign = minutes >= 0 ? '+' : '-';
+  const abs = Math.abs(minutes);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return m === 0 ? `${sign}${h}` : `${sign}${h}:${String(m).padStart(2, '0')}`;
+}
+
 /** "12m", "9h 12m", "2d 3h". */
 export function formatDuration(totalMinutes: number): string {
   const minutes = Math.max(0, Math.round(totalMinutes));

@@ -44,7 +44,7 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   Finishing a Pomodoro phase is credited once across windows: the credit is taken under a Web Lock and the
   "already credited?" check is repeated inside it, so two windows that notice the end at the same moment cannot
   both credit it (in a browser without Web Locks the check is best effort).
-- **Tests**: from none to 411 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
+- **Tests**: from none to 417 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
   with a fake port, wire integrity (header and pixels are never interleaved), reconnection and back-off, demo
   data, translations, and the landing, `/screen` and clock components.
 
@@ -110,6 +110,7 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   `"constructor"` is no longer a font). Every storage access is guarded.
 - **Alarms and daylight saving:** the time left to an alarm now respects the days it is set for and skips a day
   on which its time does not exist (the hour skipped when clocks go forward).
+- **Nothing lost:** when a stored list (tasks, alarms, links, world clocks, timer presets) fails validation, or loses entries, the raw text is first copied to `auratime_<name>_corrupt_<timestamp>` (the newest three are kept).
 - **Notes:** the "saved at" label never appeared (the write to it was rejected and hidden); it works now.
 - **Web Serial on plain http:** the page says "Web Serial needs HTTPS or localhost" instead of "use Chrome".
 - **Docs:** compatibility is worded as "Turing Smart Screen 3.5" class, USB 1A86:5722, rev. A"; the README adds

@@ -1,8 +1,7 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
-import { isRecord } from './safe-storage';
-import { sanitizeCountdown, sanitizeLinks } from './storage-validators';
+import { backupCorrupt, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeCountdown, sanitizeLinks } from './storage-validators';
 
 export interface QuickLink {
   id: string;
@@ -89,6 +88,7 @@ export class DashboardService {
     const parsed = parseJson(data);
     if (!isRecord(parsed)) return;
     const links = sanitizeLinks(parsed['links']); // only http(s) addresses survive
+    if (parsed['links'] !== undefined && lostEntries(parsed['links'], links)) backupCorrupt('auratime_dashboard', data);
     if (links) this.links.set(links);
     const countdown = sanitizeCountdown(parsed['countdown']);
     if (countdown) this.countdown.set(countdown);

@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
-import { sanitizeWorldClocks } from './storage-validators';
+import { backupCorrupt, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeWorldClocks } from './storage-validators';
 
 export interface WorldClock {
   id: string;
@@ -213,7 +213,9 @@ export class WorldClockService {
 
   private applyRaw(data: string | null): void {
     if (!data) return;
-    const parsed = sanitizeWorldClocks(parseJson(data)); // clocks with an unknown time zone are dropped
+    const raw = parseJson(data);
+    const parsed = sanitizeWorldClocks(raw); // clocks with an unknown time zone are dropped
+    if (lostEntries(raw, parsed)) backupCorrupt('auratime_worldclocks', data);
     if (parsed && parsed.length > 0) {
       this.clocks.set(parsed);
     }

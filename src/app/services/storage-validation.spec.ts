@@ -12,6 +12,7 @@ import { TimerService } from './timer.service';
 import { SoundscapeService } from './soundscape.service';
 import { PomodoroService } from './pomodoro.service';
 import { LOCKS_API } from './web-locks';
+import { backupCorrupt } from './safe-storage';
 import { TranslationService } from './translation.service';
 import { LoggerService } from './logger.service';
 import { NotesService } from './notes.service';
@@ -370,5 +371,68 @@ describe('the scratchpad', () => {
     TestBed.flushEffects();
     expect(localStorage.getItem('auratime_scratchpad')).toBe('remember the milk');
     expect(notes.lastSaved()).not.toBe('');
+  });
+});
+
+describe('a stored list that fails validation is backed up first', () => {
+  const backups = (key: string) =>
+    Object.keys(localStorage).filter(k => k.startsWith(key + '_corrupt_')).sort();
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  it('copies the raw tasks to a backup key before falling back to the starter tasks', () => {
+    const raw = '{"tasks":"broken","note":"my data"}';
+    localStorage.setItem('auratime_tasks', raw);
+    expect(TestBed.inject(TaskService).tasks().length).toBe(2);
+    const [key] = backups('auratime_tasks');
+    expect(key).toMatch(/^auratime_tasks_corrupt_\d+$/);
+    expect(localStorage.getItem(key)).toBe(raw);
+  });
+
+  it('also backs up text that is not even JSON', () => {
+    localStorage.setItem('auratime_tasks', '{oops');
+    TestBed.inject(TaskService);
+    expect(localStorage.getItem(backups('auratime_tasks')[0])).toBe('{oops');
+  });
+
+  it('backs up the whole list when only some entries are dropped', () => {
+    const raw = JSON.stringify({ tasks: [{ id: 'a', text: 'keep' }, { id: 5 }] });
+    localStorage.setItem('auratime_tasks', raw);
+    expect(TestBed.inject(TaskService).tasks().length).toBe(1);
+    expect(localStorage.getItem(backups('auratime_tasks')[0])).toBe(raw);
+  });
+
+  it('does not back up a value that is fine, nor an empty storage', () => {
+    localStorage.setItem('auratime_tasks', JSON.stringify({ tasks: [{ id: 'a', text: 'ok' }], activeTaskId: 'a' }));
+    TestBed.inject(TaskService);
+    expect(backups('auratime_tasks')).toEqual([]);
+  });
+
+  it('the same for alarms, links, world clocks and timer presets', () => {
+    TestBed.configureTestingModule({ providers: [audioStub] });
+    const bad = { alarms: '[{"id":"1","time":"99:99"}]', links: '{"links":[{"id":"1","title":"x","url":"javascript:1"}]}', clocks: '[{"id":"1","label":"x","timezone":"No/Where"}]', presets: '[{"id":"1","label":"x","duration":-1}]' };
+    localStorage.setItem('auratime_alarms', bad.alarms);
+    localStorage.setItem('auratime_dashboard', bad.links);
+    localStorage.setItem('auratime_worldclocks', bad.clocks);
+    localStorage.setItem('auratime_timer_presets', bad.presets);
+    TestBed.inject(AlarmService).destroy();
+    TestBed.inject(DashboardService);
+    TestBed.inject(WorldClockService);
+    TestBed.inject(TimerService);
+    expect(localStorage.getItem(backups('auratime_alarms')[0])).toBe(bad.alarms);
+    expect(localStorage.getItem(backups('auratime_dashboard')[0])).toBe(bad.links);
+    expect(localStorage.getItem(backups('auratime_worldclocks')[0])).toBe(bad.clocks);
+    expect(localStorage.getItem(backups('auratime_timer_presets')[0])).toBe(bad.presets);
+  });
+
+  it('backupCorrupt keeps only the newest three, never repeats itself, and survives a full storage', () => {
+    for (let i = 0; i < 5; i++) backupCorrupt('k', 'value ' + i);
+    expect(backups('k').length).toBe(3);
+    expect(backupCorrupt('k', 'value 4')).toBeNull(); // already backed up
+    expect(backups('k').map(b => localStorage.getItem(b))).toEqual(['value 2', 'value 3', 'value 4']);
+    expect(backupCorrupt('k', null)).toBeNull();
+    spyOn(Storage.prototype, 'setItem').and.throwError('QuotaExceededError');
+    expect(() => backupCorrupt('k', 'another')).not.toThrow();
   });
 });

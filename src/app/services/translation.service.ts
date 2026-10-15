@@ -1,6 +1,7 @@
-import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, inject, PLATFORM_ID, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
+import { DESK_DISPLAY_EN } from '../i18n/desk-display.en';
 
 // Default fallback to ensure SSR loads instantly and safely without HTTP requests
 const DEFAULT_EN: any = {
@@ -201,13 +202,28 @@ const DEFAULT_EN: any = {
   }
 };
 
+/** Adds the keys of `source` into `target` without replacing the ones that already exist. */
+function mergeMissing(target: any, source: any): void {
+  for (const key of Object.keys(source)) {
+    const value = source[key];
+    if (value && typeof value === 'object') {
+      if (!target[key] || typeof target[key] !== 'object') target[key] = {};
+      mergeMissing(target[key], value);
+    } else if (target[key] === undefined) {
+      target[key] = value;
+    }
+  }
+}
+mergeMissing(DEFAULT_EN, DESK_DISPLAY_EN);
+
 @Injectable({
   providedIn: 'root'
 })
 export class TranslationService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
-  
+  private destroyRef = inject(DestroyRef);
+
   currentLang = signal<string>('en');
   translations = signal<any>(DEFAULT_EN);
 
@@ -216,16 +232,29 @@ export class TranslationService {
     if (isPlatformBrowser(this.platformId)) {
       const savedLang = localStorage.getItem('auratime_lang');
       if (savedLang) {
-        this.setLanguage(savedLang);
+        this.applyLanguage(savedLang);
       }
+
+      // Another window (e.g. the clock while this is the Desk Display page) changed the language
+      const onStorage = (event: StorageEvent) => {
+        if (event.key === 'auratime_lang' && event.newValue && event.newValue !== this.currentLang()) {
+          this.applyLanguage(event.newValue);
+        }
+      };
+      window.addEventListener('storage', onStorage);
+      this.destroyRef.onDestroy(() => window.removeEventListener('storage', onStorage));
     }
   }
 
   setLanguage(lang: string) {
-    this.currentLang.set(lang);
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem('auratime_lang', lang);
     }
+    this.applyLanguage(lang);
+  }
+
+  private applyLanguage(lang: string) {
+    this.currentLang.set(lang);
 
     // Load translations from JSON
     const url = `/assets/i18n/${lang}.json`;
@@ -253,6 +282,11 @@ export class TranslationService {
       { code: 'de', name: 'Deutsch' },
       { code: 'it', name: 'Italiano' }
     ];
+  }
+
+  /** Translates a path and fills {placeholders}, e.g. format('SCREEN.PAGE.S2.SENT', { images: 3, kb: 12 }). */
+  format(path: string, params: Record<string, string | number>): string {
+    return this.t(path).replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
   }
 
   // Translates a path string like 'LANDING.HERO.TITLE'

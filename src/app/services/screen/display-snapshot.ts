@@ -25,6 +25,8 @@ export interface ScreenLabels {
   inWord: string;
   /** Weather description by WeatherService condition (sunny, cloudy, rainy, ...). */
   weather: Record<string, string>;
+  /** Texts of the sample data shown in demo mode. */
+  demo: { task1: string; task2: string; task3: string; alarm: string; countdown: string; city: string };
 }
 
 export interface ScreenTask {

@@ -1,5 +1,5 @@
 import {
-  DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, isNight, labelsFor, localeForLang,
+  DEFAULT_BRIGHTNESS_CONFIG, buildLabels, effectiveBrightness, isNight, localeForLang,
   pickView, pixelShift, selectTodayTasks, viewHasContent, VIEW_ROTATION_SECONDS
 } from './screen-logic';
 import { ALL_SCREEN_VIEWS, DisplaySnapshot, ScreenView } from './display-snapshot';
@@ -137,10 +137,22 @@ describe('screen-logic', () => {
     });
   });
 
-  it('maps languages to locales and labels with an English fallback', () => {
+  it('maps languages to locales, with an English fallback', () => {
     expect(localeForLang('pt')).toBe('pt-PT');
+    expect(localeForLang('de')).toBe('de-DE');
     expect(localeForLang('xx')).toBe('en-US');
-    expect(labelsFor('pt').focus).toBe('FOCO');
-    expect(labelsFor('de').focus).toBe('FOCUS');
+  });
+
+  it('builds the screen texts from translation keys', () => {
+    const seen: string[] = [];
+    const labels = buildLabels(path => {
+      seen.push(path);
+      return `<${path}>`;
+    });
+    expect(labels.focus).toBe('<SCREEN.LABELS.FOCUS>');
+    expect(labels.inWord).toBe('<SCREEN.LABELS.IN>');
+    expect(labels.weather['clear-night']).toBe('<SCREEN.WEATHER.CLEAR_NIGHT>');
+    expect(labels.demo.city).toBe('<SCREEN.DEMO.CITY>');
+    expect(seen.every(p => /^SCREEN\.(LABELS|WEATHER|DEMO)\./.test(p))).toBeTrue();
   });
 });

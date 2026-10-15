@@ -116,29 +116,26 @@ export function localeForLang(lang: string): string {
   return LOCALES[lang] ?? 'en-US';
 }
 
-const LABELS: Record<'en' | 'pt', ScreenLabels> = {
-  en: {
-    focus: 'FOCUS', break: 'BREAK', paused: 'PAUSED', ready: 'READY',
-    noTasks: 'No open tasks', today: 'TODAY', streak: 'DAY STREAK', minutes: 'min',
-    last7Days: 'LAST 7 DAYS', nextAlarm: 'NEXT ALARM', countdown: 'COUNTDOWN', worldClocks: 'WORLD CLOCKS',
-    dayToday: 'Today', dayTomorrow: 'Tomorrow', inWord: 'in',
-    weather: {
-      sunny: 'Clear sky', 'clear-night': 'Clear night', cloudy: 'Cloudy',
-      rainy: 'Rain', snowy: 'Snow', stormy: 'Thunderstorm'
-    }
-  },
-  pt: {
-    focus: 'FOCO', break: 'PAUSA', paused: 'EM PAUSA', ready: 'PRONTO',
-    noTasks: 'Sem tarefas abertas', today: 'HOJE', streak: 'DIAS SEGUIDOS', minutes: 'min',
-    last7Days: 'ÚLTIMOS 7 DIAS', nextAlarm: 'PRÓXIMO ALARME', countdown: 'CONTAGEM',
-    worldClocks: 'RELÓGIOS MUNDIAIS', dayToday: 'Hoje', dayTomorrow: 'Amanhã', inWord: 'em',
-    weather: {
-      sunny: 'Céu limpo', 'clear-night': 'Noite limpa', cloudy: 'Nublado',
-      rainy: 'Chuva', snowy: 'Neve', stormy: 'Trovoada'
-    }
-  }
-};
+/** Looks a text up by its translation key (e.g. 'SCREEN.LABELS.FOCUS'). */
+export type TextLookup = (path: string) => string;
 
-export function labelsFor(lang: string): ScreenLabels {
-  return lang === 'pt' ? LABELS.pt : LABELS.en;
+/** Builds the texts the display draws from the app's translations, so the screen follows the app language. */
+export function buildLabels(t: TextLookup): ScreenLabels {
+  const l = (key: string) => t(`SCREEN.LABELS.${key}`);
+  const w = (key: string) => t(`SCREEN.WEATHER.${key}`);
+  const d = (key: string) => t(`SCREEN.DEMO.${key}`);
+  return {
+    focus: l('FOCUS'), break: l('BREAK'), paused: l('PAUSED'), ready: l('READY'), noTasks: l('NO_TASKS'),
+    today: l('TODAY'), streak: l('STREAK'), minutes: l('MINUTES'), last7Days: l('LAST7'),
+    nextAlarm: l('NEXT_ALARM'), countdown: l('COUNTDOWN'), worldClocks: l('WORLD_CLOCKS'),
+    dayToday: l('DAY_TODAY'), dayTomorrow: l('DAY_TOMORROW'), inWord: l('IN'),
+    weather: {
+      sunny: w('SUNNY'), 'clear-night': w('CLEAR_NIGHT'), cloudy: w('CLOUDY'),
+      rainy: w('RAINY'), snowy: w('SNOWY'), stormy: w('STORMY')
+    },
+    demo: {
+      task1: d('TASK_1'), task2: d('TASK_2'), task3: d('TASK_3'),
+      alarm: d('ALARM'), countdown: d('COUNTDOWN'), city: d('CITY')
+    }
+  };
 }

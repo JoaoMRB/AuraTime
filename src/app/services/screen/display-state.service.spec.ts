@@ -156,11 +156,16 @@ describe('DisplayStateService', () => {
     weatherService.weather = () => ({ temperature: 18, condition: 'rainy', description: 'Chuva', icon: 'x', cityName: 'Lisboa' });
     expect(service.snapshot().weather!.description).toBe('Rain');
 
-    TestBed.inject(TranslationService).currentLang.set('pt');
+    // The app switches language: translations arrive and the screen texts follow
+    const translation = TestBed.inject(TranslationService);
+    translation.currentLang.set('pt');
+    translation.translations.set({ SCREEN: { WEATHER: { RAINY: 'Chuva' }, LABELS: { FOCUS: 'FOCO' } } });
     expect(service.snapshot().weather!.description).toBe('Chuva');
+    expect(service.snapshot().labels.focus).toBe('FOCO');
 
     weatherService.weather = () => ({ temperature: 5, condition: 'something-new', description: 'Raw', icon: 'x', cityName: 'x' });
     TestBed.inject(TranslationService).currentLang.set('en'); // changes a signal, so the snapshot is recomputed
+    translation.translations.set({}); // back to the built-in English texts
     expect(service.snapshot().weather!.description).toBe('Raw'); // unknown condition: keep the service text
   });
 

@@ -1,7 +1,7 @@
 import { DisplaySnapshot, ScreenView } from './display-snapshot';
 import { drawScreen, formatMmSs, gradientLine, withAlpha, wrapText } from './screen-renderer';
 import { THEME_IDS, ThemeId } from './theme-tokens';
-import { labelsFor } from './screen-logic';
+import { englishLabels } from './testing/english-labels';
 
 function snapshot(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
   return {
@@ -38,7 +38,7 @@ function snapshot(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
       { label: 'London', hhmm: '21:05', ampm: '', dayOffset: 0, utc: 'UTC+0' },
       { label: 'Tokyo', hhmm: '06:05', ampm: '', dayOffset: 1, utc: 'UTC+9' }
     ],
-    labels: labelsFor('en'),
+    labels: englishLabels(),
     ...overrides
   };
 }

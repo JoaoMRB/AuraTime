@@ -40,6 +40,8 @@ export class AlarmService {
   private checkInterval: any = null;
   private lastMinuteKey = '';
   private dismissedAlarmIds = new Set<string>();
+  /** How many display-only pages currently ask this window not to ring (see suppressRinging). */
+  private ringSuppressions = 0;
 
   constructor() {
     if (this.isBrowser) {
@@ -180,7 +182,7 @@ export class AlarmService {
 
   // Check if any alarm should ring
   private checkAlarms(): void {
-    if (this.isRinging()) return;
+    if (this.isRinging() || this.ringSuppressions > 0) return;
 
     const now = new Date();
     this.syncMinuteWindow(now);
@@ -324,14 +326,18 @@ export class AlarmService {
   }
 
   /**
-   * Stops the once-a-second ring check. Windows that only *display* alarms (the /screen page)
-   * call this so the alarm does not also sound there.
+   * Keeps this window from ringing while a display-only page (the Desk Display) is open, without
+   * touching the shared checker: alarms keep working on every other route, and again as soon as the
+   * returned function is called (the page calls it when it is destroyed). Safe to call twice.
    */
-  stopChecker(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
+  suppressRinging(): () => void {
+    this.ringSuppressions++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.ringSuppressions--;
+    };
   }
 
   // Cleanup

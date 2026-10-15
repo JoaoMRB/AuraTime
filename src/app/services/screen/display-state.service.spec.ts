@@ -100,7 +100,6 @@ describe('DisplayStateService', () => {
     });
 
     it('reports the next alarm (12h and 24h) with a relative day label', () => {
-      TestBed.inject(AlarmService).stopChecker();
       TestBed.inject(AlarmService).addAlarm({
         label: 'Evening', time: '22:00', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime'
       });
@@ -122,7 +121,6 @@ describe('DisplayStateService', () => {
     });
 
     it('has no alarm without enabled alarms', () => {
-      TestBed.inject(AlarmService).stopChecker();
       expect(service.snapshot().alarm).toBeUndefined();
     });
 

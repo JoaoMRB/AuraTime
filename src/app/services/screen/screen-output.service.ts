@@ -330,7 +330,7 @@ export class ScreenOutputService implements OnDestroy {
     if (wallNow - this.lastReconnectAttempt < delay) return;
     this.lastReconnectAttempt = wallNow;
 
-    const ok = await this.link.reconnect(this.connectOptions());
+    const ok = await this.link.reconnect(this.connectOptions(), { silent: true });
     this.reconnectFailures = ok ? 0 : Math.min(this.reconnectFailures + 1, 10);
   }
 

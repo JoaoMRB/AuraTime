@@ -151,6 +151,20 @@ describe('ClockComponent: themes and positions render completely', () => {
     });
   }
 
+  it('the closed drawers do not cast a shadow onto the screen edges (visible on light themes)', () => {
+    mount({ theme: 'light-glass' });
+    const drawers = Array.from(el.querySelectorAll('div.fixed.z-40, div.fixed.z-50')).filter(d =>
+      d.classList.contains('-translate-x-full') || d.classList.contains('translate-x-full')
+    ) as HTMLElement[];
+    expect(drawers.length).toBe(2); // settings (left) and alarms (right)
+    for (const drawer of drawers) expect(getComputedStyle(drawer).boxShadow).toBe('none');
+
+    fixture.componentInstance.settingsOpen.set(true);
+    fixture.detectChanges();
+    const settings = el.querySelector('div.fixed.z-40.translate-x-0') as HTMLElement;
+    expect(getComputedStyle(settings).boxShadow).not.toBe('none');
+  });
+
   it('moving between positions keeps the classes right', () => {
     mount({ position: 'center' });
     for (const position of ['bottom-right', 'top-left', 'center', 'top-right', 'bottom-left']) {

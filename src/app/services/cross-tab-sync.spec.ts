@@ -5,6 +5,7 @@ import { AnalyticsService } from './analytics.service';
 import { PomodoroService } from './pomodoro.service';
 import { AudioService } from './audio.service';
 import { AlarmService } from './alarm.service';
+import { LOCKS_API } from './web-locks';
 import { DashboardService } from './dashboard.service';
 import { WorldClockService } from './world-clock.service';
 
@@ -85,7 +86,7 @@ describe('cross-tab sync', () => {
 
     function setup(): { pomodoro: PomodoroService; analytics: AnalyticsService } {
       TestBed.configureTestingModule({
-        providers: [{
+        providers: [{ provide: LOCKS_API, useValue: null }, {
           provide: AudioService,
           useValue: { initAudioContext: () => Promise.resolve(), playChimeSound: () => chimes++ }
         }]

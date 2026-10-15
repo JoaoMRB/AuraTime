@@ -19,6 +19,11 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { WeatherService } from '../../services/weather.service';
 import { DashboardService } from '../../services/dashboard.service';
 import { PipService } from '../../services/pip.service';
+import { TickService } from '../../services/screen/tick.service';
+import { formatClock } from '../../services/screen/clock-format';
+import { isThemeId, resolveThemeId } from '../../services/screen/theme-tokens';
+import { DeskDisplayStatusService } from '../../services/screen/desk-display-status.service';
+import { isExtensionPage } from '../../extension-context';
 
 @Component({
   selector: 'app-clock',
@@ -26,7 +31,11 @@ import { PipService } from '../../services/pip.service';
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './clock.component.html',
   host: {
-    class: 'block w-full h-screen overflow-hidden'
+    class: 'block w-full h-screen overflow-hidden',
+    // What this page shows depends on the visitor's saved mode, theme and tasks, which the prerendered HTML
+    // cannot know. Hydrating it would leave the build-time markup (a frozen clock) next to the real view,
+    // because the app never becomes "stable" (it has a permanent 1 s timer) and so never cleans it up.
+    ngSkipHydration: 'true'
   }
 })
 export class ClockComponent implements OnInit, OnDestroy {
@@ -47,6 +56,11 @@ export class ClockComponent implements OnInit, OnDestroy {
   public weatherService = inject(WeatherService);
   public dashboardService = inject(DashboardService);
   public pipService = inject(PipService);
+  /** Whether the Desk Display (USB screen) page has a display connected, in another window. */
+  public deskStatus = inject(DeskDisplayStatusService);
+  /** Running as the browser's new tab page (extension): shows a Desk Display shortcut in the HUD. */
+  public isExtension = isExtensionPage;
+  private tickService = inject(TickService);
   private platformId = inject(PLATFORM_ID);
   private route = inject(ActivatedRoute);
   private isBrowser = isPlatformBrowser(this.platformId);
@@ -125,8 +139,7 @@ export class ClockComponent implements OnInit, OnDestroy {
 
   private hudTimeout: any;
 
-  // Running interval IDs
-  private clockIntervalId: any;
+  private unsubscribeTick?: () => void;
 
   constructor() {
     // Watch settings changes to control background sounds
@@ -141,9 +154,9 @@ export class ClockComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const themeFromQuery = this.route.snapshot.queryParamMap.get('theme');
     if (themeFromQuery) {
-      const normalizedTheme = themeFromQuery === 'frosted-glass' ? 'light-glass' : themeFromQuery;
-      if (['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'light-glass', 'dark-glass'].includes(normalizedTheme)) {
-        this.settings.theme.set(normalizedTheme);
+      // Only apply known ids (or the legacy 'frosted-glass' alias)
+      if (isThemeId(themeFromQuery) || themeFromQuery === 'frosted-glass') {
+        this.settings.theme.set(resolveThemeId(themeFromQuery));
       }
     }
 
@@ -154,14 +167,13 @@ export class ClockComponent implements OnInit, OnDestroy {
       window.scrollTo(0, 0);
       document.body.style.overflow = 'hidden';
 
-      // Start time update interval
-      this.clockIntervalId = setInterval(() => {
+      // Subscribe to the shared per-second tick
+      this.unsubscribeTick = this.tickService.onTick(() => {
         this.updateTime();
-        this.pomodoroService.tick();
         if (this.settings.sound() === 'tick') {
           this.audioService.playTickSound();
         }
-      }, 1000);
+      });
 
       // Start mouse inactivity listener
       this.triggerHudVisibility();
@@ -175,9 +187,7 @@ export class ClockComponent implements OnInit, OnDestroy {
     if (this.isBrowser) {
       document.body.style.overflow = '';
     }
-    if (this.clockIntervalId) {
-      clearInterval(this.clockIntervalId);
-    }
+    this.unsubscribeTick?.();
     if (this.hudTimeout) {
       clearTimeout(this.hudTimeout);
     }
@@ -208,22 +218,11 @@ export class ClockComponent implements OnInit, OnDestroy {
   // Update Time and Date
   updateTime() {
     const now = new Date();
-    let hrs = now.getHours();
-    const mins = String(now.getMinutes()).padStart(2, '0');
-    const secs = String(now.getSeconds()).padStart(2, '0');
-    
-    let ampm = '';
-    if (!this.settings.militaryTime()) {
-      ampm = hrs >= 12 ? ' PM' : ' AM';
-      hrs = hrs % 12;
-      hrs = hrs ? hrs : 12; // 0 should be 12
-    }
-    
-    const hrsStr = String(hrs).padStart(2, '0');
-    const timeStr = this.settings.showSeconds() 
-      ? `${hrsStr}:${mins}:${secs}${ampm}` 
-      : `${hrsStr}:${mins}${ampm}`;
-    
+    const { hours: hrsStr, minutes: mins, text: timeStr } = formatClock(now, {
+      use24h: this.settings.militaryTime(),
+      showSeconds: this.settings.showSeconds()
+    });
+
     this.currentTime.set(timeStr);
 
     // Format Date
@@ -382,6 +381,8 @@ export class ClockComponent implements OnInit, OnDestroy {
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
       return;
     }
+
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     if (event.key === 'Escape') {
       this.closeAllPanels();

@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { SettingsService } from './settings.service';
 import { PomodoroService } from './pomodoro.service';
 import { AudioService } from './audio.service';
+import { THEME_IDS, resolveThemeId } from './screen/theme-tokens';
 
 export interface Shortcut {
   key: string;
@@ -43,7 +44,7 @@ export class KeyboardShortcutsService {
         action: () => this.handleResetKey()
       },
       {
-        key: 's',
+        key: ',',
         description: 'Toggle Settings',
         action: () => this.handleSettingsKey()
       },
@@ -53,12 +54,12 @@ export class KeyboardShortcutsService {
         action: () => this.handleFullscreenKey()
       },
       {
-        key: 'm',
+        key: 'c',
         description: 'Cycle Modes',
         action: () => this.handleModeKey()
       },
       {
-        key: 't',
+        key: 'h',
         description: 'Toggle Theme',
         action: () => this.handleThemeKey()
       },
@@ -93,7 +94,11 @@ export class KeyboardShortcutsService {
         return;
       }
 
-      const key = event.key.toLowerCase();
+      // Never hijack browser/OS combos such as Ctrl+R or Ctrl+-
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      // event.key is ' ' for the space bar, not 'Space'
+      const key = event.key === ' ' ? 'space' : event.key.toLowerCase();
       const shortcut = this.shortcuts.find(s => s.key.toLowerCase() === key);
 
       if (shortcut) {
@@ -147,11 +152,10 @@ export class KeyboardShortcutsService {
   }
 
   private handleThemeKey(): void {
-    const themes = ['emerald-gold', 'liquid-glass', 'obsidian-platinum', 'dark-glass', 'light-glass'];
-    const currentTheme = this.settingsService.theme();
-    const currentIndex = themes.indexOf(currentTheme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    this.settingsService.theme.set(themes[nextIndex]);
+    const currentTheme = resolveThemeId(this.settingsService.theme());
+    const currentIndex = THEME_IDS.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % THEME_IDS.length;
+    this.settingsService.theme.set(THEME_IDS[nextIndex]);
   }
 
   private handleScaleUp(): void {
@@ -195,7 +199,7 @@ export class KeyboardShortcutsService {
         );
       default:
         return this.shortcuts.filter(s => 
-          ['s', 'f', 'm', 't', '+', '-', 'Escape'].includes(s.key)
+          [',', 'f', 'c', 'h', '+', '-', 'Escape'].includes(s.key)
         );
     }
   }

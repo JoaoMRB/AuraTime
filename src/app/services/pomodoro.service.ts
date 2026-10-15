@@ -4,6 +4,7 @@ import { AudioService } from './audio.service';
 import { TaskService } from './task.service';
 import { AnalyticsService } from './analytics.service';
 import { TickService } from './screen/tick.service';
+import { LOCKS_API, LOCK_POMODORO_CREDIT } from './web-locks';
 
 export type PomodoroPhase = 'work' | 'break';
 
@@ -43,7 +44,11 @@ export class PomodoroService {
   private taskService = inject(TaskService);
   private analyticsService = inject(AnalyticsService);
   private tickService = inject(TickService);
+  private locks = inject(LOCKS_API);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  /** A phase end is being settled (maybe waiting for the cross-window lock). */
+  private completing = false;
+  private catchUpDepth = 0;
 
   // Timer State
   private remaining = signal<number>(25 * 60); // seconds left in the current phase
@@ -89,9 +94,12 @@ export class PomodoroService {
         }
       });
 
+      // The app was closed while a phase ran and that phase has ended since: settle it once and stop.
+      this.settleRestoredPhase();
+
       // Driven by the shared tick so it keeps running without any component mounted.
       this.tickService.onTick(() => this.tick());
-      this.tick(); // catch up immediately if a running phase was restored
+      this.tick();
     }
   }
 
@@ -168,23 +176,91 @@ export class PomodoroService {
     this.remaining.set(this.workDuration() * 60);
   }
 
-  /** Recomputes the remaining time from the absolute end time. Safe to call as often as needed. */
+  /**
+   * Recomputes the remaining time from the absolute end time and settles phases that have ended. Safe to call
+   * as often as needed. While the app stays open, a long gap (throttled tab, sleep) is caught up phase by phase.
+   */
   tick(): void {
-    if (!this.running()) return;
+    if (!this.running() || this.completing) return;
+    const end = this.endTime();
+    if (end === null) return;
 
-    let completed = 0;
-    let guard = 0;
-    while (this.running() && completed < MAX_CATCH_UP_PHASES && guard++ < MAX_CATCH_UP_PHASES * 2) {
-      const end = this.endTime();
-      if (end === null) return;
-      if (Date.now() < end) break;
-      // Another tab may already have completed (and credited) this phase.
-      if (this.adoptIfCompletedElsewhere(end)) continue;
-      this.completePhase(end);
-      completed++;
+    if (Date.now() < end) {
+      this.catchUpDepth = 0;
+      this.syncRemaining();
+      return;
     }
 
-    this.syncRemaining();
+    this.completing = true;
+    this.runExclusive(
+      () => {
+        // Checked again INSIDE the lock: another window may have credited this phase while we waited for it,
+        // and the user may have paused or reset meanwhile.
+        if (!this.running() || this.endTime() !== end) return;
+        if (!this.adoptIfCompletedElsewhere(end)) this.completePhase(end);
+      },
+      () => {
+        this.completing = false;
+        if (this.catchUpDepth++ < MAX_CATCH_UP_PHASES) this.tick();
+        else this.catchUpDepth = 0;
+      }
+    );
+  }
+
+  /**
+   * Runs `work` while holding the cross-window credit lock, so two open windows can never both credit the
+   * same phase. Without the Web Locks API it just runs the work directly.
+   */
+  private runExclusive(work: () => void, done?: () => void): void {
+    const locks = this.locks;
+    if (!locks) {
+      try {
+        work();
+      } finally {
+        done?.();
+      }
+      return;
+    }
+    locks
+      .request(LOCK_POMODORO_CREDIT, () => work())
+      .catch(error => console.warn('[Pomodoro] could not settle the phase end', error))
+      .finally(() => done?.());
+  }
+
+  /**
+   * Restoring after the app was closed: if the phase that was running has ended, credit at most that one phase
+   * (only a finished focus phase counts), dated to the day it ended, without a chime, and leave the timer
+   * stopped on the next phase instead of replaying everything that happened while the app was closed.
+   */
+  private settleRestoredPhase(): void {
+    const end = this.endTime();
+    if (!this.running() || end === null || Date.now() < end) return;
+
+    this.completing = true;
+    this.runExclusive(
+      () => {
+        if (this.endTime() !== end) return;
+        const alreadyCredited = this.adoptIfCompletedElsewhere(end) || this.lastCompletedEnd() >= end;
+        const wasWork = this.phase() === 'work';
+        if (!alreadyCredited) {
+          const duration = wasWork ? this.workDuration() : this.breakDuration();
+          this.saveSession(duration, end);
+          if (wasWork) {
+            this.taskService.incrementActiveTaskPomodoro();
+            this.analyticsService.recordFocusSession(duration, new Date(end));
+          }
+        }
+        // Whatever the other window did, this one ends up stopped on the phase that follows.
+        const nextIsWork = (alreadyCredited ? this.phase() : (wasWork ? 'break' : 'work')) === 'work';
+        this.phase.set(nextIsWork ? 'work' : 'break');
+        this.remaining.set((nextIsWork ? this.workDuration() : this.breakDuration()) * 60);
+        this.running.set(false);
+        this.endTime.set(null);
+        this.lastCompletedEnd.set(Math.max(this.lastCompletedEnd(), end));
+        this.persist();
+      },
+      () => (this.completing = false)
+    );
   }
 
   /** If the shared state shows this phase was already completed, adopt it instead of crediting again. */

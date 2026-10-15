@@ -41,7 +41,7 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
 - **Cross-window sync**: settings, tasks, analytics, Pomodoro, alarms, countdown, world clocks and language
   follow each other through `storage` events, so the clock window and the Desk Display window stay in step.
   Finishing a Pomodoro phase is idempotent across windows (no double credit).
-- **Tests**: from none to 247 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
+- **Tests**: from none to 269 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
   with a fake port, wire integrity (header and pixels are never interleaved), reconnection and back-off, demo
   data, translations, and the landing, `/screen` and clock components.
 
@@ -63,6 +63,12 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
 
 ### Fixed
 
+- **Themes lost classes on the first render.** The clock's theme classes were set with `ngClass` maps whose
+  entries shared class names, and Angular lets a later false entry remove a class an earlier true entry just
+  added. Visible effects: `light-glass` and `liquid-glass` had no background gradient (light-glass looked dark),
+  the default Emerald Gold lost the gold gradient on the digits, most clock cards lost their border and blur, and
+  the top-left, top-right and bottom-left positions were misaligned. Shared classes now live in their own entry,
+  and regression tests mount the clock with each saved theme and position.
 - Space-bar shortcut never worked (`event.key` is `' '`, not `'Space'`), and shortcuts swallowed browser
   combos such as Ctrl+R and Ctrl+-.
 - Weather text on the display was Portuguese-only; it now follows the app language.

@@ -219,10 +219,12 @@
             </div>
 
             <div class="text-4xl md:text-5xl font-orbitron font-black tracking-widest" [ngClass]="{
-                   'text-transparent bg-clip-text bg-gradient-to-r from-luxury-gold via-white to-luxury-platinum drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)]': mockupTheme() === 'emerald-gold',
-                   'text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-indigo-100 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]': mockupTheme() === 'liquid-glass',
-                   'text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-zinc-600': mockupTheme() === 'obsidian-platinum',
-                   'text-slate-800': mockupTheme() === 'frosted-glass'
+                   'from-luxury-gold via-white to-luxury-platinum drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)]': mockupTheme() === 'emerald-gold',
+                   'via-cyan-200 to-indigo-100 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]': mockupTheme() === 'liquid-glass',
+                   'via-zinc-400 to-zinc-600': mockupTheme() === 'obsidian-platinum',
+                   'text-slate-800': mockupTheme() === 'frosted-glass',
+                   'text-transparent bg-clip-text bg-gradient-to-r': (mockupTheme() === 'emerald-gold') || (mockupTheme() === 'liquid-glass') || (mockupTheme() === 'obsidian-platinum'),
+                   'from-white': (mockupTheme() === 'liquid-glass') || (mockupTheme() === 'obsidian-platinum')
                  }">
               {{ currentTime() }}
             </div>

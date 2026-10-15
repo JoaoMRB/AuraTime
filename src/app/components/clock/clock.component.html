@@ -581,7 +581,9 @@
 </div>
 
 <!-- Drawer container -->
-<div class="fixed top-0 left-0 h-full w-80 max-w-[90vw] z-40 bg-[#070c08]/95 backdrop-blur-2xl border-r border-white/5 p-6 shadow-[10px_0_50px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out overflow-y-auto no-scrollbar"
+<!-- The drawers get their big shadow only while open: closed (off-screen) it would bleed into the screen edge -->
+<div class="fixed top-0 left-0 h-full w-80 max-w-[90vw] z-40 bg-[#070c08]/95 backdrop-blur-2xl border-r border-white/5 p-6 transition-transform duration-500 ease-out overflow-y-auto no-scrollbar"
+     [ngClass]="{ 'shadow-[10px_0_50px_rgba(0,0,0,0.8)]': settingsOpen() }"
      [class.translate-x-0]="settingsOpen()"
      [class.-translate-x-full]="!settingsOpen()">
   
@@ -886,7 +888,8 @@
 </div>
 
 <!-- Alarm Dialog Panel (slides from right) -->
-<div class="fixed top-0 right-0 h-full w-88 max-w-[92vw] z-50 flex flex-col bg-[#070c08]/97 backdrop-blur-2xl border-l border-white/5 shadow-[-10px_0_50px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out overflow-hidden"
+<div class="fixed top-0 right-0 h-full w-88 max-w-[92vw] z-50 flex flex-col bg-[#070c08]/97 backdrop-blur-2xl border-l border-white/5 transition-transform duration-500 ease-out overflow-hidden"
+     [ngClass]="{ 'shadow-[-10px_0_50px_rgba(0,0,0,0.8)]': alarmDialogOpen() }"
      [class.translate-x-0]="alarmDialogOpen()"
      [class.translate-x-full]="!alarmDialogOpen()">
 

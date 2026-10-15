@@ -185,7 +185,7 @@ describe('ScreenComponent (Desk Display page)', () => {
 
     it('states the compatibility without suggesting a partnership', async () => {
       const { el } = await render();
-      expect(text(el)).toContain('Compatible with Turing Smart Screen 3.5" (USB) displays.');
+      expect(text(el)).toContain('Compatible with Turing Smart Screen 3.5" class displays (USB 1A86:5722, rev. A).');
       expect(text(el)).toContain('not affiliated with any display manufacturer');
     });
 

@@ -28,7 +28,7 @@ describe('ClockComponent: themes and positions render completely', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: WeatherService, useValue: { weather: signal(null), initWeather: () => undefined } }
+        { provide: WeatherService, useValue: weatherStub() }
       ]
     });
   }
@@ -184,6 +184,140 @@ describe('ClockComponent: themes and positions render completely', () => {
   });
 });
 
+/** The parts of WeatherService the clock page uses: no geolocation prompt and no network in unit tests. */
+function weatherStub() {
+  return {
+    weather: signal<unknown>(null),
+    city: signal<unknown>(null),
+    initWeather: () => Promise.resolve(),
+    placeLabel: (w: { source: string; cityName: string }) =>
+      w.source === 'user' ? w.cityName : w.source === 'geo' ? 'Your location' : 'Lisbon (default)',
+    searchCities: jasmine.createSpy('searchCities').and.resolveTo([]),
+    chooseCity: jasmine.createSpy('chooseCity').and.resolveTo(undefined),
+    useMyLocation: jasmine.createSpy('useMyLocation').and.resolveTo(undefined)
+  };
+}
+
+describe('ClockComponent: weather location', () => {
+  let fixture: ComponentFixture<ClockComponent>;
+  let el: HTMLElement;
+  let weather: ReturnType<typeof weatherStub>;
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      imports: [ClockComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: WeatherService, useValue: weatherStub() }]
+    });
+    weather = TestBed.inject(WeatherService) as unknown as ReturnType<typeof weatherStub>;
+    fixture = TestBed.createComponent(ClockComponent);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+    localStorage.clear();
+  });
+
+  const block = () => el.querySelector('[data-testid="weather-location"]') as HTMLElement;
+  const WHITESPACE = new RegExp('[' + String.fromCharCode(9, 10, 13, 32) + ']+', 'g');
+  const text = (e: Element) => (e.textContent ?? '').replace(WHITESPACE, ' ').trim();
+  const reading = (source: string, cityName = '') => ({ temperature: 18, condition: 'sunny', description: 'x', icon: 'x', cityName, source });
+  const type = (value: string) => {
+    const input = block().querySelector('input') as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  };
+  /** Lets pending promises finish and redraws (the clock page has timers that never stop, so whenStable() would hang). */
+  const settle = async () => {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    fixture.detectChanges();
+  };
+  const searchButton = () => block().querySelector('button') as HTMLButtonElement;
+
+  it('is in the settings and names where the weather comes from, never "Local"', () => {
+    expect(block()).toBeTruthy();
+    expect(text(block())).toContain('Weather location');
+    weather.weather.set(reading('geo'));
+    fixture.detectChanges();
+    expect(text(block())).toContain('Your location');
+    expect(text(block())).not.toContain('Local');
+  });
+
+  it('says "Lisbon (default)" and explains how to change it when the location is not available', () => {
+    weather.weather.set(reading('default'));
+    fixture.detectChanges();
+    expect(block().querySelector('[data-testid="weather-place"]')!.textContent).toContain('Lisbon (default)');
+    expect(text(block())).toContain('Your location is not available, so the weather shows Lisbon');
+  });
+
+  it('shows no default-city hint for a located or chosen place', () => {
+    weather.weather.set(reading('user', 'Porto'));
+    fixture.detectChanges();
+    expect(text(block())).toContain('Porto');
+    expect(text(block())).not.toContain('Your location is not available');
+  });
+
+  it('searches, lists the cities and picks one', async () => {
+    weather.searchCities.and.resolveTo([{ name: 'Porto', latitude: 41.15, longitude: -8.61, region: 'Porto, Portugal' }]);
+    type('Porto');
+    searchButton().click();
+    await settle();
+    expect(weather.searchCities).toHaveBeenCalledWith('Porto');
+    const results = block().querySelectorAll('[data-testid="weather-results"] button');
+    expect(results.length).toBe(1);
+    expect(text(results[0])).toContain('Porto');
+    expect(text(results[0])).toContain('Porto, Portugal');
+
+    (results[0] as HTMLButtonElement).click();
+    await settle();
+    expect(weather.chooseCity).toHaveBeenCalledWith(jasmine.objectContaining({ name: 'Porto' }));
+    expect(block().querySelector('[data-testid="weather-results"]')).toBeNull();
+    expect((block().querySelector('input') as HTMLInputElement).value).toBe('');
+  });
+
+  it('does not search for fewer than two characters (the button stays disabled)', () => {
+    type('P');
+    expect(searchButton().disabled).toBeTrue();
+    type('Po');
+    expect(searchButton().disabled).toBeFalse();
+  });
+
+  it('says so when nothing is found, or when the search is unavailable', async () => {
+    type('Zzzz');
+    searchButton().click();
+    await settle();
+    expect(text(block())).toContain('No city found');
+
+    weather.searchCities.and.rejectWith(new Error('offline'));
+    searchButton().click();
+    await settle();
+    expect(text(block())).toContain('The search is not available right now');
+    expect(text(block())).not.toContain('No city found');
+  });
+
+  it('offers "Use my location" only after a city was picked', async () => {
+    expect(text(block())).not.toContain('Use my location');
+    weather.city.set({ name: 'Porto', latitude: 41.15, longitude: -8.61 });
+    fixture.detectChanges();
+    const button = Array.from(block().querySelectorAll('button')).find(b => text(b).includes('Use my location'))!;
+    expect(button).toBeTruthy();
+    button.click();
+    expect(weather.useMyLocation).toHaveBeenCalled();
+  });
+
+  it('puts the place in the tooltip of the weather chip in the top bar', () => {
+    weather.weather.set(reading('geo'));
+    fixture.detectChanges();
+    const chip = el.querySelector('div[class*="rounded-full"][title]') as HTMLElement;
+    const withTitle = Array.from(el.querySelectorAll('[title]')).find(e => (e.getAttribute('title') ?? '').includes('Your location'));
+    expect(withTitle).toBeTruthy();
+    expect(chip).toBeTruthy();
+  });
+});
+
 describe('ClockComponent: Desk Display link', () => {
   let fixture: ComponentFixture<ClockComponent>;
   let el: HTMLElement;
@@ -197,7 +331,7 @@ describe('ClockComponent: Desk Display link', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         // no geolocation prompt or network request in unit tests
-        { provide: WeatherService, useValue: { weather: signal(null), initWeather: () => undefined } }
+        { provide: WeatherService, useValue: weatherStub() }
       ]
     });
     fixture = TestBed.createComponent(ClockComponent);

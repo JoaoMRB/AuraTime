@@ -42,6 +42,8 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
    * browser render are identical (what the browser supports is only known in the browser).
    */
   readonly ready = signal(false);
+  /** The page is in a background tab or minimized: the browser slows it down and the display can lag. */
+  readonly pageHidden = signal(false);
 
   readonly viewOptions: ScreenView[] = [...ALL_SCREEN_VIEWS];
   readonly themeIds: readonly ThemeId[] = THEME_IDS;
@@ -67,6 +69,13 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
     inject(DestroyRef).onDestroy(releaseAlarms);
 
     afterNextRender(() => this.ready.set(true));
+
+    if (this.isBrowser) {
+      this.pageHidden.set(document.hidden);
+      const onVisibility = () => this.pageHidden.set(document.hidden);
+      document.addEventListener('visibilitychange', onVisibility);
+      inject(DestroyRef).onDestroy(() => document.removeEventListener('visibilitychange', onVisibility));
+    }
 
     // Own title and description (also in the prerendered HTML), in the app language
     effect(() => {

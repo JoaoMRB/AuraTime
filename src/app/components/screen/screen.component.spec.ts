@@ -183,6 +183,44 @@ describe('ScreenComponent (Desk Display page)', () => {
       expect(description).toContain('Chrome or Edge');
     });
 
+    it('tells the visitor to keep the page in its own visible window, or use the startup launcher', async () => {
+      const { el } = await render();
+      const note = el.querySelector('[data-testid="window-note"]')!.textContent!;
+      expect(note).toContain('window of its own and visible');
+      expect(note).toContain('startup launcher');
+    });
+
+    it('adds the Linux and macOS notes', async () => {
+      const { el } = await render();
+      const note = el.querySelector('[data-testid="os-note"]')!.textContent!;
+      expect(note).toContain('dialout');
+      expect(note).toContain('CH34x');
+    });
+
+    it('warns while connected and hidden, and only then', async () => {
+      const { el, fixture } = await render();
+      const hide = (hidden: boolean) => {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+        document.dispatchEvent(new Event('visibilitychange'));
+        fixture.detectChanges();
+      };
+      try {
+        hide(true);
+        expect(text(el)).not.toContain('This page is hidden'); // not connected: nothing to lag
+
+        serial!.picked!.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+        await TestBed.inject(ScreenOutputService).connect();
+        await new Promise(r => setTimeout(r, 400));
+        fixture.detectChanges();
+        expect(text(el)).toContain('This page is hidden');
+
+        hide(false);
+        expect(text(el)).not.toContain('This page is hidden');
+      } finally {
+        delete (document as unknown as { hidden?: boolean }).hidden;
+      }
+    });
+
     it('states the compatibility without suggesting a partnership', async () => {
       const { el } = await render();
       expect(text(el)).toContain('Compatible with Turing Smart Screen 3.5" class displays (USB 1A86:5722, rev. A).');

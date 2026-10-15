@@ -37,7 +37,11 @@ export interface ScreenPrefs {
 const STORAGE_KEY = 'auratime_screen';
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
-/** Time between ticks above which we assume the PC slept (ticks are 1 s apart). */
+/**
+ * Time between ticks above which we assume the PC slept (ticks are 1 s apart). Only applied while the page is
+ * visible: a hidden page is throttled by the browser (1 tick a second, then about 1 a minute) and that gap
+ * says nothing about the display.
+ */
 const SLEEP_GAP_MS = 5000;
 /** Automatic reconnection: first retry after this long, doubling up to the maximum. */
 const RECONNECT_BASE_MS = 5000;
@@ -108,6 +112,8 @@ export class ScreenOutputService implements OnDestroy {
   private lastReconnectAttempt = 0;
   private lastFrameAt = 0;
   private lastHeartbeat = 0;
+  /** The page was hidden at some point since the last frame: the next gap is throttling, not sleep. */
+  private hiddenSinceLastFrame = false;
 
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
@@ -171,6 +177,7 @@ export class ScreenOutputService implements OnDestroy {
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
     window.addEventListener('pagehide', this.onPageHide);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     // The first frame also kicks off the reconnection to the display used last time (if any).
     await this.zone.runOutsideAngular(() => this.renderFrame());
@@ -182,6 +189,7 @@ export class ScreenOutputService implements OnDestroy {
     this.started = false;
     if (this.isBrowser) {
       window.removeEventListener('pagehide', this.onPageHide);
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
       this.deskStatus.publish(false);
     }
   }
@@ -189,9 +197,15 @@ export class ScreenOutputService implements OnDestroy {
   /** The Desk Display window is going away: other windows must not keep showing "connected". */
   private onPageHide = () => this.deskStatus.publish(false);
 
+  /** Tell the other windows right away that this page is (no longer) hidden, so their indicator stays right. */
+  private onVisibilityChange = () => {
+    if (document.hidden) this.hiddenSinceLastFrame = true;
+    this.publishStatus(this.link.isConnected());
+  };
+
   private publishStatus(connected: boolean): void {
     this.lastHeartbeat = Date.now();
-    this.deskStatus.publish(connected);
+    this.deskStatus.publish(connected, typeof document !== 'undefined' && document.hidden);
   }
 
   /** Must be called from a click: opens the browser's device picker. */
@@ -267,11 +281,15 @@ export class ScreenOutputService implements OnDestroy {
       this.publishStatus(this.link.isConnected());
     }
 
-    // A long gap between frames means the PC slept: the display may have lost its picture.
+    // A long gap between frames while the page is visible means the PC slept: the display may have lost its
+    // picture. While hidden (or just after) the gap is the browser's throttling, and resending the whole
+    // 300 KB picture on every throttled tick would only make things worse.
     const wallNow = Date.now();
-    if (this.lastFrameAt && wallNow - this.lastFrameAt > SLEEP_GAP_MS) {
+    const throttled = document.hidden || this.hiddenSinceLastFrame;
+    if (this.lastFrameAt && wallNow - this.lastFrameAt > SLEEP_GAP_MS && !throttled) {
       this.invalidateFrame();
     }
+    if (!document.hidden) this.hiddenSinceLastFrame = false;
     this.lastFrameAt = wallNow;
 
     if (!this.link.isConnected()) {

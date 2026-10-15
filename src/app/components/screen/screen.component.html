@@ -147,9 +147,16 @@
                   {{ ts.t(link.message()) }}@if (link.messageDetail()) { <span class="opacity-70"> ({{ link.messageDetail() }})</span> }
                 </p>
               }
+              @if (connected() && pageHidden()) {
+                <p class="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3 py-2 text-sm text-amber-200" role="alert">
+                  {{ ts.t('SCREEN.PAGE.S2.HIDDEN_WARNING') }}
+                </p>
+              }
               @if (!connected()) {
                 <p class="mt-3 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S2.FIRST_TIME') }}</p>
               }
+              <p class="mt-3 text-xs text-gray-500" data-testid="window-note">{{ ts.t('SCREEN.PAGE.S2.WINDOW_NOTE') }}</p>
+              <p class="mt-1 text-xs text-gray-500" data-testid="os-note">{{ ts.t('SCREEN.PAGE.S2.OS_NOTE') }}</p>
             </article>
 
             <!-- Step 3: choose views -->

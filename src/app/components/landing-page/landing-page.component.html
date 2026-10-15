@@ -374,7 +374,14 @@
       </div>
 
       <div class="lg:col-span-6">
-        <app-desk-display-mock />
+        <!-- Loaded when it scrolls into view: the mock-up pulls in the whole screen renderer -->
+        @defer (on viewport) {
+          <app-desk-display-mock />
+        } @placeholder {
+          <div class="mx-auto w-full max-w-[560px] rounded-[2rem] border border-white/10 bg-white/[0.03] p-3 sm:p-4" aria-hidden="true">
+            <div class="rounded-2xl bg-black" style="aspect-ratio: 480 / 320"></div>
+          </div>
+        }
       </div>
     </div>
 

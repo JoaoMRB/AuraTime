@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -9,11 +9,19 @@ describe('LandingPageComponent: Desk Display', () => {
   async function render() {
     TestBed.configureTestingModule({
       imports: [LandingPageComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      deferBlockBehavior: DeferBlockBehavior.Manual
     });
     const fixture = TestBed.createComponent(LandingPageComponent);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  /** Scrolls the mock-up into view, as a visitor would: renders the deferred block. */
+  async function showMockup(fixture: Awaited<ReturnType<typeof render>>['fixture']) {
+    const [block] = await fixture.getDeferBlocks();
+    await block.render(DeferBlockState.Complete);
+    fixture.detectChanges();
   }
 
   it('has a Desk Display button in the top bar, next to the app button, leading to /screen', async () => {
@@ -30,10 +38,12 @@ describe('LandingPageComponent: Desk Display', () => {
   });
 
   it('has a dedicated section: what it is, a mock-up, 3 setup steps and the compatibility note', async () => {
-    const { el } = await render();
+    const { fixture, el } = await render();
     const section = el.querySelector('section#desk-display')!;
     expect(section).toBeTruthy();
     expect(section.querySelector('h2')!.textContent).toContain('Your clock, on a screen of its own');
+    expect(section.querySelector('app-desk-display-mock')).toBeNull(); // not loaded until it is seen
+    await showMockup(fixture);
     expect(section.querySelector('app-desk-display-mock canvas')).toBeTruthy();
     expect(section.querySelectorAll('ol > li').length).toBe(3);
     expect(section.textContent).toContain('Compatible with Turing Smart Screen 3.5" (USB) displays.');

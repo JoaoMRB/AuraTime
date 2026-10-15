@@ -35,6 +35,16 @@ export const SERIAL_API = new InjectionToken<SerialApiLike | null>('SERIAL_API',
   factory: () => (typeof navigator !== 'undefined' && 'serial' in navigator ? (navigator as unknown as { serial: SerialApiLike }).serial : null)
 });
 
+/**
+ * Whether the page is in a secure context (https or localhost). Browsers hide navigator.serial everywhere else,
+ * for example on plain http from a LAN address, even in Chrome: "no Web Serial" and "not allowed here" look the
+ * same to the code, and the visitor needs to be told which one it is. Overridable in tests.
+ */
+export const SECURE_CONTEXT = new InjectionToken<boolean>('SECURE_CONTEXT', {
+  providedIn: 'root',
+  factory: () => typeof window === 'undefined' || window.isSecureContext !== false
+});
+
 /** Timing of the last bitmap sent, to diagnose transfer problems. */
 export interface SendMetrics {
   width: number;
@@ -80,6 +90,7 @@ const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 })
 export class SerialLinkService implements OnDestroy {
   private serial = inject(SERIAL_API);
+  private secureContext = inject(SECURE_CONTEXT);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly status = signal<SerialStatus>('disconnected');
@@ -144,6 +155,14 @@ export class SerialLinkService implements OnDestroy {
 
   isSupported(): boolean {
     return this.serial !== null;
+  }
+
+  /**
+   * Web Serial is missing because the page is not in a secure context (plain http on a network address), not
+   * because of the browser: the fix is to open it over https or from localhost, not to switch browsers.
+   */
+  isInsecureContext(): boolean {
+    return this.serial === null && !this.secureContext;
   }
 
   /** Asks the user to pick the display. Needs a user gesture. */

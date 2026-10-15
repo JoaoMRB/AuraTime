@@ -58,6 +58,8 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
   /** Which views currently have something to show (drives the "no data yet" hints). */
   readonly content = computed(() => viewHasContent(this.display.snapshot()));
   readonly connected = computed(() => this.link.status() === 'connected');
+  /** Another /screen window is driving the display: this one only shows a preview. */
+  readonly otherWindow = computed(() => this.output.ownership() === 'other');
   /** 1 = browser not supported, 2 = connect the display, 3 = choose the views. */
   readonly currentStep = computed(() => (!this.supported ? 1 : this.connected() ? 3 : 2));
   readonly viewName = computed(() => this.viewLabel(this.output.activeView()));

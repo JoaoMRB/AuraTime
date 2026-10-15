@@ -6,6 +6,8 @@ import { provideRouter } from '@angular/router';
 import { ScreenComponent } from './screen.component';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
 import { SERIAL_API } from '../../services/screen/serial-link.service';
+import { LOCKS_API, LOCK_DESK_DISPLAY } from '../../services/web-locks';
+import { FakeLockManager, flushLocks } from '../../services/testing/fake-locks';
 import { TranslationService } from '../../services/translation.service';
 import { FakePort, FakeSerial } from '../../services/screen/testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from '../../services/screen/screen-renderer';
@@ -26,7 +28,8 @@ describe('ScreenComponent (Desk Display page)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: SERIAL_API, useValue: serial }
+        { provide: SERIAL_API, useValue: serial },
+        { provide: LOCKS_API, useValue: null }
       ]
     });
     const fixture = TestBed.createComponent(ScreenComponent);
@@ -304,5 +307,51 @@ describe('ScreenComponent (Desk Display page)', () => {
       await render(false);
       expect(TestBed.inject(ScreenOutputService).demoActive()).toBeTrue();
     });
+  });
+});
+
+describe('ScreenComponent: a second window', () => {
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) await Promise.resolve();
+    await new Promise(r => setTimeout(r, 0));
+  };
+  const hasConnectButton = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button')).some(b => (b.textContent ?? '').includes('Connect display'));
+
+  it('shows "active in another window" and no way to connect while the first window owns the display', async () => {
+    const locks = new FakeLockManager();
+    // The first window already holds the display lock.
+    let release!: () => void;
+    void locks.request(LOCK_DESK_DISPLAY, () => new Promise<void>(r => (release = r)));
+    await settle();
+
+    TestBed.configureTestingModule({
+      imports: [ScreenComponent],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: SERIAL_API, useValue: new FakeSerial() },
+        { provide: LOCKS_API, useValue: locks }
+      ]
+    });
+    const fixture = TestBed.createComponent(ScreenComponent);
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    await settle();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(TestBed.inject(ScreenOutputService).ownership()).toBe('other');
+    expect(el.querySelector('[data-testid="other-window"]')).toBeTruthy();
+    expect((el.textContent ?? '').replace(/\s+/g, ' ')).toContain('Desk Display active in another window');
+    expect(hasConnectButton(el)).toBeFalse();
+    expect(el.querySelector('canvas')).toBeTruthy(); // the preview still works
+
+    // When the other window goes away this one takes over and shows the normal steps.
+    release();
+    await settle();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="other-window"]')).toBeNull();
+    expect(hasConnectButton(el)).toBeTrue();
+    fixture.destroy();
   });
 });

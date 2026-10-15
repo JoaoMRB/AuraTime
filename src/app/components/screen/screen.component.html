@@ -105,7 +105,13 @@
             }
           </article>
 
-          @if (supported) {
+          @if (supported && otherWindow()) {
+            <!-- Another window owns the display: this one does not touch the port -->
+            <article class="rounded-3xl border border-amber-300/40 bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6" data-testid="other-window" role="status">
+              <h2 class="font-playfair text-lg text-amber-200">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TITLE') }}</h2>
+              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TEXT') }}</p>
+            </article>
+          } @else if (supported) {
             <!-- Step 2: connect -->
             <article class="rounded-3xl border bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6 transition-colors"
                      [class]="currentStep() === 2 ? 'border-luxury-gold/50 shadow-[0_0_30px_rgba(212,175,55,0.08)]' : 'border-white/10'">

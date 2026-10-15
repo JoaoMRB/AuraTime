@@ -1,15 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { EnvironmentInjector, createEnvironmentInjector, signal } from '@angular/core';
 import { ScreenOutputService } from './screen-output.service';
 import { DisplayStateService } from './display-state.service';
 import { SERIAL_API } from './serial-link.service';
+import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
+import { FakeLockManager, flushLocks } from '../testing/fake-locks';
 import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
 import { DisplaySnapshot } from './display-snapshot';
 import { englishLabels } from './testing/english-labels';
 import { FakePort, FakeSerial } from './testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from './screen-renderer';
-import { DESK_STATUS_KEY } from './desk-display-status.service';
+import { DESK_STATUS_KEY, DeskDisplayStatusService } from './desk-display-status.service';
 
 function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
   return {
@@ -65,10 +67,12 @@ describe('ScreenOutputService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: DisplayStateService, useValue: { snapshot: state } },
-        { provide: SERIAL_API, useValue: serial }
+        { provide: SERIAL_API, useValue: serial },
+        { provide: LOCKS_API, useValue: null }
       ]
     });
     service = TestBed.inject(ScreenOutputService);
+    service.ownership.set('owner'); // as after start(): this window drives the display
     link = TestBed.inject(SerialLinkService);
   });
 
@@ -429,7 +433,8 @@ describe('ScreenOutputService', () => {
       TestBed.configureTestingModule({
         providers: [
           { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
-          { provide: SERIAL_API, useValue: new FakeSerial() }
+          { provide: SERIAL_API, useValue: new FakeSerial() },
+        { provide: LOCKS_API, useValue: null }
         ]
       });
       const restored = TestBed.inject(ScreenOutputService);
@@ -515,7 +520,8 @@ describe('ScreenOutputService', () => {
       TestBed.configureTestingModule({
         providers: [
           { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
-          { provide: SERIAL_API, useValue: new FakeSerial() }
+          { provide: SERIAL_API, useValue: new FakeSerial() },
+        { provide: LOCKS_API, useValue: null }
         ]
       });
       const restored = TestBed.inject(ScreenOutputService);
@@ -555,7 +561,8 @@ describe('ScreenOutputService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
-        { provide: SERIAL_API, useValue: serial2 }
+        { provide: SERIAL_API, useValue: serial2 },
+        { provide: LOCKS_API, useValue: null }
       ]
     });
     const restored = TestBed.inject(ScreenOutputService);
@@ -692,5 +699,150 @@ describe('ScreenOutputService', () => {
     service.stop();
     (tick as unknown as { emit(): void }).emit();
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ScreenOutputService: only one window drives the display', () => {
+  let locks: FakeLockManager;
+  let serialA: FakeSerial;
+  let serialB: FakeSerial;
+  let a: ScreenOutputService;
+  let b: ScreenOutputService;
+  let injectorB: EnvironmentInjector;
+
+  beforeEach(async () => {
+    await Promise.all(REQUIRED_FONT_SHORTHANDS.map(f => document.fonts.load(f)));
+    localStorage.clear();
+    locks = new FakeLockManager();
+    serialA = new FakeSerial();
+    serialA.picked = new FakePort();
+    serialB = new FakeSerial();
+    serialB.picked = new FakePort();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
+        { provide: SERIAL_API, useValue: serialA },
+        { provide: LOCKS_API, useValue: locks }
+      ]
+    });
+    a = TestBed.inject(ScreenOutputService);
+    // "The second /screen window": its own display service and serial link, the same lock manager.
+    injectorB = createEnvironmentInjector(
+      [
+        ScreenOutputService,
+        SerialLinkService,
+        DeskDisplayStatusService,
+        { provide: SERIAL_API, useValue: serialB }
+      ],
+      TestBed.inject(EnvironmentInjector)
+    );
+    b = injectorB.get(ScreenOutputService);
+  });
+
+  afterEach(() => {
+    a.stop();
+    b.stop();
+    injectorB.destroy();
+  });
+
+  it('the first window owns the display, the second finds it taken', async () => {
+    await a.start();
+    await flushLocks();
+    await b.start();
+    await flushLocks();
+    expect(locks.requests.filter(n => n === LOCK_DESK_DISPLAY).length).toBeGreaterThanOrEqual(2);
+    expect(a.ownership()).toBe('owner');
+    expect(b.ownership()).toBe('other');
+  });
+
+  it('the other window never opens the port, never connects and never touches the shared status', async () => {
+    await a.start();
+    await flushLocks();
+    const status = injectorB.get(DeskDisplayStatusService);
+    const publish = spyOn(status, 'publish').and.callThrough();
+    const getPorts = spyOn(serialB, 'getPorts').and.callThrough();
+    const requestPort = spyOn(serialB, 'requestPort').and.callThrough();
+    (b as unknown as { autoConnect: boolean }).autoConnect = true; // it would reconnect on its own if it could
+
+    await b.start();
+    await flushLocks();
+    expect(await b.connect()).toBeFalse();
+    await b.renderFrame();
+    await b.renderFrame();
+    b.stop();
+
+    expect(requestPort).not.toHaveBeenCalled();
+    expect(getPorts).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled(); // not even the "false" a closing window usually leaves behind
+  });
+
+  it('closing the second window leaves the status of the first one alone', async () => {
+    await a.start();
+    await flushLocks();
+    TestBed.flushEffects();
+    await b.start();
+    await flushLocks();
+    const before = localStorage.getItem(DESK_STATUS_KEY);
+    expect(before).toBeTruthy();
+    b.stop();
+    expect(localStorage.getItem(DESK_STATUS_KEY)).toBe(before);
+  });
+
+  it('the other window takes over when the owner goes away', async () => {
+    await a.start();
+    await flushLocks();
+    await b.start();
+    await flushLocks();
+    expect(b.ownership()).toBe('other');
+
+    a.stop();
+    await flushLocks();
+    expect(b.ownership()).toBe('owner');
+    expect(await b.connect()).toBeTrue(); // and it can use the display now
+  });
+
+  it('a window that gave up waiting does not become the owner later', async () => {
+    await a.start();
+    await flushLocks();
+    await b.start();
+    await flushLocks();
+    b.stop();
+    a.stop();
+    await flushLocks();
+    expect(b.ownership()).toBe('unknown');
+  });
+
+  it('a browser without Web Locks: the window simply owns the display', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
+        { provide: SERIAL_API, useValue: serialA },
+        { provide: LOCKS_API, useValue: null }
+      ]
+    });
+    const solo = TestBed.inject(ScreenOutputService);
+    await solo.start();
+    expect(solo.ownership()).toBe('owner');
+    solo.stop();
+  });
+
+  it('if the lock itself fails, the display is still usable (it falls back to owning it)', async () => {
+    TestBed.resetTestingModule();
+    const warn = spyOn(console, 'warn');
+    const broken = { request: () => Promise.reject(new Error('locks are broken')) } as unknown as LockManager;
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
+        { provide: SERIAL_API, useValue: serialA },
+        { provide: LOCKS_API, useValue: broken }
+      ]
+    });
+    const solo = TestBed.inject(ScreenOutputService);
+    await solo.start();
+    await flushLocks();
+    expect(solo.ownership()).toBe('owner');
+    expect(warn).toHaveBeenCalled();
+    solo.stop();
   });
 });

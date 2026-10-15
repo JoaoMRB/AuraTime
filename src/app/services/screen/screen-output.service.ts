@@ -11,6 +11,7 @@ import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot
 import {
   BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
 } from './screen-logic';
+import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
 
 /** User preferences for the screen, persisted under `auratime_screen`. */
@@ -77,6 +78,16 @@ export class ScreenOutputService implements OnDestroy {
   private tick = inject(TickService);
   private zone = inject(NgZone);
   private deskStatus = inject(DeskDisplayStatusService);
+  private locks = inject(LOCKS_API);
+
+  /**
+   * Only one /screen window may drive the display: two windows writing to the same port would corrupt the
+   * picture and fight over the shared status. 'unknown' until the lock answers, 'owner' for the window that
+   * holds it, 'other' for a window that found it taken (it keeps a preview but never touches the port).
+   */
+  readonly ownership = signal<'unknown' | 'owner' | 'other'>('unknown');
+  private releaseOwnership: (() => void) | null = null;
+  private abortClaim: AbortController | null = null;
 
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   /** Views that take part in the automatic rotation (only those with content are actually shown). */
@@ -145,6 +156,7 @@ export class ScreenOutputService implements OnDestroy {
       // Tell the other windows (the clock's settings) whether a display is connected.
       effect(() => {
         const connected = this.link.status() === 'connected';
+        this.ownership();
         untracked(() => this.publishStatus(connected));
       });
 
@@ -167,6 +179,7 @@ export class ScreenOutputService implements OnDestroy {
   async start(): Promise<void> {
     if (!this.isBrowser || this.started) return;
     this.started = true;
+    this.claimDisplay();
 
     try {
       await Promise.all(REQUIRED_FONT_SHORTHANDS.map(f => document.fonts.load(f)));
@@ -190,12 +203,60 @@ export class ScreenOutputService implements OnDestroy {
     if (this.isBrowser) {
       window.removeEventListener('pagehide', this.onPageHide);
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
-      this.deskStatus.publish(false);
+      if (this.isOwner()) this.deskStatus.publish(false); // a window that never owned the display says nothing
+      this.releaseDisplay();
     }
   }
 
+  private isOwner(): boolean {
+    return this.ownership() === 'owner';
+  }
+
+  /**
+   * Takes the display lock without waiting. If another window has it, this one becomes a read-only preview and
+   * waits in the queue, taking over (and starting to drive the display) when the other window goes away.
+   * Where Web Locks do not exist there is nothing to coordinate with, so the window simply owns the display.
+   */
+  private claimDisplay(): void {
+    const locks = this.locks;
+    if (!locks) {
+      this.ownership.set('owner');
+      return;
+    }
+    const abort = new AbortController();
+    this.abortClaim = abort;
+    const hold = () => new Promise<void>(resolve => (this.releaseOwnership = resolve));
+    const become = async () => {
+      this.ownership.set('owner');
+      await hold();
+    };
+
+    locks
+      .request(LOCK_DESK_DISPLAY, { ifAvailable: true }, async lock => {
+        if (lock) return become();
+        this.ownership.set('other');
+        await locks.request(LOCK_DESK_DISPLAY, { signal: abort.signal }, become);
+      })
+      .catch(error => {
+        if ((error as { name?: string })?.name === 'AbortError') return;
+        // Never leave the display unusable because coordination failed: carry on as the owner.
+        console.warn('[ScreenOutput] could not use the display lock', error);
+        this.ownership.set('owner');
+      });
+  }
+
+  private releaseDisplay(): void {
+    this.abortClaim?.abort();
+    this.abortClaim = null;
+    this.releaseOwnership?.();
+    this.releaseOwnership = null;
+    this.ownership.set('unknown');
+  }
+
   /** The Desk Display window is going away: other windows must not keep showing "connected". */
-  private onPageHide = () => this.deskStatus.publish(false);
+  private onPageHide = () => {
+    if (this.isOwner()) this.deskStatus.publish(false);
+  };
 
   /** Tell the other windows right away that this page is (no longer) hidden, so their indicator stays right. */
   private onVisibilityChange = () => {
@@ -204,12 +265,14 @@ export class ScreenOutputService implements OnDestroy {
   };
 
   private publishStatus(connected: boolean): void {
+    if (!this.isOwner()) return; // the status belongs to the window that drives the display
     this.lastHeartbeat = Date.now();
     this.deskStatus.publish(connected, typeof document !== 'undefined' && document.hidden);
   }
 
   /** Must be called from a click: opens the browser's device picker. */
   async connect(): Promise<boolean> {
+    if (this.ownership() === 'other') return false;
     const ok = await this.zone.runOutsideAngular(() => this.link.connect(this.connectOptions()));
     if (ok) this.autoConnect = true;
     this.persistPrefs();
@@ -217,6 +280,7 @@ export class ScreenOutputService implements OnDestroy {
   }
 
   async disconnect(): Promise<void> {
+    if (this.ownership() === 'other') return;
     this.autoConnect = false;
     await this.link.disconnect();
     this.persistPrefs();
@@ -322,7 +386,7 @@ export class ScreenOutputService implements OnDestroy {
    * (unplugged, PC slept, write error), retry quietly with a growing delay.
    */
   private async maybeReconnect(wallNow: number): Promise<void> {
-    if (!this.autoConnect || !this.link.isSupported()) return;
+    if (!this.isOwner() || !this.autoConnect || !this.link.isSupported()) return;
     const status = this.link.status();
     if (status === 'connecting' || status === 'connected' || status === 'unsupported') return;
 

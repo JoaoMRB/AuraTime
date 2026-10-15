@@ -1,6 +1,6 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { backupCorrupt, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
+import { backupCorrupt, isRecord, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 import { lostEntries, sanitizeTasks } from './storage-validators';
 
 export interface TaskItem {
@@ -37,11 +37,7 @@ export class TaskService {
 
   private loadTasks() {
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_tasks' && event.newValue) {
-        this.applyRaw(event.newValue);
-      }
-    });
+    onStorageChange('auratime_tasks', value => this.applyRaw(value));
 
     const data = readStorage('auratime_tasks');
     if (!(data && this.applyRaw(data))) {

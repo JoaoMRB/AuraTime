@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { backupCorrupt, parseJson, readStorage, writeStorage } from './safe-storage';
+import { backupCorrupt, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 import { lostEntries, sanitizeWorldClocks } from './storage-validators';
 
 export interface WorldClock {
@@ -206,9 +206,7 @@ export class WorldClockService {
     this.applyRaw(readStorage('auratime_worldclocks'));
 
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_worldclocks' && event.newValue) this.applyRaw(event.newValue);
-    });
+    onStorageChange('auratime_worldclocks', value => this.applyRaw(value));
   }
 
   private applyRaw(data: string | null): void {

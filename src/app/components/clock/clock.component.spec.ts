@@ -18,6 +18,8 @@ import { TranslationService } from '../../services/translation.service';
  * These tests mount the component the way a visitor opens the app: with the theme/position already saved.
  */
 describe('ClockComponent: themes and positions render completely', () => {
+  // Undefined until a test mounts the clock: every test starts without one, so none depends on the order the
+  // tests run in (the suite runs in random order).
   let fixture: ComponentFixture<ClockComponent>;
   let el: HTMLElement;
 
@@ -43,19 +45,21 @@ describe('ClockComponent: themes and positions render completely', () => {
 
   /** Same, but as a brand new page load (new injector). */
   function remount(saved: Record<string, unknown>): void {
-    fixture.destroy();
+    fixture?.destroy();
     TestBed.resetTestingModule();
     configure();
     mount(saved);
   }
 
   beforeEach(() => {
+    fixture = undefined as unknown as ComponentFixture<ClockComponent>;
     localStorage.clear();
     configure();
   });
 
   afterEach(() => {
     fixture?.destroy();
+    fixture = undefined as unknown as ComponentFixture<ClockComponent>;
     localStorage.clear();
   });
 

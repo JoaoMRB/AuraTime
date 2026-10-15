@@ -44,7 +44,7 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   Finishing a Pomodoro phase is credited once across windows: the credit is taken under a Web Lock and the
   "already credited?" check is repeated inside it, so two windows that notice the end at the same moment cannot
   both credit it (in a browser without Web Locks the check is best effort).
-- **Tests**: from none to 417 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
+- **Tests**: from none to 418 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
   with a fake port, wire integrity (header and pixels are never interleaved), reconnection and back-off, demo
   data, translations, and the landing, `/screen` and clock components.
 

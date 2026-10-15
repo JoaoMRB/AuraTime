@@ -1,3 +1,4 @@
+import { DestroyRef, inject } from '@angular/core';
 /**
  * localStorage access that never throws. Browsers can refuse it (private windows, blocked site data,
  * a full quota) and every caller should simply carry on without saving, instead of crashing a page.
@@ -27,6 +28,19 @@ export function removeStorage(key: string): void {
   } catch {
     /* nothing to do */
   }
+}
+
+/**
+ * Calls `handler` with the new value when ANOTHER window changes `key` (a `storage` event), and stops when the
+ * service that asked is destroyed. Must be called while the service is being constructed. Without the removal,
+ * every destroyed instance (each test builds a fresh one) kept listening and reacting to later events.
+ */
+export function onStorageChange(key: string, handler: (newValue: string) => void): void {
+  const listener = (event: StorageEvent) => {
+    if (event.key === key && event.newValue) handler(event.newValue);
+  };
+  window.addEventListener('storage', listener);
+  inject(DestroyRef).onDestroy(() => window.removeEventListener('storage', listener));
 }
 
 const BACKUPS_KEPT = 3;

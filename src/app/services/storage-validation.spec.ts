@@ -436,3 +436,25 @@ describe('a stored list that fails validation is backed up first', () => {
     expect(() => backupCorrupt('k', 'another')).not.toThrow();
   });
 });
+
+describe('a destroyed service stops listening to other windows', () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  it('a storage event after the module is gone does not change the old instance', () => {
+    TestBed.configureTestingModule({ providers: [audioStub, { provide: LOCKS_API, useValue: null }] });
+    const tasks = TestBed.inject(TaskService);
+    const dashboard = TestBed.inject(DashboardService);
+    const clocks = TestBed.inject(WorldClockService);
+    const before = { t: tasks.tasks(), l: dashboard.links(), c: clocks.allClocks() };
+    TestBed.resetTestingModule(); // what happens between two tests
+
+    storageEvent('auratime_tasks', JSON.stringify({ tasks: [{ id: 'x', text: 'late' }] }));
+    storageEvent('auratime_dashboard', JSON.stringify({ links: [{ id: 'x', title: 'late', url: 'https://late.example' }] }));
+    storageEvent('auratime_worldclocks', JSON.stringify([{ id: 'x', label: 'Late', timezone: 'Asia/Tokyo' }]));
+
+    expect(tasks.tasks()).toBe(before.t);
+    expect(dashboard.links()).toBe(before.l);
+    expect(clocks.allClocks()).toBe(before.c);
+  });
+});

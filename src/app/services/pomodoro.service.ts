@@ -5,7 +5,7 @@ import { TaskService } from './task.service';
 import { AnalyticsService } from './analytics.service';
 import { TickService } from './screen/tick.service';
 import { LOCKS_API, LOCK_POMODORO_CREDIT } from './web-locks';
-import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
+import { isFiniteNumber, isRecord, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 
 export type PomodoroPhase = 'work' | 'break';
 
@@ -88,11 +88,9 @@ export class PomodoroService {
       effect(() => this.persist());
 
       // Keep several open tabs/windows (app + /screen) in sync
-      window.addEventListener('storage', (event: StorageEvent) => {
-        if (event.key === STORAGE_KEY && event.newValue) {
-          this.applyRaw(event.newValue);
-          this.syncRemaining();
-        }
+      onStorageChange(STORAGE_KEY, value => {
+        this.applyRaw(value);
+        this.syncRemaining();
       });
 
       // The app was closed while a phase ran and that phase has ended since: settle it once and stop.

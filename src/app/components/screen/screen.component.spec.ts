@@ -9,6 +9,7 @@ import { SERIAL_API } from '../../services/screen/serial-link.service';
 import { TranslationService } from '../../services/translation.service';
 import { FakePort, FakeSerial } from '../../services/screen/testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from '../../services/screen/screen-renderer';
+import { AlarmService } from '../../services/alarm.service';
 
 describe('ScreenComponent (Desk Display page)', () => {
   let serial: FakeSerial | null;
@@ -191,6 +192,28 @@ describe('ScreenComponent (Desk Display page)', () => {
     it('never shows a raw translation key', async () => {
       const { el } = await render();
       expect(text(el)).not.toMatch(/SCREEN\.[A-Z_]+\./);
+    });
+  });
+
+  describe('alarms', () => {
+    it('stay silent while the page is open and work again as soon as the visitor leaves it', async () => {
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(2026, 0, 15, 7, 29, 50));
+        const { fixture } = await render();
+        const alarms = TestBed.inject(AlarmService);
+
+        alarms.addAlarm({ label: 'Wake up', time: '07:30', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime' });
+        jasmine.clock().tick(11_000);
+        expect(alarms.isAlarmRinging()).withContext('while on /screen').toBeFalse();
+
+        fixture.destroy(); // navigating away from /screen in the same app
+        alarms.addAlarm({ label: 'Next', time: '07:31', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime' });
+        jasmine.clock().tick(60_000);
+        expect(alarms.isAlarmRinging()).withContext('after leaving /screen').toBeTrue();
+      } finally {
+        jasmine.clock().uninstall();
+      }
     });
   });
 

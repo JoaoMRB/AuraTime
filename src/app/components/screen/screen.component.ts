@@ -1,5 +1,5 @@
 import {
-  AfterViewInit, Component, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
+  AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -61,8 +61,10 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
   readonly viewName = computed(() => this.viewLabel(this.output.activeView()));
 
   constructor() {
-    // This page only *shows* the next alarm; ringing stays with the clock window.
-    inject(AlarmService).stopChecker();
+    // This page only *shows* the next alarm; ringing stays with the clock window. The suppression lasts
+    // only as long as this page, so alarms work again as soon as the visitor leaves /screen.
+    const releaseAlarms = inject(AlarmService).suppressRinging();
+    inject(DestroyRef).onDestroy(releaseAlarms);
 
     afterNextRender(() => this.ready.set(true));
 

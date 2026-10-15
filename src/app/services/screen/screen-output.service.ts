@@ -84,8 +84,13 @@ export class ScreenOutputService implements OnDestroy {
   readonly fontPin = signal<FontId | null>(DEFAULT_PREFS.fontPin);
   /** The user allows sample data while no display is connected. */
   readonly demoEnabled = signal<boolean>(DEFAULT_PREFS.demo);
-  /** True while the preview is showing sample data (demo allowed and no display connected). */
-  readonly demoActive = computed(() => this.demoEnabled() && this.link.status() !== 'connected');
+  /**
+   * True while the preview shows sample data: no display connected and demo allowed. In a browser
+   * without Web Serial there will never be a display, so the demo is always on.
+   */
+  readonly demoActive = computed(
+    () => this.link.status() !== 'connected' && (this.demoEnabled() || !this.link.isSupported())
+  );
   readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
   /** The view currently on screen (useful for the preview UI). */

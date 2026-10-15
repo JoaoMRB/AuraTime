@@ -1,4 +1,5 @@
 import { Injectable, ErrorHandler, Injector, NgZone } from '@angular/core';
+import { isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
 
 export enum ErrorSeverity {
   LOW = 'low',
@@ -36,15 +37,12 @@ export class LoggerService {
   }
 
   private initializeStorage(): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const stored = localStorage.getItem('auratime_logs');
-        if (stored) {
-          this.logs = JSON.parse(stored);
-        }
-      } catch (e) {
-        console.warn('Could not load logs from storage');
-      }
+    const stored = parseJson(readStorage('auratime_logs'));
+    if (Array.isArray(stored)) {
+      // keep only entries that look like log entries (anything else would break the code that reads them)
+      this.logs = stored
+        .filter((e): e is ErrorLog => isRecord(e) && typeof e['message'] === 'string' && typeof e['severity'] === 'string')
+        .slice(-100);
     }
   }
 
@@ -112,12 +110,8 @@ export class LoggerService {
   }
 
   private persistLogs(): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        localStorage.setItem('auratime_logs', JSON.stringify(this.logs));
-      } catch (e) {
-        console.warn('Could not persist logs to storage');
-      }
+    if (!writeStorage('auratime_logs', JSON.stringify(this.logs))) {
+      console.warn('Could not persist logs to storage');
     }
   }
 

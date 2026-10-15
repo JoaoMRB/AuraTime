@@ -5,7 +5,8 @@ import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
 import { DESK_STATUS_HEARTBEAT_MS, DeskDisplayStatusService } from './desk-display-status.service';
 import { fillDemoData } from './demo-data';
-import { FONT_TOKENS, FontId, ThemeId, isThemeId } from './theme-tokens';
+import { FontId, ThemeId, isFontId, isThemeId } from './theme-tokens';
+import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from '../safe-storage';
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
 import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
@@ -36,6 +37,45 @@ export interface ScreenPrefs {
 }
 
 const STORAGE_KEY = 'auratime_screen';
+
+const clampInt = (value: unknown, min: number, max: number): number | undefined =>
+  isFiniteNumber(value) ? Math.min(max, Math.max(min, Math.round(value))) : undefined;
+
+/**
+ * Keeps only the valid fields of the stored screen preferences (a damaged value is dropped, never trusted).
+ * Exported for the tests.
+ */
+export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
+  if (!isRecord(raw)) return {};
+  const out: Partial<ScreenPrefs> = {};
+
+  const mode = raw['viewMode'];
+  if (mode === 'auto' || (typeof mode === 'string' && (ALL_SCREEN_VIEWS as readonly string[]).includes(mode))) out.viewMode = mode as ScreenViewMode;
+  if (Array.isArray(raw['rotation'])) out.rotation = ALL_SCREEN_VIEWS.filter(v => (raw['rotation'] as unknown[]).includes(v));
+
+  if (isRecord(raw['brightness'])) {
+    const b = raw['brightness'];
+    const brightness: Partial<BrightnessConfig> = {};
+    const base = clampInt(b['base'], 0, 100);
+    const nightLevel = clampInt(b['nightLevel'], 0, 100);
+    const from = clampInt(b['nightFromHour'], 0, 23);
+    const to = clampInt(b['nightToHour'], 0, 23);
+    if (base !== undefined) brightness.base = base;
+    if (nightLevel !== undefined) brightness.nightLevel = nightLevel;
+    if (from !== undefined) brightness.nightFromHour = from;
+    if (to !== undefined) brightness.nightToHour = to;
+    if (typeof b['nightEnabled'] === 'boolean') brightness.nightEnabled = b['nightEnabled'];
+    if (typeof b['nightBlack'] === 'boolean') brightness.nightBlack = b['nightBlack'];
+    out.brightness = { ...DEFAULT_BRIGHTNESS_CONFIG, ...brightness };
+  }
+
+  for (const key of ['flowControl', 'demo', 'alwaysFullFrame', 'slowSend', 'autoConnect'] as const) {
+    if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  if (typeof raw['themePin'] === 'string' && isThemeId(raw['themePin'])) out.themePin = raw['themePin'];
+  if (isFontId(raw['fontPin'])) out.fontPin = raw['fontPin'];
+  return out;
+}
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
 /**
@@ -417,25 +457,17 @@ export class ScreenOutputService implements OnDestroy {
   }
 
   private loadPrefs(): void {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const p = JSON.parse(raw) as Partial<ScreenPrefs>;
-      if (p.viewMode && (p.viewMode === 'auto' || ALL_SCREEN_VIEWS.includes(p.viewMode))) this.viewMode.set(p.viewMode);
-      if (Array.isArray(p.rotation)) {
-        this.rotation.set(ALL_SCREEN_VIEWS.filter(v => p.rotation!.includes(v)));
-      }
-      if (p.brightness) this.brightness.set({ ...DEFAULT_BRIGHTNESS_CONFIG, ...p.brightness });
-      if (typeof p.flowControl === 'boolean') this.flowControl.set(p.flowControl);
-      if (p.themePin && isThemeId(p.themePin)) this.themePin.set(p.themePin);
-      if (p.fontPin && p.fontPin in FONT_TOKENS) this.fontPin.set(p.fontPin);
-      if (typeof p.demo === 'boolean') this.demoEnabled.set(p.demo);
-      if (typeof p.alwaysFullFrame === 'boolean') this.alwaysFullFrame.set(p.alwaysFullFrame);
-      if (typeof p.slowSend === 'boolean') this.slowSend.set(p.slowSend);
-      if (typeof p.autoConnect === 'boolean') this.autoConnect = p.autoConnect;
-    } catch {
-      /* corrupted prefs: keep defaults */
-    }
+    const p = sanitizeScreenPrefs(parseJson(readStorage(STORAGE_KEY)));
+    if (p.viewMode) this.viewMode.set(p.viewMode);
+    if (p.rotation) this.rotation.set(p.rotation);
+    if (p.brightness) this.brightness.set(p.brightness);
+    if (p.flowControl !== undefined) this.flowControl.set(p.flowControl);
+    if (p.themePin) this.themePin.set(p.themePin);
+    if (p.fontPin) this.fontPin.set(p.fontPin);
+    if (p.demo !== undefined) this.demoEnabled.set(p.demo);
+    if (p.alwaysFullFrame !== undefined) this.alwaysFullFrame.set(p.alwaysFullFrame);
+    if (p.slowSend !== undefined) this.slowSend.set(p.slowSend);
+    if (p.autoConnect !== undefined) this.autoConnect = p.autoConnect;
   }
 
   private persistPrefs(): void {
@@ -451,10 +483,6 @@ export class ScreenOutputService implements OnDestroy {
       slowSend: this.slowSend(),
       autoConnect: this.autoConnect
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    } catch {
-      /* storage unavailable */
-    }
+    writeStorage(STORAGE_KEY, JSON.stringify(prefs));
   }
 }

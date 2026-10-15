@@ -1,6 +1,8 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AudioService } from './audio.service';
+import { parseJson, readStorage, writeStorage } from './safe-storage';
+import { sanitizeTimerPresets } from './storage-validators';
 
 export interface TimerPreset {
   id: string;
@@ -194,24 +196,15 @@ export class TimerService {
 
   // Persistence
   private saveToStorage(): void {
-    try {
-      localStorage.setItem('auratime_timer_presets', JSON.stringify(this.presets()));
-    } catch (e) {
-      console.warn('Could not save timer presets to localStorage', e);
+    if (!writeStorage('auratime_timer_presets', JSON.stringify(this.presets()))) {
+      console.warn('Could not save timer presets to localStorage');
     }
   }
 
   private loadFromStorage(): void {
-    try {
-      const data = localStorage.getItem('auratime_timer_presets');
-      if (data) {
-        const parsed = JSON.parse(data) as TimerPreset[];
-        if (parsed.length > 0) {
-          this.presets.set(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn('Could not load timer presets from localStorage', e);
+    const parsed = sanitizeTimerPresets(parseJson(readStorage('auratime_timer_presets')));
+    if (parsed && parsed.length > 0) {
+      this.presets.set(parsed);
     }
   }
 

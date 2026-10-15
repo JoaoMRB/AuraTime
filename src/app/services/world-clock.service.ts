@@ -1,5 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { parseJson, readStorage, writeStorage } from './safe-storage';
+import { sanitizeWorldClocks } from './storage-validators';
 
 export interface WorldClock {
   id: string;
@@ -195,34 +197,24 @@ export class WorldClockService {
 
   // Persistence
   private saveToStorage(): void {
-    try {
-      localStorage.setItem('auratime_worldclocks', JSON.stringify(this.clocks()));
-    } catch (e) {
-      console.warn('Could not save world clocks to localStorage', e);
+    if (!writeStorage('auratime_worldclocks', JSON.stringify(this.clocks()))) {
+      console.warn('Could not save world clocks to localStorage');
     }
   }
 
   private loadFromStorage(): void {
-    try {
-      this.applyRaw(localStorage.getItem('auratime_worldclocks'));
-    } catch (e) {
-      console.warn('Could not load world clocks from localStorage', e);
-    }
+    this.applyRaw(readStorage('auratime_worldclocks'));
 
     // Keep several open tabs/windows (app + /screen) in sync
     window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_worldclocks' && event.newValue) {
-        try {
-          this.applyRaw(event.newValue);
-        } catch (e) {}
-      }
+      if (event.key === 'auratime_worldclocks' && event.newValue) this.applyRaw(event.newValue);
     });
   }
 
   private applyRaw(data: string | null): void {
     if (!data) return;
-    const parsed = JSON.parse(data) as WorldClock[];
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    const parsed = sanitizeWorldClocks(parseJson(data)); // clocks with an unknown time zone are dropped
+    if (parsed && parsed.length > 0) {
       this.clocks.set(parsed);
     }
   }

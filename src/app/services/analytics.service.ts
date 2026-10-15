@@ -1,6 +1,8 @@
 import { Injectable, signal, computed, effect, inject, untracked, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { TickService } from './screen/tick.service';
+import { parseJson, readStorage, writeStorage } from './safe-storage';
+import { sanitizeAnalytics } from './storage-validators';
 
 export interface FocusDayRecord {
   date: string; // YYYY-MM-DD
@@ -92,9 +94,7 @@ export class AnalyticsService {
           currentStreak: this.currentStreak(),
           bestStreak: this.bestStreak()
         };
-        try {
-          localStorage.setItem('auratime_analytics', JSON.stringify(state));
-        } catch (e) {}
+        writeStorage('auratime_analytics', JSON.stringify(state));
       });
     }
   }
@@ -107,19 +107,15 @@ export class AnalyticsService {
       }
     });
 
-    this.applyRaw(localStorage.getItem('auratime_analytics'));
+    this.applyRaw(readStorage('auratime_analytics'));
   }
 
   private applyRaw(data: string | null) {
-    try {
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (parsed.dailyRecords) this.dailyRecords.set(parsed.dailyRecords);
-        if (parsed.currentStreak !== undefined) this.currentStreak.set(parsed.currentStreak);
-        if (parsed.bestStreak !== undefined) this.bestStreak.set(parsed.bestStreak);
-      }
-      this.calculateStreak();
-    } catch (e) {}
+    const parsed = sanitizeAnalytics(parseJson(data));
+    if (parsed.dailyRecords) this.dailyRecords.set(parsed.dailyRecords);
+    if (parsed.currentStreak !== undefined) this.currentStreak.set(parsed.currentStreak);
+    if (parsed.bestStreak !== undefined) this.bestStreak.set(parsed.bestStreak);
+    this.calculateStreak();
   }
 
   private formatDateKey(d: Date): string {

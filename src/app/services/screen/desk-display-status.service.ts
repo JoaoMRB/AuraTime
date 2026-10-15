@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { TickService } from './tick.service';
+import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from '../safe-storage';
 
 /** localStorage key used by the Desk Display page to tell the other windows whether a display is connected. */
 export const DESK_STATUS_KEY = 'auratime_screen_status';
@@ -46,7 +47,7 @@ export class DeskDisplayStatusService {
 
   constructor() {
     if (!this.isBrowser) return;
-    this.last.set(this.parse(localStorage.getItem(DESK_STATUS_KEY)));
+    this.last.set(this.parse(readStorage(DESK_STATUS_KEY)));
 
     const onStorage = (event: StorageEvent) => {
       if (event.key === DESK_STATUS_KEY) this.last.set(this.parse(event.newValue));
@@ -60,22 +61,14 @@ export class DeskDisplayStatusService {
     if (!this.isBrowser) return;
     const status: StoredStatus = { connected, at: Date.now(), hidden };
     this.last.set(status);
-    try {
-      localStorage.setItem(DESK_STATUS_KEY, JSON.stringify(status));
-    } catch {
-      /* storage unavailable */
-    }
+    writeStorage(DESK_STATUS_KEY, JSON.stringify(status));
   }
 
   private parse(raw: string | null): StoredStatus | null {
-    if (!raw) return null;
-    try {
-      const value = JSON.parse(raw) as Partial<StoredStatus>;
-      return typeof value.connected === 'boolean' && typeof value.at === 'number' && Number.isFinite(value.at)
-        ? { connected: value.connected, at: value.at, hidden: value.hidden === true }
-        : null;
-    } catch {
-      return null;
-    }
+    const value = parseJson(raw);
+    if (!isRecord(value)) return null;
+    return typeof value['connected'] === 'boolean' && isFiniteNumber(value['at'])
+      ? { connected: value['connected'], at: value['at'], hidden: value['hidden'] === true }
+      : null;
   }
 }

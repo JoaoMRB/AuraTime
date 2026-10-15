@@ -113,7 +113,7 @@ const LOCALES: Record<string, string> = {
 };
 
 export function localeForLang(lang: string): string {
-  return LOCALES[lang] ?? 'en-US';
+  return Object.hasOwn(LOCALES, lang) ? LOCALES[lang] : 'en-US';
 }
 
 /** Looks a text up by its translation key (e.g. 'SCREEN.LABELS.FOCUS'). */

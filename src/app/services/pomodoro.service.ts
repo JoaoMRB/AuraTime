@@ -5,6 +5,7 @@ import { TaskService } from './task.service';
 import { AnalyticsService } from './analytics.service';
 import { TickService } from './screen/tick.service';
 import { LOCKS_API, LOCK_POMODORO_CREDIT } from './web-locks';
+import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
 
 export type PomodoroPhase = 'work' | 'break';
 
@@ -113,37 +114,36 @@ export class PomodoroService {
       breakDuration: this.breakDuration(),
       lastCompletedEnd: this.lastCompletedEnd()
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
+    writeStorage(STORAGE_KEY, JSON.stringify(state));
   }
 
   private restore(): void {
-    try {
-      this.applyRaw(localStorage.getItem(STORAGE_KEY));
-    } catch (e) {}
+    this.applyRaw(readStorage(STORAGE_KEY));
   }
 
   private applyRaw(data: string | null): void {
-    try {
-      if (!data) return;
-      const s = JSON.parse(data) as Partial<PomodoroPersistedState>;
+    const s = parseJson(data);
+    if (!isRecord(s)) return;
 
-      if (typeof s.workDuration === 'number' && s.workDuration > 0) this.workDuration.set(s.workDuration);
-      if (typeof s.breakDuration === 'number' && s.breakDuration > 0) this.breakDuration.set(s.breakDuration);
-      if (s.phase === 'work' || s.phase === 'break') this.phase.set(s.phase);
-      if (typeof s.remainingSec === 'number' && s.remainingSec >= 0) this.remaining.set(Math.floor(s.remainingSec));
+    // A finite, sensible number, or nothing: NaN/Infinity would freeze the countdown, and a huge one never ends.
+    const minutes = (v: unknown) => (isFiniteNumber(v) && v > 0 && v <= 24 * 60 ? v : null);
+    const work = minutes(s['workDuration']);
+    const rest = minutes(s['breakDuration']);
+    if (work !== null) this.workDuration.set(work);
+    if (rest !== null) this.breakDuration.set(rest);
+    if (s['phase'] === 'work' || s['phase'] === 'break') this.phase.set(s['phase']);
+    const remainingSec = s['remainingSec'];
+    if (isFiniteNumber(remainingSec) && remainingSec >= 0 && remainingSec <= 24 * 3600) this.remaining.set(Math.floor(remainingSec));
 
-      if (typeof s.lastCompletedEnd === 'number') this.lastCompletedEnd.set(s.lastCompletedEnd);
+    if (isFiniteNumber(s['lastCompletedEnd'])) this.lastCompletedEnd.set(s['lastCompletedEnd']);
 
-      if (s.running && typeof s.endTime === 'number') {
-        this.endTime.set(s.endTime);
-        this.running.set(true);
-      } else {
-        this.running.set(false);
-        this.endTime.set(null);
-      }
-    } catch (e) {}
+    if (s['running'] === true && isFiniteNumber(s['endTime'])) {
+      this.endTime.set(s['endTime']);
+      this.running.set(true);
+    } else {
+      this.running.set(false);
+      this.endTime.set(null);
+    }
   }
 
   // Timer Operations
@@ -265,15 +265,12 @@ export class PomodoroService {
 
   /** If the shared state shows this phase was already completed, adopt it instead of crediting again. */
   private adoptIfCompletedElsewhere(phaseEnd: number): boolean {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      const stored = JSON.parse(raw) as Partial<PomodoroPersistedState>;
-      if (typeof stored.lastCompletedEnd === 'number' && stored.lastCompletedEnd >= phaseEnd) {
-        this.applyRaw(raw);
-        return true;
-      }
-    } catch (e) {}
+    const raw = readStorage(STORAGE_KEY);
+    const stored = parseJson(raw);
+    if (isRecord(stored) && isFiniteNumber(stored['lastCompletedEnd']) && stored['lastCompletedEnd'] >= phaseEnd) {
+      this.applyRaw(raw);
+      return true;
+    }
     return false;
   }
 

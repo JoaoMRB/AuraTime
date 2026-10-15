@@ -7,6 +7,9 @@
   which waits for the page to be reachable and opens it in a dedicated browser window.
   Nothing outside your own user profile is touched, and -Remove undoes it.
 
+  The shortcut starts PowerShell with -ExecutionPolicy Bypass. That affects only the launcher script it runs
+  (screen-launch.ps1), so it works even where scripts are blocked; the system-wide execution policy is not changed.
+
 .EXAMPLE
   # Local server started at login (run `npm run build` once first):
   .\scripts\screen-startup.ps1 -ServeLocal -Minimized

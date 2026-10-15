@@ -4,12 +4,8 @@ A minimalist focus clock for your browser: Pomodoro, ambient sound and an option
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Angular 18](https://img.shields.io/badge/Angular-18-dd0031.svg)](https://angular.dev)
-<!--
-  Not added yet, on purpose:
-  - CI badge: the repository has no workflow, so there is nothing to point at.
-  - Live demo badge: add it once the public URL is confirmed, for example
-    [![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://YOUR-URL)
--->
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://aura-time-iota.vercel.app)
+<!-- CI badge not added on purpose: the repository has no workflow, so there is nothing to point at. -->
 
 <p align="center">
   <img src="docs/images/landing.png" alt="The AuraTime landing page" width="860">

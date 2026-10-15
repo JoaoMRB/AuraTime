@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, effect, inject, untracked, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { TickService } from './screen/tick.service';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
+import { onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 import { sanitizeAnalytics } from './storage-validators';
 
 export interface FocusDayRecord {
@@ -101,11 +101,7 @@ export class AnalyticsService {
 
   private loadAnalytics() {
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_analytics' && event.newValue) {
-        this.applyRaw(event.newValue);
-      }
-    });
+    onStorageChange('auratime_analytics', value => this.applyRaw(value));
 
     this.applyRaw(readStorage('auratime_analytics'));
   }

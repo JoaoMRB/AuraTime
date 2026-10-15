@@ -1,6 +1,6 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { backupCorrupt, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
+import { backupCorrupt, isRecord, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 import { lostEntries, sanitizeCountdown, sanitizeLinks } from './storage-validators';
 
 export interface QuickLink {
@@ -77,11 +77,7 @@ export class DashboardService {
     this.applyRaw(readStorage('auratime_dashboard'));
 
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_dashboard' && event.newValue) {
-        this.applyRaw(event.newValue);
-      }
-    });
+    onStorageChange('auratime_dashboard', value => this.applyRaw(value));
   }
 
   private applyRaw(data: string | null) {

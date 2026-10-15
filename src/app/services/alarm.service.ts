@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AudioService } from './audio.service';
-import { backupCorrupt, parseJson, readStorage, writeStorage } from './safe-storage';
+import { backupCorrupt, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
 import { lostEntries, sanitizeAlarms } from './storage-validators';
 
 export interface Alarm {
@@ -325,9 +325,7 @@ export class AlarmService {
     this.applyRaw(readStorage('auratime_alarms'));
 
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_alarms' && event.newValue) this.applyRaw(event.newValue);
-    });
+    onStorageChange('auratime_alarms', value => this.applyRaw(value));
   }
 
   private applyRaw(data: string | null): void {

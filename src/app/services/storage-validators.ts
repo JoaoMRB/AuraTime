@@ -34,6 +34,14 @@ function uniqueById<T extends { id: string }>(list: T[]): T[] {
   return list.filter(item => (seen.has(item.id) ? false : (seen.add(item.id), true)));
 }
 
+/**
+ * True when validation lost something: the value was unusable (`clean` is null) or entries were dropped.
+ * `rawList` is the list as it was stored.
+ */
+export function lostEntries(rawList: unknown, clean: unknown[] | null): boolean {
+  return clean === null || (Array.isArray(rawList) && rawList.length !== clean.length);
+}
+
 /* -------------------------------- tasks -------------------------------- */
 
 export function sanitizeTasks(raw: unknown): { tasks: TaskItem[]; activeTaskId: string | null } | null {

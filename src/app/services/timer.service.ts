@@ -1,8 +1,8 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AudioService } from './audio.service';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
-import { sanitizeTimerPresets } from './storage-validators';
+import { backupCorrupt, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeTimerPresets } from './storage-validators';
 
 export interface TimerPreset {
   id: string;
@@ -202,7 +202,10 @@ export class TimerService {
   }
 
   private loadFromStorage(): void {
-    const parsed = sanitizeTimerPresets(parseJson(readStorage('auratime_timer_presets')));
+    const data = readStorage('auratime_timer_presets');
+    const raw = parseJson(data);
+    const parsed = sanitizeTimerPresets(raw);
+    if (data && lostEntries(raw, parsed)) backupCorrupt('auratime_timer_presets', data);
     if (parsed && parsed.length > 0) {
       this.presets.set(parsed);
     }

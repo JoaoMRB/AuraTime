@@ -1,7 +1,7 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
-import { sanitizeTasks } from './storage-validators';
+import { backupCorrupt, isRecord, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeTasks } from './storage-validators';
 
 export interface TaskItem {
   id: string;
@@ -56,7 +56,9 @@ export class TaskService {
 
   /** Applies saved tasks; entries that are not valid tasks are dropped. Returns false if there was nothing usable. */
   private applyRaw(data: string): boolean {
-    const parsed = sanitizeTasks(parseJson(data));
+    const raw = parseJson(data);
+    const parsed = sanitizeTasks(raw);
+    if (lostEntries(isRecord(raw) ? raw['tasks'] : null, parsed?.tasks ?? null)) backupCorrupt('auratime_tasks', data);
     if (!parsed) return false;
     this.tasks.set(parsed.tasks);
     this.activeTaskId.set(parsed.activeTaskId);

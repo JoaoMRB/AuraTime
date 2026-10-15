@@ -1,8 +1,8 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AudioService } from './audio.service';
-import { parseJson, readStorage, writeStorage } from './safe-storage';
-import { sanitizeAlarms } from './storage-validators';
+import { backupCorrupt, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeAlarms } from './storage-validators';
 
 export interface Alarm {
   id: string;
@@ -332,7 +332,9 @@ export class AlarmService {
 
   private applyRaw(data: string | null): void {
     if (!data) return;
-    const parsed = sanitizeAlarms(parseJson(data)); // invalid alarms are dropped, the valid ones kept
+    const raw = parseJson(data);
+    const parsed = sanitizeAlarms(raw); // invalid alarms are dropped, the valid ones kept
+    if (lostEntries(raw, parsed)) backupCorrupt('auratime_alarms', data);
     if (!parsed) return;
     this.alarms.set(parsed);
     this.calculateNextAlarm();

@@ -44,7 +44,7 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   Finishing a Pomodoro phase is credited once across windows: the credit is taken under a Web Lock and the
   "already credited?" check is repeated inside it, so two windows that notice the end at the same moment cannot
   both credit it (in a browser without Web Locks the check is best effort).
-- **Tests**: from none to 418 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
+- **Tests**: from none to 421 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
   with a fake port, wire integrity (header and pixels are never interleaved), reconnection and back-off, demo
   data, translations, and the landing, `/screen` and clock components.
 
@@ -63,6 +63,11 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
 - **Browser extension**: the new tab opens the clock instead of the landing page (hash routing inside the
   extension); `build:extension` removes Angular's inline `onload` handler to satisfy the Manifest V3 CSP and
   fails the build if any inline handler/script or missing manifest file remains.
+
+- **Performance:** the clock (`/app`) is now lazy-loaded like `/screen`, so the initial bundle is 432.82 kB
+  instead of 622.59 kB (budget: 512 kB) and the landing page no longer downloads code it does not use. A build
+  step (`scripts/preload-route-chunks.js`, run by `npm run build`) adds `modulepreload` hints for the clock's
+  chunks to the prerendered `/app` page, and the Outfit font is preloaded, so `/app` paints as fast as before.
 
 ### Fixed
 

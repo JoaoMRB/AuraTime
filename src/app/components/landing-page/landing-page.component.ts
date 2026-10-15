@@ -3,11 +3,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { TranslationService } from '../../services/translation.service';
+import { DeskDisplayMockComponent } from '../desk-display-mock/desk-display-mock.component';
 
 @Component({
   selector: 'app-landing-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DeskDisplayMockComponent],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.css'
 })
@@ -36,6 +37,14 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   // Language dropdown
   langDropdownOpen = signal<boolean>(false);
+
+  // Desk Display section content (translation keys)
+  readonly deskPoints = ['LANDING.DESK.P1', 'LANDING.DESK.P2', 'LANDING.DESK.P3', 'LANDING.DESK.P4'];
+  readonly deskSteps = [
+    { n: 1, title: 'LANDING.DESK.S1_T', text: 'LANDING.DESK.S1_D' },
+    { n: 2, title: 'LANDING.DESK.S2_T', text: 'LANDING.DESK.S2_D' },
+    { n: 3, title: 'LANDING.DESK.S3_T', text: 'LANDING.DESK.S3_D' }
+  ];
 
   constructor() {
     // Dynamic SEO updating when language changes

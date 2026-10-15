@@ -92,8 +92,18 @@ export class AnalyticsService {
   }
 
   private loadAnalytics() {
+    // Keep several open tabs/windows (app + /screen) in sync
+    window.addEventListener('storage', (event: StorageEvent) => {
+      if (event.key === 'auratime_analytics' && event.newValue) {
+        this.applyRaw(event.newValue);
+      }
+    });
+
+    this.applyRaw(localStorage.getItem('auratime_analytics'));
+  }
+
+  private applyRaw(data: string | null) {
     try {
-      const data = localStorage.getItem('auratime_analytics');
       if (data) {
         const parsed = JSON.parse(data);
         if (parsed.dailyRecords) this.dailyRecords.set(parsed.dailyRecords);

@@ -73,6 +73,15 @@
         </div>
       </div>
 
+      <!-- Desk Display (USB screen) -->
+      <a routerLink="/screen"
+        class="inline-flex items-center gap-2 px-4 lg:px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] lg:tracking-[0.2em] text-luxury-gold border border-luxury-gold/40 bg-luxury-gold/[0.06] hover:bg-luxury-gold hover:text-luxury-charcoal rounded-full transition-all duration-300 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="w-4 h-4" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
+        </svg>
+        {{ ts.t('LANDING.DESK.NAV') }}
+      </a>
+
       <!-- Launch App Button (Rounded outline) -->
       <a routerLink="/app"
         class="inline-flex px-5 lg:px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] lg:tracking-[0.2em] text-white border border-white/20 hover:border-luxury-gold hover:text-luxury-gold rounded-full transition-all duration-300 whitespace-nowrap">
@@ -210,10 +219,12 @@
             </div>
 
             <div class="text-4xl md:text-5xl font-orbitron font-black tracking-widest" [ngClass]="{
-                   'text-transparent bg-clip-text bg-gradient-to-r from-luxury-gold via-white to-luxury-platinum drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)]': mockupTheme() === 'emerald-gold',
-                   'text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-indigo-100 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]': mockupTheme() === 'liquid-glass',
-                   'text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-zinc-600': mockupTheme() === 'obsidian-platinum',
-                   'text-slate-800': mockupTheme() === 'frosted-glass'
+                   'from-luxury-gold via-white to-luxury-platinum drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)]': mockupTheme() === 'emerald-gold',
+                   'via-cyan-200 to-indigo-100 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]': mockupTheme() === 'liquid-glass',
+                   'via-zinc-400 to-zinc-600': mockupTheme() === 'obsidian-platinum',
+                   'text-slate-800': mockupTheme() === 'frosted-glass',
+                   'text-transparent bg-clip-text bg-gradient-to-r': (mockupTheme() === 'emerald-gold') || (mockupTheme() === 'liquid-glass') || (mockupTheme() === 'obsidian-platinum'),
+                   'from-white': (mockupTheme() === 'liquid-glass') || (mockupTheme() === 'obsidian-platinum')
                  }">
               {{ currentTime() }}
             </div>
@@ -322,6 +333,74 @@
         </p>
       </a>
 
+    </div>
+  </section>
+
+  <!-- Section Divider -->
+  <div class="w-full flex items-center justify-center opacity-30">
+    <div class="w-24 h-[1px] bg-luxury-gold"></div>
+    <div class="w-2.5 h-2.5 rounded-full border border-luxury-gold mx-4 animate-pulse"></div>
+    <div class="w-24 h-[1px] bg-luxury-gold"></div>
+  </div>
+
+  <!-- Desk Display (USB screen) -->
+  <section id="desk-display" class="space-y-20 scroll-mt-10" aria-labelledby="desk-title">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+      <div class="lg:col-span-6 space-y-7 text-left">
+        <span class="inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-luxury-gold">
+          {{ ts.t('LANDING.DESK.EYEBROW') }}
+        </span>
+        <h2 id="desk-title" class="text-3xl md:text-5xl font-playfair font-light text-white leading-tight">
+          {{ ts.t('LANDING.DESK.TITLE') }}
+        </h2>
+        <p class="text-gray-300 font-light leading-relaxed font-outfit max-w-xl">
+          {{ ts.t('LANDING.DESK.SUBTITLE') }}
+        </p>
+
+        <ul class="space-y-3 font-outfit text-sm text-gray-300">
+          @for (key of deskPoints; track key) {
+            <li class="flex items-start gap-3">
+              <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-luxury-gold" aria-hidden="true"></span>
+              <span>{{ ts.t(key) }}</span>
+            </li>
+          }
+        </ul>
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
+          <a routerLink="/screen"
+            class="inline-flex shrink-0 items-center justify-center whitespace-nowrap px-8 py-4 font-playfair text-xs tracking-[0.25em] font-bold uppercase text-luxury-charcoal bg-luxury-gold hover:bg-white transition-all duration-300 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.15)]">
+            {{ ts.t('LANDING.DESK.CTA') }}
+          </a>
+          <span class="text-xs text-gray-500 font-outfit">{{ ts.t('LANDING.DESK.BROWSER_NOTE') }}</span>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6">
+        <!-- Loaded when it scrolls into view: the mock-up pulls in the whole screen renderer -->
+        @defer (on viewport) {
+          <app-desk-display-mock />
+        } @placeholder {
+          <div class="mx-auto w-full max-w-[560px] rounded-[2rem] border border-white/10 bg-white/[0.03] p-3 sm:p-4" aria-hidden="true">
+            <div class="rounded-2xl bg-black" style="aspect-ratio: 480 / 320"></div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="space-y-10">
+      <h3 class="text-center text-2xl md:text-3xl font-playfair font-light text-white">{{ ts.t('LANDING.DESK.STEPS_TITLE') }}</h3>
+      <ol class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none p-0 m-0">
+        @for (step of deskSteps; track step.n) {
+          <li class="bg-white/[0.02] border border-white/5 hover:border-luxury-gold/20 p-8 rounded-3xl transition-all duration-300 space-y-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full border border-luxury-gold/50 text-sm font-bold text-luxury-gold font-playfair">{{ step.n }}</span>
+            <h4 class="text-lg font-playfair text-white">{{ ts.t(step.title) }}</h4>
+            <p class="text-sm text-gray-400 font-light leading-relaxed font-outfit">{{ ts.t(step.text) }}</p>
+          </li>
+        }
+      </ol>
+
+      <p class="text-center text-sm text-gray-300 font-outfit">{{ ts.t('LANDING.DESK.COMPAT') }}</p>
+      <p class="text-center text-xs text-gray-600 font-outfit max-w-2xl mx-auto -mt-6">{{ ts.t('LANDING.DESK.DISCLAIMER') }}</p>
     </div>
   </section>
 

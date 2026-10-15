@@ -1,5 +1,6 @@
-import { Injectable, signal, computed, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, untracked, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { TickService } from './screen/tick.service';
 
 export interface FocusDayRecord {
   date: string; // YYYY-MM-DD
@@ -13,14 +14,15 @@ export interface FocusDayRecord {
 export class AnalyticsService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private tick = inject(TickService);
 
   // Daily records: Map date string -> FocusDayRecord
   dailyRecords = signal<Record<string, FocusDayRecord>>({});
   currentStreak = signal<number>(0);
   bestStreak = signal<number>(0);
 
-  // Computed today's stats
-  todayKey = computed(() => this.formatDateKey(new Date()));
+  // Computed today's stats. Driven by the shared clock, so they roll over at midnight on their own.
+  todayKey = computed(() => this.formatDateKey(this.tick.now()));
 
   todayStats = computed(() => {
     const key = this.todayKey();
@@ -41,7 +43,7 @@ export class AnalyticsService {
   // Last 7 days for the chart
   weeklySummary = computed(() => {
     const days: { label: string; date: string; minutes: number; pomodoros: number; heightPercent: number }[] = [];
-    const now = new Date();
+    const now = this.tick.now();
     const records = this.dailyRecords();
 
     let maxMinutes = 60; // baseline minimum scale
@@ -77,6 +79,12 @@ export class AnalyticsService {
   constructor() {
     if (this.isBrowser) {
       this.loadAnalytics();
+
+      // A new day starts: today's numbers are already new (todayKey), and so is the streak.
+      effect(() => {
+        this.todayKey();
+        untracked(() => this.calculateStreak());
+      });
 
       effect(() => {
         const state = {
@@ -121,8 +129,12 @@ export class AnalyticsService {
     return `${year}-${month}-${day}`;
   }
 
-  recordFocusSession(durationMinutes: number): void {
-    const today = this.formatDateKey(new Date());
+  /**
+   * Adds a finished focus session to the day it ended on. `at` defaults to now; a session that ended while
+   * the app was closed is dated to the day it really ended, not to the day the app was reopened.
+   */
+  recordFocusSession(durationMinutes: number, at: Date = new Date()): void {
+    const today = this.formatDateKey(at);
 
     this.dailyRecords.update(records => {
       const existing = records[today] || { date: today, minutes: 0, pomodoros: 0 };

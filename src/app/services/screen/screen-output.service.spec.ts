@@ -9,6 +9,7 @@ import { DisplaySnapshot } from './display-snapshot';
 import { englishLabels } from './testing/english-labels';
 import { FakePort, FakeSerial } from './testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from './screen-renderer';
+import { DESK_STATUS_KEY } from './desk-display-status.service';
 
 function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
   return {
@@ -249,7 +250,153 @@ describe('ScreenOutputService', () => {
     });
   });
 
+  describe('demo mode', () => {
+    const rotate = async (slots: number) => {
+      const seen: string[] = [];
+      for (let slot = 0; slot < slots; slot++) {
+        state.set(snap({ now: new Date(2026, 0, 15, 12, 0, slot * 20 + 1) }));
+        await service.renderFrame();
+        seen.push(service.activeView());
+      }
+      return seen;
+    };
+
+    it('is on by default and rotates through every view with sample data while no display is connected', async () => {
+      expect(service.demoActive()).toBeTrue();
+      const seen = await rotate(6);
+      expect(new Set(seen)).toEqual(new Set(['clock', 'focus', 'week', 'alarm', 'world', 'weather']));
+    });
+
+    it('does not send anything to a display (there is none)', async () => {
+      await rotate(3);
+      expect(port.writes.length).toBe(0);
+    });
+
+    it('stops as soon as a display is connected: only real data is shown', async () => {
+      await connect();
+      expect(service.demoActive()).toBeFalse();
+      const seen = await rotate(4);
+      expect(new Set(seen)).toEqual(new Set(['clock', 'focus'])); // the snapshot has no week/alarm/world/weather data
+    });
+
+    it('can be turned off, and the choice is remembered', async () => {
+      service.demoEnabled.set(false);
+      expect(service.demoActive()).toBeFalse();
+      TestBed.flushEffects();
+      expect(JSON.parse(localStorage.getItem('auratime_screen')!).demo).toBeFalse();
+      const seen = await rotate(4);
+      expect(new Set(seen)).toEqual(new Set(['clock', 'focus']));
+    });
+
+    it('keeps real data where it exists and only fills the gaps', async () => {
+      state.set(snap({ stats: { todayMin: 40, streak: 9 } }));
+      service.viewMode.set('clock');
+      await service.renderFrame();
+      // the footer of the clock view shows the real numbers: the frame differs from one with other numbers
+      const real = service.canvas!.getContext('2d')!.getImageData(0, 0, 480, 320).data.slice();
+      state.set(snap({ stats: { todayMin: 41, streak: 9 } }));
+      await service.renderFrame();
+      const other = service.canvas!.getContext('2d')!.getImageData(0, 0, 480, 320).data;
+      expect(real.some((v, i) => v !== other[i])).toBeTrue();
+    });
+  });
+
+  describe('theme and font', () => {
+    const pixels = () => service.canvas!.getContext('2d')!.getImageData(0, 0, 480, 320).data.slice();
+    const differs = (a: Uint8ClampedArray, b: Uint8ClampedArray) => a.some((v, i) => v !== b[i]);
+
+    beforeEach(() => service.viewMode.set('clock'));
+
+    it('follows the app by default', async () => {
+      state.set(snap({ theme: 'emerald-gold' }));
+      await service.renderFrame();
+      const emerald = pixels();
+      state.set(snap({ theme: 'light-glass' }));
+      await service.renderFrame();
+      expect(differs(emerald, pixels())).toBeTrue();
+    });
+
+    it('can pin the theme: the app theme no longer matters', async () => {
+      service.themePin.set('obsidian-platinum');
+      state.set(snap({ theme: 'emerald-gold' }));
+      await service.renderFrame();
+      const a = pixels();
+      state.set(snap({ theme: 'light-glass' }));
+      await service.renderFrame();
+      expect(differs(a, pixels())).toBeFalse();
+    });
+
+    it('can pin the font', async () => {
+      state.set(snap({ fontId: 'outfit' }));
+      await service.renderFrame();
+      const outfit = pixels();
+      service.fontPin.set('orbitron');
+      await service.renderFrame();
+      const pinned = pixels();
+      expect(differs(outfit, pinned)).toBeTrue();
+      state.set(snap({ fontId: 'inter' }));
+      await service.renderFrame();
+      expect(differs(pinned, pixels())).toBeFalse();
+    });
+
+    it('remembers the pins and ignores invalid stored values', () => {
+      service.themePin.set('dark-glass');
+      service.fontPin.set('playfair');
+      TestBed.flushEffects();
+      const saved = JSON.parse(localStorage.getItem('auratime_screen')!);
+      expect(saved.themePin).toBe('dark-glass');
+      expect(saved.fontPin).toBe('playfair');
+
+      localStorage.setItem('auratime_screen', JSON.stringify({ themePin: 'neon', fontPin: 'comic' }));
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
+          { provide: SERIAL_API, useValue: new FakeSerial() }
+        ]
+      });
+      const restored = TestBed.inject(ScreenOutputService);
+      expect(restored.themePin()).toBeNull();
+      expect(restored.fontPin()).toBeNull();
+    });
+  });
+
+  describe('status for the clock window', () => {
+    const stored = () => JSON.parse(localStorage.getItem(DESK_STATUS_KEY)!);
+
+    it('publishes "not connected" at first and "connected" once the display is up', async () => {
+      TestBed.flushEffects();
+      expect(stored().connected).toBeFalse();
+      await connect();
+      expect(stored().connected).toBeTrue();
+      await service.disconnect();
+      TestBed.flushEffects();
+      expect(stored().connected).toBeFalse();
+    });
+
+    it('repeats it as a heartbeat while the page is open', async () => {
+      await connect();
+      const first = stored().at;
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(Date.now() + 6000));
+        await service.renderFrame();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+      expect(stored().at).toBeGreaterThan(first);
+    });
+
+    it('says "not connected" when the page is stopped', async () => {
+      await connect();
+      service.stop();
+      expect(stored().connected).toBeFalse();
+    });
+  });
+
   describe('rotation choice', () => {
+    beforeEach(() => service.demoEnabled.set(false));
+
     const worldClocks = [{ label: 'Tokyo', hhmm: '09:00', ampm: '', dayOffset: 0, utc: 'UTC+9' }];
     const at = (slot: number) => new Date(2026, 0, 15, 12, 0, slot * 20 + 1);
 

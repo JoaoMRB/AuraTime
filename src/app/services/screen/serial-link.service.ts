@@ -74,8 +74,13 @@ export class SerialLinkService implements OnDestroy {
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly status = signal<SerialStatus>('disconnected');
-  /** Human-readable detail for the UI (errors, stalls, model). */
+  /**
+   * What the UI should tell the user: a translation key (e.g. 'SCREEN.MSG.BUSY') or ''.
+   * The service stays language-agnostic; the page translates it.
+   */
   readonly message = signal<string>('');
+  /** Raw technical text of an unexpected error, shown next to the generic message. */
+  readonly messageDetail = signal<string>('');
   /** Reply of the HELLO handshake, e.g. "UsbMonitor 3.5". */
   readonly model = signal<string>('');
   readonly framesSent = signal<number>(0);
@@ -100,7 +105,7 @@ export class SerialLinkService implements OnDestroy {
     // Per spec the event target is the SerialPort that went away.
     const e = event as Event & { port?: unknown };
     if (this.port && ((event.target as unknown) === this.port || e.port === this.port)) {
-      void this.teardown('Display unplugged. Waiting for it to come back…');
+      void this.teardown('SCREEN.MSG.UNPLUGGED');
     }
   };
 
@@ -113,7 +118,7 @@ export class SerialLinkService implements OnDestroy {
   constructor() {
     if (!this.isBrowser || !this.serial) {
       this.status.set(this.isBrowser ? 'unsupported' : 'disconnected');
-      if (this.isBrowser) this.message.set('This browser has no Web Serial support. Use Chrome or Edge.');
+      if (this.isBrowser) this.setMessage('SCREEN.MSG.UNSUPPORTED');
       return;
     }
     this.serial.addEventListener('disconnect', this.onDeviceDisconnect);
@@ -128,7 +133,7 @@ export class SerialLinkService implements OnDestroy {
   async connect(options: ConnectOptions): Promise<boolean> {
     if (!this.serial || this.status() === 'connecting' || this.status() === 'connected') return false;
     this.status.set('connecting');
-    this.message.set('');
+    this.setMessage('');
     try {
       const port = await this.serial.requestPort({
         filters: [{ usbVendorId: TURING_USB_VENDOR_ID, usbProductId: TURING_USB_PRODUCT_ID }]
@@ -138,7 +143,8 @@ export class SerialLinkService implements OnDestroy {
       // NotFoundError = the user closed the picker: not an error worth showing.
       const cancelled = (e as { name?: string })?.name === 'NotFoundError';
       this.status.set(cancelled ? 'disconnected' : 'error');
-      this.message.set(cancelled ? '' : this.describeError(e));
+      if (cancelled) this.setMessage('');
+      else this.reportError(e);
       return false;
     }
   }
@@ -160,7 +166,7 @@ export class SerialLinkService implements OnDestroy {
       return await this.openPort(port, options);
     } catch (e) {
       this.status.set('error');
-      this.message.set(this.describeError(e));
+      this.reportError(e);
       return false;
     }
   }
@@ -205,7 +211,7 @@ export class SerialLinkService implements OnDestroy {
   async fail(error: unknown): Promise<void> {
     await this.teardown('');
     this.status.set('error');
-    this.message.set(this.describeError(error));
+    this.reportError(error);
   }
 
   isConnected(): boolean {
@@ -249,12 +255,12 @@ export class SerialLinkService implements OnDestroy {
 
       this.autoReconnect = true;
       this.status.set('connected');
-      this.message.set('');
+      this.setMessage('');
       return true;
     } catch (e) {
       await this.teardown('');
       this.status.set('error');
-      this.message.set(this.describeError(e));
+      this.reportError(e);
       return false;
     }
   }
@@ -274,7 +280,7 @@ export class SerialLinkService implements OnDestroy {
       const startedAt = performance.now();
       if (this.lastChunkEnd !== null) this.gapMax = Math.max(this.gapMax, startedAt - this.lastChunkEnd);
       const watchdog = setTimeout(() => {
-        this.message.set('The display is not accepting data. Try turning off flow control and reconnect.');
+        this.setMessage('SCREEN.MSG.STALLED');
       }, STALL_WARNING_MS);
       let hardTimer: ReturnType<typeof setTimeout> | undefined;
       const hardTimeout = new Promise<never>((_, reject) => {
@@ -324,14 +330,23 @@ export class SerialLinkService implements OnDestroy {
     try { await port?.close(); } catch { /* already closed */ }
     this.model.set('');
     this.status.set(this.isSupported() ? 'disconnected' : 'unsupported');
-    this.message.set(message);
+    this.setMessage(message);
   }
 
-  private describeError(e: unknown): string {
+  private setMessage(key: string, detail = ''): void {
+    this.message.set(key);
+    this.messageDetail.set(detail);
+  }
+
+  /** Maps an exception to one of our translatable messages (the raw text is kept as detail when unknown). */
+  private reportError(e: unknown): void {
     const text = e instanceof Error ? e.message : String(e);
     if (/failed to open|access denied|busy|in use/i.test(text)) {
-      return 'Could not open the port. Is the TURZX software (or another tab) using the display? Close it and try again.';
+      this.setMessage('SCREEN.MSG.BUSY');
+    } else if (/stopped responding/i.test(text)) {
+      this.setMessage('SCREEN.MSG.NOT_RESPONDING');
+    } else {
+      this.setMessage('SCREEN.MSG.GENERIC', text);
     }
-    return text;
   }
 }

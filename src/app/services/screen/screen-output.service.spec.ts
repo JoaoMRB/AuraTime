@@ -6,7 +6,7 @@ import { SERIAL_API } from './serial-link.service';
 import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
 import { DisplaySnapshot } from './display-snapshot';
-import { labelsFor } from './screen-logic';
+import { englishLabels } from './testing/english-labels';
 import { FakePort, FakeSerial } from './testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from './screen-renderer';
 
@@ -20,7 +20,7 @@ function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
     stats: { todayMin: 0, streak: 0 },
     week: { days: [], totalMin: 0, streak: 0 },
     worldClocks: [],
-    labels: labelsFor('en'),
+    labels: englishLabels(),
     ...overrides
   };
 }

@@ -49,6 +49,28 @@
       "PREVIEW": "Anteprima",
       "THE_CONCEPT": "Il Concetto",
       "ATMOSPHERES": "Atmosfere"
+    },
+    "DESK": {
+      "NAV": "Desk Display",
+      "EYEBROW": "NOVITÀ · SCHERMO USB",
+      "TITLE": "Il tuo orologio, su uno schermo tutto suo",
+      "SUBTITLE": "AuraTime Desk Display trasforma un piccolo schermo USB accanto alla tastiera in un pannello dal vivo: ora, sessione di focus, attività, sveglie, orologi mondiali e meteo.",
+      "P1": "Segue il tema e il carattere del tuo AuraTime",
+      "P2": "Funziona in Chrome o Edge: nessun driver, nessun software extra",
+      "P3": "Invia solo ciò che cambia, così resta fluido",
+      "P4": "Attenuazione notturna e protezione anti burn-in incluse",
+      "MOCK_CAPTION": "Anteprima dal vivo con dati di esempio, disegnata dallo stesso motore che pilota lo schermo.",
+      "STEPS_TITLE": "Configuralo in tre passi",
+      "S1_T": "Apri Desk Display",
+      "S1_D": "Usa Chrome o Edge sul computer e premi il pulsante Desk Display.",
+      "S2_T": "Collega lo schermo",
+      "S2_D": "Collega lo schermo USB, premi Collega e sceglilo dalla lista. La volta dopo si ricollega da solo.",
+      "S3_T": "Scegli le viste",
+      "S3_D": "Scegli cosa ruota, imposta l'orario notturno e lascialo acceso tutto il giorno.",
+      "COMPAT": "Compatibile con gli schermi Turing Smart Screen 3,5\" (USB).",
+      "DISCLAIMER": "AuraTime è un progetto indipendente, non affiliato ad alcun produttore di schermi. I nomi dei prodotti appartengono ai rispettivi proprietari.",
+      "BROWSER_NOTE": "Richiede Google Chrome o Microsoft Edge su un computer.",
+      "CTA": "Apri Desk Display"
     }
   },
   "CLOCK": {
@@ -140,5 +162,135 @@
   "WORLD_CLOCK": {
     "UTC": "UTC",
     "SAME_TIME": "Stessa ora"
+  },
+  "SCREEN": {
+    "NAME": "Desk Display",
+    "LABELS": {
+      "FOCUS": "FOCUS",
+      "BREAK": "PAUSA",
+      "PAUSED": "IN PAUSA",
+      "READY": "PRONTO",
+      "NO_TASKS": "Nessuna attività aperta",
+      "TODAY": "OGGI",
+      "STREAK": "GIORNI DI FILA",
+      "MINUTES": "min",
+      "LAST7": "ULTIMI 7 GIORNI",
+      "NEXT_ALARM": "PROSSIMA SVEGLIA",
+      "COUNTDOWN": "COUNTDOWN",
+      "WORLD_CLOCKS": "OROLOGI MONDIALI",
+      "DAY_TODAY": "Oggi",
+      "DAY_TOMORROW": "Domani",
+      "IN": "tra"
+    },
+    "WEATHER": {
+      "SUNNY": "Cielo sereno",
+      "CLEAR_NIGHT": "Notte serena",
+      "CLOUDY": "Nuvoloso",
+      "RAINY": "Pioggia",
+      "SNOWY": "Neve",
+      "STORMY": "Temporale"
+    },
+    "DEMO": {
+      "TASK_1": "Scrivere il rapporto settimanale",
+      "TASK_2": "Rivedere le pull request aperte",
+      "TASK_3": "Pianificare domani",
+      "ALARM": "Corsa del mattino",
+      "COUNTDOWN": "Riunione di team",
+      "CITY": "Lisbona"
+    },
+    "VIEWS": {
+      "AUTO": "Rotazione automatica",
+      "CLOCK": "Orologio",
+      "FOCUS": "Focus (Pomodoro + attività)",
+      "WEEK": "Settimana (ultimi 7 giorni)",
+      "ALARM": "Prossima sveglia / countdown",
+      "WORLD": "Orologi mondiali",
+      "WEATHER": "Meteo + citazione"
+    },
+    "SEO": {
+      "TITLE": "Desk Display | Schermo USB per AuraTime",
+      "DESCRIPTION": "Trasforma un piccolo schermo USB in un pannello AuraTime dal vivo: orologio, focus Pomodoro, attività, sveglie, orologi mondiali e meteo. Funziona in Chrome o Edge, senza driver."
+    },
+    "APP": {
+      "TITLE": "Desk Display",
+      "ON": "Connesso",
+      "OFF": "Non connesso",
+      "OPEN": "Apri Desk Display",
+      "HINT": "Mostra il tuo orologio e la sessione di focus su uno schermo USB."
+    },
+    "MSG": {
+      "UNSUPPORTED": "Questo browser non supporta Web Serial. Usa Chrome o Edge su un computer.",
+      "UNPLUGGED": "Schermo scollegato. In attesa che torni...",
+      "BUSY": "Impossibile aprire la porta. Il software originale dello schermo (o un'altra scheda) la sta usando? Chiudilo e riprova.",
+      "STALLED": "Lo schermo non accetta dati. Prova a disattivare il controllo di flusso e riconnetti.",
+      "NOT_RESPONDING": "Lo schermo ha smesso di rispondere.",
+      "GENERIC": "Qualcosa è andato storto nella comunicazione con lo schermo."
+    },
+    "PAGE": {
+      "BACK": "Torna all'orologio",
+      "SUBTITLE": "Mostra orologio, sessione di focus, attività, sveglie e meteo su un piccolo schermo USB.",
+      "LANGUAGE": "Lingua",
+      "PREVIEW": {
+        "LIVE": "Anteprima dal vivo",
+        "DEMO": "Anteprima demo",
+        "DEMO_NOTE": "Dati di esempio. Collega uno schermo per mostrare i tuoi.",
+        "INFO": "Vista: {view} · retroilluminazione {level}%"
+      },
+      "STEP": "Passo",
+      "S1": {
+        "TITLE": "Controlla il browser",
+        "OK": "Perfetto: questo browser può comunicare con gli schermi USB.",
+        "TEXT": "Desk Display usa Web Serial, disponibile in Google Chrome e Microsoft Edge su computer."
+      },
+      "S2": {
+        "TITLE": "Collega lo schermo",
+        "HINT": "Collega lo schermo con il cavo USB e chiudi prima il software originale dello schermo: un solo programma alla volta può usarlo.",
+        "CONNECT": "Collega schermo",
+        "CONNECTING": "Connessione...",
+        "DISCONNECT": "Scollega",
+        "STATUS": "Stato",
+        "CONNECTED": "connesso",
+        "DISCONNECTED": "non connesso",
+        "ERROR": "errore",
+        "SENT": "{images} immagini · {kb} KB inviati",
+        "FIRST_TIME": "Il browser ti chiede di scegliere lo schermo una sola volta. Poi si ricollega da solo."
+      },
+      "S3": {
+        "TITLE": "Scegli cosa mostrare",
+        "VIEW_MODE": "Viste",
+        "VIEW_MODE_NOTE": "La rotazione automatica cambia vista ogni 20 secondi; la vista focus resta fissa mentre un Pomodoro è in corso.",
+        "ROTATION": "Nella rotazione automatica",
+        "ROTATION_NOTE": "Le viste senza dati (nessuna sveglia, nessun countdown attivo, nessun orologio mondiale, nessun focus questa settimana) vengono saltate automaticamente.",
+        "NO_DATA": "ancora senza dati",
+        "APPEARANCE": "Aspetto",
+        "THEME": "Tema",
+        "FONT": "Carattere",
+        "FOLLOW": "Segui l'app",
+        "FOLLOW_NOTE": "Per impostazione predefinita lo schermo usa lo stesso tema e lo stesso carattere dell'orologio. Scegline uno per fissarlo.",
+        "BACKLIGHT_DAY": "Retroilluminazione (giorno)",
+        "NIGHT": "Orario notturno",
+        "FROM": "Dalle",
+        "TO": "Alle",
+        "NIGHT_LEVEL": "Retroilluminazione notturna",
+        "NIGHT_BLACK": "Schermo nero di notte"
+      },
+      "ADV": {
+        "TITLE": "Avanzate",
+        "FLOW": "Controllo di flusso (RTS/CTS)",
+        "FULL": "Invia sempre l'intero schermo",
+        "SLOW": "Invio lento (3 ms per blocco)",
+        "DEMO_TOGGLE": "Mostra dati di esempio finché nessuno schermo è collegato",
+        "REDRAW": "Ridisegna tutto",
+        "HINT": "Se i difetti spariscono con \"schermo intero\", il problema è negli aggiornamenti parziali; se spariscono con \"invio lento\", lo schermo ha bisogno di più tempo tra i blocchi.",
+        "LAST_SEND": "Ultima immagine: {w}×{h} px · {bytes} B · {ms} ms · pausa massima tra i blocchi {gap} ms"
+      },
+      "UNSUPPORTED": {
+        "TITLE": "Desk Display richiede Chrome o Edge su un computer",
+        "TEXT": "Questo browser (Firefox, Safari o un browser da telefono) non può comunicare con gli schermi USB. Apri AuraTime in Google Chrome o Microsoft Edge su un computer Windows, macOS o Linux per collegare uno schermo.",
+        "PREVIEW": "Ecco cosa mostra lo schermo:"
+      },
+      "COMPAT": "Compatibile con gli schermi Turing Smart Screen 3,5\" (USB).",
+      "DISCLAIMER": "AuraTime è un progetto indipendente, non affiliato ad alcun produttore di schermi. I nomi dei prodotti appartengono ai rispettivi proprietari."
+    }
   }
 }

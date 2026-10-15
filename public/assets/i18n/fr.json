@@ -49,6 +49,28 @@
       "PREVIEW": "Aperçu",
       "THE_CONCEPT": "Le Concept",
       "ATMOSPHERES": "Atmosphères"
+    },
+    "DESK": {
+      "NAV": "Desk Display",
+      "EYEBROW": "NOUVEAU · ÉCRAN USB",
+      "TITLE": "Votre horloge, sur un écran rien que pour elle",
+      "SUBTITLE": "AuraTime Desk Display transforme un petit écran USB posé près de votre clavier en tableau de bord en direct : heure, session de focus, tâches, alarmes, horloges mondiales et météo.",
+      "P1": "Suit le thème et la police de votre AuraTime",
+      "P2": "Fonctionne dans Chrome ou Edge : ni pilote ni logiciel supplémentaire",
+      "P3": "N'envoie que ce qui change, pour rester fluide",
+      "P4": "Atténuation de nuit et protection anti burn-in intégrées",
+      "MOCK_CAPTION": "Aperçu en direct avec des données exemple, dessiné par le même moteur que celui qui pilote l'écran.",
+      "STEPS_TITLE": "Configurez-le en trois étapes",
+      "S1_T": "Ouvrez Desk Display",
+      "S1_D": "Utilisez Chrome ou Edge sur votre ordinateur et appuyez sur le bouton Desk Display.",
+      "S2_T": "Connectez l'écran",
+      "S2_D": "Branchez l'écran USB, appuyez sur Connecter et choisissez-le dans la liste. La fois suivante il se reconnecte tout seul.",
+      "S3_T": "Choisissez vos vues",
+      "S3_D": "Choisissez ce qui défile, réglez l'horaire de nuit et laissez-le tourner toute la journée.",
+      "COMPAT": "Compatible avec les écrans Turing Smart Screen 3,5\" (USB).",
+      "DISCLAIMER": "AuraTime est un projet indépendant, sans lien avec aucun fabricant d'écrans. Les noms de produits appartiennent à leurs propriétaires.",
+      "BROWSER_NOTE": "Nécessite Google Chrome ou Microsoft Edge sur ordinateur.",
+      "CTA": "Ouvrir Desk Display"
     }
   },
   "CLOCK": {
@@ -140,5 +162,135 @@
   "WORLD_CLOCK": {
     "UTC": "UTC",
     "SAME_TIME": "Même heure"
+  },
+  "SCREEN": {
+    "NAME": "Desk Display",
+    "LABELS": {
+      "FOCUS": "FOCUS",
+      "BREAK": "PAUSE",
+      "PAUSED": "EN PAUSE",
+      "READY": "PRÊT",
+      "NO_TASKS": "Aucune tâche ouverte",
+      "TODAY": "AUJ.",
+      "STREAK": "JOURS D'AFFILÉE",
+      "MINUTES": "min",
+      "LAST7": "7 DERNIERS JOURS",
+      "NEXT_ALARM": "PROCHAINE ALARME",
+      "COUNTDOWN": "DÉCOMPTE",
+      "WORLD_CLOCKS": "HORLOGES MONDIALES",
+      "DAY_TODAY": "Aujourd'hui",
+      "DAY_TOMORROW": "Demain",
+      "IN": "dans"
+    },
+    "WEATHER": {
+      "SUNNY": "Ciel dégagé",
+      "CLEAR_NIGHT": "Nuit claire",
+      "CLOUDY": "Nuageux",
+      "RAINY": "Pluie",
+      "SNOWY": "Neige",
+      "STORMY": "Orage"
+    },
+    "DEMO": {
+      "TASK_1": "Rédiger le rapport hebdomadaire",
+      "TASK_2": "Relire les pull requests ouvertes",
+      "TASK_3": "Préparer demain",
+      "ALARM": "Course du matin",
+      "COUNTDOWN": "Réunion d'équipe",
+      "CITY": "Lisbonne"
+    },
+    "VIEWS": {
+      "AUTO": "Rotation automatique",
+      "CLOCK": "Horloge",
+      "FOCUS": "Focus (Pomodoro + tâches)",
+      "WEEK": "Semaine (7 derniers jours)",
+      "ALARM": "Prochaine alarme / décompte",
+      "WORLD": "Horloges mondiales",
+      "WEATHER": "Météo + citation"
+    },
+    "SEO": {
+      "TITLE": "Desk Display | Écran USB pour AuraTime",
+      "DESCRIPTION": "Transformez un petit écran USB en tableau de bord AuraTime en direct : horloge, focus Pomodoro, tâches, alarmes, horloges mondiales et météo. Fonctionne dans Chrome ou Edge, sans pilote."
+    },
+    "APP": {
+      "TITLE": "Desk Display",
+      "ON": "Connecté",
+      "OFF": "Non connecté",
+      "OPEN": "Ouvrir Desk Display",
+      "HINT": "Affichez votre horloge et votre session de focus sur un écran USB."
+    },
+    "MSG": {
+      "UNSUPPORTED": "Ce navigateur ne prend pas en charge Web Serial. Utilisez Chrome ou Edge sur un ordinateur.",
+      "UNPLUGGED": "Écran débranché. En attente de son retour...",
+      "BUSY": "Impossible d'ouvrir le port. Le logiciel d'origine de l'écran (ou un autre onglet) l'utilise-t-il ? Fermez-le et réessayez.",
+      "STALLED": "L'écran n'accepte plus de données. Essayez de désactiver le contrôle de flux et reconnectez.",
+      "NOT_RESPONDING": "L'écran ne répond plus.",
+      "GENERIC": "Un problème est survenu lors de la communication avec l'écran."
+    },
+    "PAGE": {
+      "BACK": "Retour à l'horloge",
+      "SUBTITLE": "Affichez votre horloge, votre session de focus, vos tâches, vos alarmes et la météo sur un petit écran USB.",
+      "LANGUAGE": "Langue",
+      "PREVIEW": {
+        "LIVE": "Aperçu en direct",
+        "DEMO": "Aperçu de démonstration",
+        "DEMO_NOTE": "Données exemple. Connectez un écran pour afficher les vôtres.",
+        "INFO": "Vue : {view} · rétroéclairage {level} %"
+      },
+      "STEP": "Étape",
+      "S1": {
+        "TITLE": "Vérifier le navigateur",
+        "OK": "Parfait : ce navigateur peut communiquer avec les écrans USB.",
+        "TEXT": "Desk Display utilise Web Serial, disponible dans Google Chrome et Microsoft Edge sur ordinateur."
+      },
+      "S2": {
+        "TITLE": "Connecter l'écran",
+        "HINT": "Branchez l'écran avec son câble USB et fermez d'abord le logiciel d'origine de l'écran : un seul programme peut l'utiliser à la fois.",
+        "CONNECT": "Connecter l'écran",
+        "CONNECTING": "Connexion...",
+        "DISCONNECT": "Déconnecter",
+        "STATUS": "État",
+        "CONNECTED": "connecté",
+        "DISCONNECTED": "non connecté",
+        "ERROR": "erreur",
+        "SENT": "{images} images · {kb} Ko envoyés",
+        "FIRST_TIME": "Le navigateur vous demande de choisir l'écran une seule fois. Ensuite il se reconnecte tout seul."
+      },
+      "S3": {
+        "TITLE": "Choisir ce qui s'affiche",
+        "VIEW_MODE": "Vues",
+        "VIEW_MODE_NOTE": "La rotation automatique change de vue toutes les 20 secondes ; la vue focus reste affichée pendant un Pomodoro.",
+        "ROTATION": "Dans la rotation automatique",
+        "ROTATION_NOTE": "Les vues sans données (pas d'alarme, pas de décompte actif, pas d'horloge mondiale, pas de focus cette semaine) sont ignorées automatiquement.",
+        "NO_DATA": "pas encore de données",
+        "APPEARANCE": "Apparence",
+        "THEME": "Thème",
+        "FONT": "Police",
+        "FOLLOW": "Suivre l'app",
+        "FOLLOW_NOTE": "Par défaut l'écran utilise le même thème et la même police que l'horloge. Choisissez-en un pour le fixer.",
+        "BACKLIGHT_DAY": "Rétroéclairage (jour)",
+        "NIGHT": "Horaire de nuit",
+        "FROM": "De",
+        "TO": "À",
+        "NIGHT_LEVEL": "Rétroéclairage de nuit",
+        "NIGHT_BLACK": "Écran noir la nuit"
+      },
+      "ADV": {
+        "TITLE": "Avancé",
+        "FLOW": "Contrôle de flux (RTS/CTS)",
+        "FULL": "Toujours envoyer l'écran complet",
+        "SLOW": "Envoi lent (3 ms par bloc)",
+        "DEMO_TOGGLE": "Afficher des données exemple tant qu'aucun écran n'est connecté",
+        "REDRAW": "Tout redessiner",
+        "HINT": "Si les défauts disparaissent avec « écran complet », le problème vient des mises à jour partielles ; s'ils disparaissent avec « envoi lent », l'écran a besoin de plus de temps entre les blocs.",
+        "LAST_SEND": "Dernière image : {w}×{h} px · {bytes} o · {ms} ms · plus longue pause entre blocs {gap} ms"
+      },
+      "UNSUPPORTED": {
+        "TITLE": "Desk Display nécessite Chrome ou Edge sur ordinateur",
+        "TEXT": "Ce navigateur (Firefox, Safari ou un navigateur de téléphone) ne peut pas communiquer avec les écrans USB. Ouvrez AuraTime dans Google Chrome ou Microsoft Edge sur un ordinateur Windows, macOS ou Linux pour connecter un écran.",
+        "PREVIEW": "Voici ce qu'affiche l'écran :"
+      },
+      "COMPAT": "Compatible avec les écrans Turing Smart Screen 3,5\" (USB).",
+      "DISCLAIMER": "AuraTime est un projet indépendant, sans lien avec aucun fabricant d'écrans. Les noms de produits appartiennent à leurs propriétaires."
+    }
   }
 }

@@ -23,7 +23,7 @@ describe('SerialLinkService', () => {
     const service = create(null);
     expect(service.status()).toBe('unsupported');
     expect(service.isSupported()).toBeFalse();
-    expect(service.message()).toContain('Web Serial');
+    expect(service.message()).toBe('SCREEN.MSG.UNSUPPORTED');
   });
 
   it('connects with RTS/CTS and runs the init sequence (hello, screen on, landscape, brightness)', async () => {
@@ -120,7 +120,21 @@ describe('SerialLinkService', () => {
     const service = create();
     expect(await service.connect(OPTIONS)).toBeFalse();
     expect(service.status()).toBe('error');
-    expect(service.message()).toContain('TURZX');
+    expect(service.message()).toBe('SCREEN.MSG.BUSY');
+  });
+
+  it('keeps the raw text of an unexpected error as detail next to a generic message', async () => {
+    port.failOpen = 'Something exotic happened';
+    const service = create();
+    await service.connect(OPTIONS);
+    expect(service.status()).toBe('error');
+    expect(service.message()).toBe('SCREEN.MSG.GENERIC');
+    expect(service.messageDetail()).toBe('Something exotic happened');
+
+    port.failOpen = null;
+    await service.connect(OPTIONS);
+    expect(service.message()).toBe('');
+    expect(service.messageDetail()).toBe('');
   });
 
   it('disconnects cleanly', async () => {
@@ -138,7 +152,7 @@ describe('SerialLinkService', () => {
     serial.unplug(port);
     await new Promise(r => setTimeout(r));
     expect(service.status()).toBe('disconnected');
-    expect(service.message()).toContain('unplugged');
+    expect(service.message()).toBe('SCREEN.MSG.UNPLUGGED');
 
     jasmine.clock().install();
     serial.dispatchEvent(new Event('connect'));

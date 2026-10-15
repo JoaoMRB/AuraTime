@@ -11,7 +11,7 @@ import { TranslationService } from '../translation.service';
 import { TickService } from './tick.service';
 import { DisplaySnapshot } from './display-snapshot';
 import { formatClock } from './clock-format';
-import { labelsFor, localeForLang, selectTodayTasks } from './screen-logic';
+import { buildLabels, localeForLang, selectTodayTasks } from './screen-logic';
 import { buildWeek, findNextAlarm, resolveCountdown, zonedTime } from './screen-data';
 import { resolveFont, resolveThemeId } from './theme-tokens';
 
@@ -45,7 +45,7 @@ export class DisplayStateService {
     const pomoPhase = this.pomodoro.currentPhase();
     const phaseMinutes = pomoPhase === 'work' ? this.pomodoro.getWorkDuration() : this.pomodoro.getBreakDuration();
 
-    const labels = labelsFor(lang);
+    const labels = buildLabels(path => this.translation.t(path));
     const locale = localeForLang(lang);
     const clockOptions = { use24h, showSeconds: false };
 

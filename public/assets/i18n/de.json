@@ -67,7 +67,7 @@
       "S2_D": "USB-Bildschirm anschließen, auf Verbinden klicken und ihn in der Liste wählen. Beim nächsten Mal verbindet er sich von selbst.",
       "S3_T": "Ansichten wählen",
       "S3_D": "Wähle, was wechselt, lege den Nachtzeitplan fest und lass ihn den ganzen Tag laufen.",
-      "COMPAT": "Kompatibel mit Turing Smart Screen 3,5\" (USB) Bildschirmen.",
+      "COMPAT": "Kompatibel mit Bildschirmen der Klasse Turing Smart Screen 3,5\" (USB 1A86:5722, Rev. A).",
       "DISCLAIMER": "AuraTime ist ein unabhängiges Projekt und steht in keiner Verbindung zu Bildschirmherstellern. Produktnamen gehören ihren jeweiligen Inhabern.",
       "BROWSER_NOTE": "Benötigt Google Chrome oder Microsoft Edge auf einem Computer.",
       "CTA": "Desk Display öffnen"
@@ -224,7 +224,10 @@
       "BUSY": "Der Port konnte nicht geöffnet werden. Nutzt die Originalsoftware des Bildschirms (oder ein anderer Tab) ihn? Schließe sie und versuche es erneut.",
       "STALLED": "Der Bildschirm nimmt keine Daten an. Schalte die Flusskontrolle aus und verbinde neu.",
       "NOT_RESPONDING": "Der Bildschirm antwortet nicht mehr.",
-      "GENERIC": "Bei der Kommunikation mit dem Bildschirm ist etwas schiefgelaufen."
+      "GENERIC": "Bei der Kommunikation mit dem Bildschirm ist etwas schiefgelaufen.",
+      "INSECURE": "Web Serial benötigt HTTPS oder localhost.",
+      "NO_HELLO": "Der Bildschirm hat den Handshake nicht beantwortet. Sieht das Bild falsch aus, ist es vielleicht kein unterstütztes Modell.",
+      "OTHER_WINDOW": "Desk Display ist in einem anderen Fenster aktiv."
     },
     "PAGE": {
       "BACK": "Zurück zur Uhr",
@@ -253,7 +256,10 @@
         "DISCONNECTED": "nicht verbunden",
         "ERROR": "Fehler",
         "SENT": "{images} Bilder · {kb} KB gesendet",
-        "FIRST_TIME": "Der Browser bittet dich einmal, den Bildschirm auszuwählen. Danach verbindet er sich von selbst."
+        "FIRST_TIME": "Der Browser bittet dich einmal, den Bildschirm auszuwählen. Danach verbindet er sich von selbst.",
+        "WINDOW_NOTE": "Lass diese Seite in einem eigenen, sichtbaren Fenster, oder nutze den Windows-Startstarter: Browser bremsen versteckte Seiten, und der Bildschirm würde nachhinken.",
+        "HIDDEN_WARNING": "Diese Seite ist verborgen, daher bremst der Browser sie und der Bildschirm kann nachhinken. Hole das Fenster nach vorn oder nutze den Startstarter.",
+        "OS_NOTE": "Linux: Dein Benutzer muss in der Gruppe dialout sein. macOS: Der USB-Seriell-Chip CH34x des Bildschirms braucht eventuell seinen Treiber."
       },
       "S3": {
         "TITLE": "Anzeige auswählen",
@@ -289,8 +295,29 @@
         "TEXT": "Dieser Browser (Firefox, Safari oder ein Handy-Browser) kann nicht mit USB-Bildschirmen kommunizieren. Öffne AuraTime in Google Chrome oder Microsoft Edge auf einem Windows-, macOS- oder Linux-Computer, um einen Bildschirm zu verbinden.",
         "PREVIEW": "So sieht die Anzeige aus:"
       },
-      "COMPAT": "Kompatibel mit Turing Smart Screen 3,5\" (USB) Bildschirmen.",
-      "DISCLAIMER": "AuraTime ist ein unabhängiges Projekt und steht in keiner Verbindung zu Bildschirmherstellern. Produktnamen gehören ihren jeweiligen Inhabern."
+      "COMPAT": "Kompatibel mit Bildschirmen der Klasse Turing Smart Screen 3,5\" (USB 1A86:5722, Rev. A).",
+      "DISCLAIMER": "AuraTime ist ein unabhängiges Projekt und steht in keiner Verbindung zu Bildschirmherstellern. Produktnamen gehören ihren jeweiligen Inhabern.",
+      "OTHER_WINDOW": {
+        "TITLE": "Desk Display in einem anderen Fenster aktiv",
+        "TEXT": "Nur ein Fenster kann den Bildschirm steuern. Schließe das andere; dieses übernimmt automatisch, sobald es geschlossen ist."
+      },
+      "INSECURE": {
+        "TITLE": "Web Serial benötigt HTTPS oder localhost",
+        "TEXT": "Diese Seite ist über einfaches http von einer Netzwerkadresse geöffnet, wo Browser Web Serial abschalten. Öffne sie mit https:// oder von localhost (zum Beispiel http://localhost:4200)."
+      }
     }
+  },
+  "WEATHER": {
+    "YOUR_LOCATION": "Dein Standort",
+    "DEFAULT_CITY": "Lissabon (Standard)",
+    "REFRESH": "Klicken, um das Wetter zu aktualisieren",
+    "CITY_TITLE": "Wetterort",
+    "CITY_CURRENT": "Angezeigt",
+    "CITY_PLACEHOLDER": "Stadt suchen",
+    "CITY_SEARCH": "Suchen",
+    "CITY_NO_RESULTS": "Keine Stadt gefunden",
+    "CITY_ERROR": "Die Suche ist gerade nicht verfügbar",
+    "CITY_USE_LOCATION": "Meinen Standort verwenden",
+    "CITY_DEFAULT_HINT": "Dein Standort ist nicht verfügbar, deshalb zeigt das Wetter Lissabon. Suche deine Stadt, um das zu ändern."
   }
 }

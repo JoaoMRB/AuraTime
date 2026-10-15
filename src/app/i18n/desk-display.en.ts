@@ -66,7 +66,10 @@ export const DESK_DISPLAY_EN: any = {
       "BUSY": "Could not open the port. Is the display's original software (or another tab) using it? Close it and try again.",
       "STALLED": "The display is not accepting data. Try turning off flow control and reconnect.",
       "NOT_RESPONDING": "The display stopped responding.",
-      "GENERIC": "Something went wrong while talking to the display."
+      "GENERIC": "Something went wrong while talking to the display.",
+      "INSECURE": "Web Serial needs HTTPS or localhost.",
+      "NO_HELLO": "The display did not answer the handshake. If the picture looks wrong, this may not be a supported model.",
+      "OTHER_WINDOW": "Desk Display is active in another window."
     },
     "PAGE": {
       "BACK": "Back to the clock",
@@ -95,7 +98,10 @@ export const DESK_DISPLAY_EN: any = {
         "DISCONNECTED": "not connected",
         "ERROR": "error",
         "SENT": "{images} images · {kb} KB sent",
-        "FIRST_TIME": "The browser asks you to pick the display once. After that it reconnects by itself."
+        "FIRST_TIME": "The browser asks you to pick the display once. After that it reconnects by itself.",
+        "WINDOW_NOTE": "Keep this page in a window of its own and visible, or use the Windows startup launcher: browsers slow down hidden pages and the display would lag.",
+        "HIDDEN_WARNING": "This page is hidden, so the browser is slowing it down and the display may lag. Bring the window to the front, or use the startup launcher.",
+        "OS_NOTE": "Linux: your user must be in the dialout group. macOS: the display's CH34x USB-serial chip may need its driver."
       },
       "S3": {
         "TITLE": "Choose what to show",
@@ -131,8 +137,16 @@ export const DESK_DISPLAY_EN: any = {
         "TEXT": "This browser (Firefox, Safari or a phone browser) cannot talk to USB displays. Open AuraTime in Google Chrome or Microsoft Edge on a Windows, macOS or Linux computer to connect a display.",
         "PREVIEW": "This is what the display shows:"
       },
-      "COMPAT": "Compatible with Turing Smart Screen 3.5\" (USB) displays.",
-      "DISCLAIMER": "AuraTime is an independent project, not affiliated with any display manufacturer. Product names belong to their owners."
+      "COMPAT": "Compatible with Turing Smart Screen 3.5\" class displays (USB 1A86:5722, rev. A).",
+      "DISCLAIMER": "AuraTime is an independent project, not affiliated with any display manufacturer. Product names belong to their owners.",
+      "OTHER_WINDOW": {
+        "TITLE": "Desk Display active in another window",
+        "TEXT": "Only one window can drive the display. Close the other one; this window takes over by itself when it is closed."
+      },
+      "INSECURE": {
+        "TITLE": "Web Serial needs HTTPS or localhost",
+        "TEXT": "This page is open over plain http from a network address, where browsers turn Web Serial off. Open it with https:// or from localhost (for example http://localhost:4200)."
+      }
     }
   },
   "LANDING": {
@@ -153,10 +167,23 @@ export const DESK_DISPLAY_EN: any = {
       "S2_D": "Plug in the USB display, press Connect and pick it from the list. It reconnects by itself next time.",
       "S3_T": "Choose your views",
       "S3_D": "Pick what rotates, set the night schedule and let it run all day.",
-      "COMPAT": "Compatible with Turing Smart Screen 3.5\" (USB) displays.",
+      "COMPAT": "Compatible with Turing Smart Screen 3.5\" class displays (USB 1A86:5722, rev. A).",
       "DISCLAIMER": "AuraTime is an independent project, not affiliated with any display manufacturer. Product names belong to their owners.",
       "BROWSER_NOTE": "Needs Google Chrome or Microsoft Edge on a computer.",
       "CTA": "Open Desk Display"
     }
+  },
+  "WEATHER": {
+    "YOUR_LOCATION": "Your location",
+    "DEFAULT_CITY": "Lisbon (default)",
+    "REFRESH": "Click to refresh the weather",
+    "CITY_TITLE": "Weather location",
+    "CITY_CURRENT": "Showing",
+    "CITY_PLACEHOLDER": "Search for a city",
+    "CITY_SEARCH": "Search",
+    "CITY_NO_RESULTS": "No city found",
+    "CITY_ERROR": "The search is not available right now",
+    "CITY_USE_LOCATION": "Use my location",
+    "CITY_DEFAULT_HINT": "Your location is not available, so the weather shows Lisbon. Search for your city to change it."
   }
 };

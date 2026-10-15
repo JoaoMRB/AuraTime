@@ -165,6 +165,13 @@ describe('ClockComponent: themes and positions render completely', () => {
     expect(getComputedStyle(settings).boxShadow).not.toBe('none');
   });
 
+  it('is not hydrated from the prerendered page (it would keep a frozen build-time clock on screen)', () => {
+    mount({ mode: 'pomodoro', theme: 'obsidian-platinum' });
+    expect(el.getAttribute('ngSkipHydration')).toBe('true');
+    // only one clock face for the saved mode, no leftover default-mode clock
+    expect(el.querySelectorAll('div.select-all').length).toBe(0);
+  });
+
   it('moving between positions keeps the classes right', () => {
     mount({ position: 'center' });
     for (const position of ['bottom-right', 'top-left', 'center', 'top-right', 'bottom-left']) {

@@ -31,7 +31,11 @@ import { isExtensionPage } from '../../extension-context';
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './clock.component.html',
   host: {
-    class: 'block w-full h-screen overflow-hidden'
+    class: 'block w-full h-screen overflow-hidden',
+    // What this page shows depends on the visitor's saved mode, theme and tasks, which the prerendered HTML
+    // cannot know. Hydrating it would leave the build-time markup (a frozen clock) next to the real view,
+    // because the app never becomes "stable" (it has a permanent 1 s timer) and so never cleans it up.
+    ngSkipHydration: 'true'
   }
 })
 export class ClockComponent implements OnInit, OnDestroy {

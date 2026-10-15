@@ -90,7 +90,15 @@ next to your keyboard. It runs in the browser through the Web Serial API: no dri
 protocol). Other models and revisions are not supported.
 
 **Requirements:** Google Chrome or Microsoft Edge on a computer. Firefox, Safari and phone browsers cannot
-talk to USB displays; the Desk Display page says so and shows a demo instead.
+talk to USB displays; the Desk Display page says so and shows a demo instead. Web Serial also needs a secure
+page: HTTPS, or `localhost`. Over plain `http://` from a network address the browser turns it off, and the
+page tells you to use HTTPS or localhost instead of blaming the browser.
+
+**Operating systems:** AuraTime was developed and tried on Windows. On **Linux** your user needs permission
+to open the serial device, usually by being in the `dialout` group (`sudo usermod -aG dialout $USER`, then log
+out and in; some distributions use `uucp` or `tty`). On **macOS** the display's USB-serial chip (CH34x) may
+need its driver installed if the system does not include one. These two notes follow how Web Serial works on
+those systems; they have not been tried with a display.
 
 ### Set it up in three steps
 
@@ -124,6 +132,15 @@ turn any view off, or pin one.
 - Brightness drops at night (23:00 to 07:00 by default) or the screen goes black. The picture also drifts
   a few pixels every minute to protect against burn-in.
 - If you unplug it, or the computer sleeps, it reconnects and redraws on its own.
+- **The page that drives the display needs a window of its own that the browser does not treat as hidden.**
+  Browsers slow down background tabs and minimized windows (a tab in the background may run only once a
+  minute). AuraTime copes with that, and does not resend the whole picture on every slow tick, but the display
+  can then update late. Keep the Desk Display in its own visible window, or use the startup launcher below,
+  which starts a dedicated window with the browser's throttling switched off. The page warns you when it is
+  hidden while a display is connected.
+- Only one Desk Display window drives the display at a time. A second one shows a preview and says
+  "Desk Display active in another window"; it does not touch the USB port, and it takes over by itself when
+  the first one is closed.
 - Everything on the page is translated into the six app languages.
 - The *Advanced* section holds flow control and troubleshooting options.
 
@@ -142,6 +159,9 @@ Chrome or Edge window (its own profile, with timer throttling disabled so the cl
 the window is minimized). Press *Connect display* once in that window the first time.
 Use `-Url https://...` instead of `-ServeLocal` for a hosted copy (Web Serial needs HTTPS or `localhost`),
 and `-DryRun` to see what would be created without creating it.
+
+The shortcut starts PowerShell with `-ExecutionPolicy Bypass`. That applies only to these two scripts, so they
+run even where scripts are blocked; your system-wide execution policy is not changed.
 
 ### Independence
 
@@ -215,8 +235,12 @@ Shortcuts are ignored while you type in a field, and combinations with Ctrl, Alt
 - Everything you create (settings, tasks, notes, alarms, stats, soundscape mix) stays in your browser's
   `localStorage`, under keys that start with `auratime_`. Clear the site's data to erase it.
 - The app makes only two kinds of network requests:
-  - **Weather:** your coordinates are sent to [Open-Meteo](https://open-meteo.com). They come from the
-    browser's optional location prompt. If you decline, the app uses Lisbon and sends those instead.
+  - **Weather:** the forecast comes from [Open-Meteo](https://open-meteo.com). If you allow the browser's
+    optional location prompt, your coordinates are sent, rounded to two decimals (about 1 km). If you decline,
+    Lisbon's coordinates are sent instead, until you pick a city in the clock's settings. Searching for a city
+    sends the text you type to Open-Meteo's geocoding service. The city you choose is saved in your browser
+    (`auratime_weather_city`). Like any web request, these also show your IP address to Open-Meteo. The
+    forecast refreshes every 30 minutes while the app is open.
   - **Translations:** the language files, loaded from the same site as the app.
 - Fonts are self-hosted. Quick links and the support links open other sites only when you click them.
 - The Desk Display talks to your USB screen directly from the browser. Nothing is sent anywhere.

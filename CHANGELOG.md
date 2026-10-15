@@ -23,8 +23,9 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   follows the app's theme and font by default, with an option to pin its own.
 - **Made for a screen that stays on**: only the changed rectangle is sent, a full refresh every 5 minutes,
   night dimming (or a black screen) on a schedule, a few pixels of drift every minute against burn-in,
-  automatic reconnection (unplugged cable, PC asleep, dead port) with growing delays, and a write timeout
-  so a dead port can never freeze the loop.
+  automatic reconnection (unplugged cable, PC asleep, dead port) with growing delays, and a write timeout:
+  a write that never finishes is abandoned after 8 seconds, the port is aborted, closed and reopened, and the
+  loop goes on.
 - **Windows startup**: `scripts/screen-startup.ps1` (shortcut in the Startup folder, `-Remove` and `-DryRun`)
   and `scripts/screen-launch.ps1` (waits for the page, optionally starts the local server, opens a dedicated
   browser window with timer throttling disabled).
@@ -40,8 +41,10 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   another window.
 - **Cross-window sync**: settings, tasks, analytics, Pomodoro, alarms, countdown, world clocks and language
   follow each other through `storage` events, so the clock window and the Desk Display window stay in step.
-  Finishing a Pomodoro phase is idempotent across windows (no double credit).
-- **Tests**: from none to 271 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
+  Finishing a Pomodoro phase is credited once across windows: the credit is taken under a Web Lock and the
+  "already credited?" check is repeated inside it, so two windows that notice the end at the same moment cannot
+  both credit it (in a browser without Web Locks the check is best effort).
+- **Tests**: from none to 411 (Karma), covering the protocol bytes, the renderer (pixel level), the serial link
   with a fake port, wire integrity (header and pixels are never interleaved), reconnection and back-off, demo
   data, translations, and the landing, `/screen` and clock components.
 
@@ -79,11 +82,45 @@ UsbMonitor protocol) from Chrome or Edge, using Web Serial. No driver or extra s
   combos such as Ctrl+R and Ctrl+-.
 - Weather text on the display was Portuguese-only; it now follows the app language.
 
+### Fixed: findings of the independent review of the Desk Display branch
+
+- **Alarms:** opening `/screen` no longer stops the alarm checker for the whole app. That page only holds a
+  per-component suppression (released when you leave it), so alarms keep ringing on every other route and
+  window.
+- **Pomodoro after a restart:** a phase that ended while the app was closed is credited once (at most the one
+  phase that was in progress), dated to the day it ended, without the chime, and the timer is left stopped.
+  Catching up inside a running app after browser throttling is unchanged.
+- **Midnight:** "today" and the streak follow the shared clock, so they roll over at midnight without a reload.
+- **Weather:** refreshes every 30 minutes; the place shown for a located forecast is a translated "Your
+  location" (it used to say "Local"); when location is denied, a city picker (Open-Meteo geocoding) is in the
+  clock's settings, and "Lisbon (default)" is shown until a city is chosen.
+- **Hidden page:** the heartbeat tolerates the browser's throttled timers, and a throttled tick no longer
+  resends the whole picture. The README and `/screen` say that the display needs its own visible window or the
+  startup launcher.
+- **Serial port:** closing now aborts the writer and cancels the reader before `close()`, failures are logged,
+  and a reconnect after a write timeout really reopens the port. A device that never answers the HELLO
+  handshake is flagged; silent retries no longer flicker between "connecting" and "disconnected".
+- **Several windows:** settings save only the fields that changed (a window no longer overwrites another one's
+  mode or sound); only one `/screen` window drives the display (Web Locks) and the others show a preview;
+  the Pomodoro credit is atomic across windows.
+- **Stored data:** everything read from `localStorage` or a `storage` event is validated entry by entry
+  (tasks, alarms, links, world clocks, presets, soundscape, analytics, Pomodoro, settings, screen preferences,
+  language, status). Broken entries are dropped; saved links must be http(s); a stored language code can no
+  longer become an arbitrary file path. Font, theme and locale lookups use `Object.hasOwn` (a stored
+  `"constructor"` is no longer a font). Every storage access is guarded.
+- **Alarms and daylight saving:** the time left to an alarm now respects the days it is set for and skips a day
+  on which its time does not exist (the hour skipped when clocks go forward).
+- **Notes:** the "saved at" label never appeared (the write to it was rejected and hidden); it works now.
+- **Web Serial on plain http:** the page says "Web Serial needs HTTPS or localhost" instead of "use Chrome".
+- **Docs:** compatibility is worded as "Turing Smart Screen 3.5" class, USB 1A86:5722, rev. A"; the README adds
+  the Linux `dialout` and macOS CH34x notes, the exact weather request, the hidden-window advice and the
+  `-ExecutionPolicy Bypass` note.
+
 ### Removed
 
-- The unused service worker (`src/sw.js`) and its registration. It was never published (it lived outside the
-  assets folder, so the browser only got a 404) and its cache-first strategy would have pinned visitors to
-  stale builds.
+- The unused service worker (`src/sw.js`) and its registration. It was never listed in `angular.json` (only
+  `public/` is copied into a build), so no build ever contained it and the registration could only fail with a
+  404; its cache-first strategy would have pinned visitors to stale builds if it had been served.
 
 ### Repository
 

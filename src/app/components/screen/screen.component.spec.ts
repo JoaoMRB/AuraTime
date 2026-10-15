@@ -183,6 +183,25 @@ describe('ScreenComponent (Desk Display page)', () => {
       expect(description).toContain('Chrome or Edge');
     });
 
+    it('flags a display that did not answer the handshake, but keeps using it', async () => {
+      const { el, fixture } = await render();
+      await TestBed.inject(ScreenOutputService).connect(); // the fake port stays silent
+      await new Promise(r => setTimeout(r, 1000));
+      fixture.detectChanges();
+      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="device-warning"]')!.textContent).toContain('did not answer the handshake');
+    });
+
+    it('shows no handshake warning for a display that answers', async () => {
+      const { el, fixture } = await render();
+      serial!.picked!.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+      await TestBed.inject(ScreenOutputService).connect();
+      await new Promise(r => setTimeout(r, 400));
+      fixture.detectChanges();
+      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="device-warning"]')).toBeNull();
+    });
+
     it('tells the visitor to keep the page in its own visible window, or use the startup launcher', async () => {
       const { el } = await render();
       const note = el.querySelector('[data-testid="window-note"]')!.textContent!;

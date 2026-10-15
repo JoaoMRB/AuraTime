@@ -13,6 +13,8 @@ export interface SerialReaderLike {
 }
 export interface SerialWriterLike {
   write(chunk: Uint8Array): Promise<void>;
+  /** Errors the stream and rejects pending writes: the only way to get rid of a write stuck on a dead port. */
+  abort(reason?: unknown): Promise<void>;
   releaseLock(): void;
 }
 export interface SerialPortLike {
@@ -60,6 +62,13 @@ const STALL_WARNING_MS = 4000;
 /** A single chunk write that takes longer than this means the port is dead (e.g. after the PC slept). */
 const DEFAULT_WRITE_TIMEOUT_MS = 8000;
 
+/** A SerialPort has streams only while it is open. (Read fresh each time: the state changes under our feet.) */
+const streamsOf = (port: SerialPortLike) => ({ readable: port.readable, writable: port.writable });
+const isOpen = (port: SerialPortLike) => {
+  const { readable, writable } = streamsOf(port);
+  return !!(readable || writable);
+};
+
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /**
@@ -83,6 +92,11 @@ export class SerialLinkService implements OnDestroy {
   readonly messageDetail = signal<string>('');
   /** Reply of the HELLO handshake, e.g. "UsbMonitor 3.5". */
   readonly model = signal<string>('');
+  /**
+   * A translation key for something worth telling the user while still connected (for example a device that
+   * did not answer the HELLO handshake). Not an error: the display is used anyway.
+   */
+  readonly warning = signal<string>('');
   readonly framesSent = signal<number>(0);
   readonly bytesSent = signal<number>(0);
   /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
@@ -100,18 +114,21 @@ export class SerialLinkService implements OnDestroy {
   private bytesCounter = 0;
   private lastChunkEnd: number | null = null;
   private gapMax = 0;
+  /** A connect/reconnect is in progress (so two attempts never open the same port at once). */
+  private opening = false;
 
   private onDeviceDisconnect = (event: Event) => {
     // Per spec the event target is the SerialPort that went away.
     const e = event as Event & { port?: unknown };
     if (this.port && ((event.target as unknown) === this.port || e.port === this.port)) {
-      void this.teardown('SCREEN.MSG.UNPLUGGED');
+      // The device is gone, so closing its streams is expected to fail: not worth a warning.
+      void this.teardown('SCREEN.MSG.UNPLUGGED', undefined, true);
     }
   };
 
   private onDeviceConnect = () => {
     if (this.autoReconnect && this.status() !== 'connected' && this.status() !== 'connecting' && this.lastOptions) {
-      setTimeout(() => void this.reconnect(this.lastOptions!), 800);
+      setTimeout(() => void this.reconnect(this.lastOptions!, { silent: true }), 800);
     }
   };
 
@@ -131,7 +148,8 @@ export class SerialLinkService implements OnDestroy {
 
   /** Asks the user to pick the display. Needs a user gesture. */
   async connect(options: ConnectOptions): Promise<boolean> {
-    if (!this.serial || this.status() === 'connecting' || this.status() === 'connected') return false;
+    if (!this.serial || this.opening || this.status() === 'connecting' || this.status() === 'connected') return false;
+    this.opening = true;
     this.status.set('connecting');
     this.setMessage('');
     try {
@@ -146,13 +164,21 @@ export class SerialLinkService implements OnDestroy {
       if (cancelled) this.setMessage('');
       else this.reportError(e);
       return false;
+    } finally {
+      this.opening = false;
     }
   }
 
-  /** Reopens a previously authorised display without any dialog. Returns false if none is available. */
-  async reconnect(options: ConnectOptions): Promise<boolean> {
-    if (!this.serial || this.status() === 'connecting' || this.status() === 'connected') return false;
-    this.status.set('connecting');
+  /**
+   * Reopens a previously authorised display without any dialog. Returns false if none is available.
+   * `silent` is for automatic retries: the status never flips to 'connecting' (that would make the page flicker
+   * every few seconds while the display is away) and the message (for example "unplugged") stays until the
+   * display is really back or fails for a different reason.
+   */
+  async reconnect(options: ConnectOptions, { silent = false }: { silent?: boolean } = {}): Promise<boolean> {
+    if (!this.serial || this.opening || this.status() === 'connecting' || this.status() === 'connected') return false;
+    this.opening = true;
+    if (!silent) this.status.set('connecting');
     try {
       const ports = await this.serial.getPorts();
       const port = ports.find(p => {
@@ -160,7 +186,7 @@ export class SerialLinkService implements OnDestroy {
         return info.usbVendorId === TURING_USB_VENDOR_ID && info.usbProductId === TURING_USB_PRODUCT_ID;
       });
       if (!port) {
-        this.status.set('disconnected');
+        if (!silent) this.status.set('disconnected');
         return false;
       }
       return await this.openPort(port, options);
@@ -168,6 +194,8 @@ export class SerialLinkService implements OnDestroy {
       this.status.set('error');
       this.reportError(e);
       return false;
+    } finally {
+      this.opening = false;
     }
   }
 
@@ -209,8 +237,7 @@ export class SerialLinkService implements OnDestroy {
 
   /** Called by the output loop when a write fails: drops the port but keeps auto-reconnect armed. */
   async fail(error: unknown): Promise<void> {
-    await this.teardown('');
-    this.status.set('error');
+    await this.teardown('', 'error');
     this.reportError(error);
   }
 
@@ -227,15 +254,22 @@ export class SerialLinkService implements OnDestroy {
 
   private async openPort(port: SerialPortLike, options: ConnectOptions): Promise<boolean> {
     try {
+      // A port that a previous session could not close is still open (and open() would refuse it): close it first.
+      if (isOpen(port)) {
+        await this.attempt('close a port left open by the previous session', () => port.close());
+        if (isOpen(port)) throw new Error('The port is still open from an earlier session.');
+      }
       await port.open({
         baudRate: TURING_BAUD_RATE,
         flowControl: options.flowControl ? 'hardware' : 'none',
         bufferSize: 65536
       });
-      if (!port.writable || !port.readable) throw new Error('The port has no readable/writable stream.');
+      // From here on teardown() owns the port, so any failure below closes it properly.
       this.port = port;
-      this.writer = port.writable.getWriter();
-      this.reader = port.readable.getReader();
+      const { readable, writable } = streamsOf(port);
+      if (!writable || !readable) throw new Error('The port has no readable/writable stream.');
+      this.writer = writable.getWriter();
+      this.reader = readable.getReader();
       this.framesSent.set(0);
       this.bytesSent.set(0);
       this.bytesCounter = 0;
@@ -245,7 +279,11 @@ export class SerialLinkService implements OnDestroy {
       await this.enqueue(async () => {
         await this.write(cmdHello());
         const reply = await this.readBytes(6, options.helloTimeoutMs ?? DEFAULT_HELLO_TIMEOUT_MS);
-        this.model.set(isUsbMonitorHelloReply(reply) ? 'UsbMonitor 3.5' : 'Turing 3.5');
+        const answered = isUsbMonitorHelloReply(reply);
+        this.model.set(answered ? 'UsbMonitor 3.5' : 'Turing 3.5');
+        // The original Turing 3.5" stays silent, so this is a warning, not an error: but a device that does not
+        // answer may also be a model we do not support, and the user should know if the picture looks wrong.
+        this.warning.set(answered ? '' : 'SCREEN.MSG.NO_HELLO');
         await this.write(cmdScreenOn());
         await this.write(cmdOrientation(Orientation.Landscape));
         await sleep(150);
@@ -258,8 +296,7 @@ export class SerialLinkService implements OnDestroy {
       this.setMessage('');
       return true;
     } catch (e) {
-      await this.teardown('');
-      this.status.set('error');
+      await this.teardown('', 'error');
       this.reportError(e);
       return false;
     }
@@ -320,17 +357,45 @@ export class SerialLinkService implements OnDestroy {
     return new Uint8Array(out);
   }
 
-  private async teardown(message: string): Promise<void> {
+  /**
+   * Closes the port the way Web Serial requires: a writer that may still have a write stuck on a dead port is
+   * aborted and released, the reader is cancelled and released, and only then is the port closed (close() throws
+   * while a stream is locked). Every step is attempted even if a previous one failed, and failures are logged.
+   * `expectFailures` (the device was unplugged) logs them quietly: the streams are gone with the device.
+   */
+  private async teardown(message: string, status?: SerialStatus, expectFailures = false): Promise<void> {
     const { port, reader, writer } = this;
     this.port = this.writer = this.reader = null;
     this.queue = Promise.resolve();
-    try { await reader?.cancel(); } catch { /* already closed */ }
-    try { reader?.releaseLock(); } catch { /* ignore */ }
-    try { writer?.releaseLock(); } catch { /* ignore */ }
-    try { await port?.close(); } catch { /* already closed */ }
+    const quiet = expectFailures;
+
+    if (writer) {
+      await this.attempt('abort the writer', () => writer.abort('closing'), quiet);
+      await this.attempt('release the writer', () => writer.releaseLock(), quiet);
+    }
+    if (reader) {
+      await this.attempt('cancel the reader', () => reader.cancel(), quiet);
+      await this.attempt('release the reader', () => reader.releaseLock(), quiet);
+    }
+    if (port) {
+      await this.attempt('close the port', () => port.close(), quiet);
+    }
+
     this.model.set('');
-    this.status.set(this.isSupported() ? 'disconnected' : 'unsupported');
+    this.warning.set('');
+    this.status.set(status ?? (this.isSupported() ? 'disconnected' : 'unsupported'));
     this.setMessage(message);
+  }
+
+  /** Runs one step of a clean-up. A failure is logged, never swallowed, and never stops the next step. */
+  private async attempt(what: string, action: () => unknown, quiet = false): Promise<boolean> {
+    try {
+      await action();
+      return true;
+    } catch (error) {
+      (quiet ? console.debug : console.warn)(`[SerialLink] could not ${what}`, error);
+      return false;
+    }
   }
 
   private setMessage(key: string, detail = ''): void {

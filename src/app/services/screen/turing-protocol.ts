@@ -21,6 +21,7 @@ const CMD = {
   SCREEN_ON: 109,
   SET_BRIGHTNESS: 110,
   SET_ORIENTATION: 121,
+  RESET: 101,
   DISPLAY_BITMAP: 197
 } as const;
 
@@ -53,6 +54,11 @@ export function packCommand(cmd: number, x: number, y: number, ex: number, ey: n
 
 export function cmdHello(): Uint8Array {
   return new Uint8Array(6).fill(CMD.HELLO);
+}
+
+/** Reboots the display: it drops off the USB bus and comes back after a few seconds (clears any half-sent bitmap). */
+export function cmdReset(): Uint8Array {
+  return packCommand(CMD.RESET, 0, 0, 0, 0);
 }
 
 export function cmdScreenOn(): Uint8Array {

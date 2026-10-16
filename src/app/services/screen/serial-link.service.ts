@@ -2,7 +2,7 @@ import { Injectable, InjectionToken, OnDestroy, PLATFORM_ID, inject, signal } fr
 import { isPlatformBrowser } from '@angular/common';
 import {
   Orientation, Rect, TURING_BAUD_RATE, TURING_USB_PRODUCT_ID, TURING_USB_VENDOR_ID, WRITE_CHUNK_BYTES,
-  cmdBrightness, cmdDisplayBitmap, cmdHello, cmdOrientation, cmdScreenOn, isUsbMonitorHelloReply, rgb565ToBytes, splitBands
+  cmdBrightness, cmdDisplayBitmap, cmdHello, cmdOrientation, cmdReset, cmdScreenOn, isUsbMonitorHelloReply, rgb565ToBytes, splitBands
 } from './turing-protocol';
 
 /* Minimal structural types for the parts of Web Serial we use (not in the TS 5.5 DOM lib). */
@@ -45,6 +45,15 @@ export const SECURE_CONTEXT = new InjectionToken<boolean>('SECURE_CONTEXT', {
   factory: () => typeof window === 'undefined' || window.isSecureContext !== false
 });
 
+/**
+ * How long to wait for the display after a RESET before looking for it again. The reference library waits about
+ * 5 s: the display drops off the USB bus and Windows enumerates it again. Overridable in tests.
+ */
+export const DEVICE_RESET_WAIT_MS = new InjectionToken<number>('DEVICE_RESET_WAIT_MS', {
+  providedIn: 'root',
+  factory: () => 5000
+});
+
 /** Timing of the last bitmap sent, to diagnose transfer problems. */
 export interface SendMetrics {
   width: number;
@@ -65,6 +74,8 @@ export interface ConnectOptions {
   brightness: number;
   /** How long to wait for the HELLO reply, in ms. */
   helloTimeoutMs?: number;
+  /** Skip the RESET that starts every connection (the display is known to be in a clean state). */
+  skipReset?: boolean;
 }
 
 const DEFAULT_HELLO_TIMEOUT_MS = 700;
@@ -116,6 +127,10 @@ export class SerialLinkService implements OnDestroy {
   /** Diagnostics for the /screen page; unlike framesSent they survive reconnections. */
   readonly bandsSent = signal<number>(0);
   readonly writeTimeouts = signal<number>(0);
+  /** Times the display was reset on purpose (every connection starts with one). */
+  readonly resets = signal<number>(0);
+  /** Times the link was torn down and the display reset because it looked stuck (the watchdog, or a hard resync). */
+  readonly resyncs = signal<number>(0);
   readonly bytesSent = signal<number>(0);
   /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
   readonly chunkDelayMs = signal<number>(0);
@@ -124,6 +139,10 @@ export class SerialLinkService implements OnDestroy {
   readonly lastSend = signal<SendMetrics | null>(null);
   /** Hard limit for one chunk write; exceeded = the link is treated as broken. Adjustable for tests. */
   writeTimeoutMs = DEFAULT_WRITE_TIMEOUT_MS;
+  /** Wait after a RESET before looking for the display again (it re-enumerates on the USB bus). */
+  resetWaitMs = inject(DEVICE_RESET_WAIT_MS);
+  /** How long after the wait to keep looking for it before giving up. */
+  resetGiveUpMs = 15000;
 
   private port: SerialPortLike | null = null;
   private writer: SerialWriterLike | null = null;
@@ -136,6 +155,8 @@ export class SerialLinkService implements OnDestroy {
   private gapMax = 0;
   /** A connect/reconnect is in progress (so two attempts never open the same port at once). */
   private opening = false;
+  /** The page is going away: nothing new is written, and a frame in progress stops after its current band. */
+  private suspended = false;
 
   private onDeviceDisconnect = (event: Event) => {
     // Per spec the event target is the SerialPort that went away.
@@ -235,6 +256,7 @@ export class SerialLinkService implements OnDestroy {
   /** Sends a rectangle of RGB565 pixels. Writes are serialised. */
   sendBitmap(rect: Rect, pixels: Uint16Array): Promise<void> {
     return this.enqueue(async () => {
+      if (this.suspended) return;
       // Every band (header + pixels) belongs to this one job: nothing else can be written in between. A tall
       // rectangle goes out as bands so that a lost byte spoils one band at most and the next one starts clean.
       const started = performance.now();
@@ -243,6 +265,8 @@ export class SerialLinkService implements OnDestroy {
       const width = rect.x1 - rect.x0 + 1;
       let bytes = 0;
       for (const band of splitBands(rect)) {
+        // Between two bands the display is in a clean state: that is the place to stop when the page unloads.
+        if (this.suspended && bytes > 0) break;
         const rows = band.rect.y1 - band.rect.y0 + 1;
         const header = cmdDisplayBitmap(band.rect);
         const body = rgb565ToBytes(pixels.subarray(band.offset, band.offset + rows * width));
@@ -266,8 +290,41 @@ export class SerialLinkService implements OnDestroy {
     });
   }
 
+  /** Tells the display again which way up it is (it may have lost it: a reset, a power glitch). */
+  setOrientation(): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.suspended) return;
+      await this.write(cmdOrientation(Orientation.Landscape));
+    });
+  }
+
+  /** The page is unloading: stop queuing new frames. A bitmap in progress finishes its current band and stops. */
+  suspend(): void {
+    this.suspended = true;
+  }
+
+  resume(): void {
+    this.suspended = false;
+  }
+
+  isSuspended(): boolean {
+    return this.suspended;
+  }
+
+  /**
+   * Tears the link down and brings it back with a RESET: for a display that is connected on paper but no longer
+   * answers (frozen, mid-bitmap, wrong orientation). Counted in `resyncs`.
+   */
+  async hardResync(options: ConnectOptions | null = this.lastOptions): Promise<boolean> {
+    if (!options || !this.serial) return false;
+    this.resyncs.update(n => n + 1);
+    await this.teardown('', 'error');
+    return this.reconnect({ ...options, skipReset: false }, { silent: true });
+  }
+
   setBrightness(level: number): Promise<void> {
     return this.enqueue(async () => {
+      if (this.suspended) return;
       await this.write(cmdBrightness(level));
       this.bytesSent.set(this.bytesCounter);
     });
@@ -290,7 +347,79 @@ export class SerialLinkService implements OnDestroy {
 
   /* ------------------------------ internals ------------------------------ */
 
+  /**
+   * Every connection starts from a known state: the display is reset (which clears a bitmap left half-sent and
+   * a wrong orientation), we wait for it to come back on the bus, then initialise it from scratch.
+   */
   private async openPort(port: SerialPortLike, options: ConnectOptions): Promise<boolean> {
+    let target = port;
+    if (!options.skipReset) {
+      try {
+        target = await this.resetDevice(port, options);
+      } catch (e) {
+        await this.teardown('', 'error');
+        this.reportError(e);
+        return false;
+      }
+    }
+    return this.attach(target, options);
+  }
+
+  /** Opens the port, sends RESET, closes it, waits, and finds the display again through getPorts(). */
+  private async resetDevice(port: SerialPortLike, options: ConnectOptions): Promise<SerialPortLike> {
+    if (isOpen(port)) {
+      await this.attempt('close a port left open by the previous session', () => port.close());
+      if (isOpen(port)) throw new Error('The port is still open from an earlier session.');
+    }
+    await port.open({
+      baudRate: TURING_BAUD_RATE,
+      flowControl: options.flowControl ? 'hardware' : 'none',
+      bufferSize: 65536
+    });
+    const writer = port.writable?.getWriter();
+    if (!writer) throw new Error('The port has no readable/writable stream.');
+    try {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('The display stopped responding.')), this.writeTimeoutMs);
+      });
+      try {
+        await Promise.race([writer.write(cmdReset()), timeout]);
+      } finally {
+        clearTimeout(timer);
+      }
+      this.resets.update(n => n + 1);
+    } catch (e) {
+      await this.attempt('abort the writer after a failed reset', () => writer.abort('reset failed'), true);
+      await this.attempt('release the writer', () => writer.releaseLock(), true);
+      await this.attempt('close the port after a failed reset', () => port.close(), true);
+      throw e;
+    }
+    await this.attempt('release the writer', () => writer.releaseLock());
+    await this.attempt('close the port for the reset', () => port.close());
+
+    await sleep(this.resetWaitMs);
+    const back = await this.findDevice();
+    await sleep(Math.min(500, this.resetWaitMs)); // let it finish booting before the first command
+    return back;
+  }
+
+  /** The display re-enumerates after a reset, and the port may disappear for a moment: keep looking. */
+  private async findDevice(): Promise<SerialPortLike> {
+    const deadline = Date.now() + this.resetGiveUpMs;
+    for (;;) {
+      const ports = await this.serial!.getPorts();
+      const found = ports.find(p => {
+        const info = p.getInfo();
+        return info.usbVendorId === TURING_USB_VENDOR_ID && info.usbProductId === TURING_USB_PRODUCT_ID;
+      });
+      if (found) return found;
+      if (Date.now() >= deadline) throw new Error('The display did not come back after the reset.');
+      await sleep(250);
+    }
+  }
+
+  private async attach(port: SerialPortLike, options: ConnectOptions): Promise<boolean> {
     try {
       // A port that a previous session could not close is still open (and open() would refuse it): close it first.
       if (isOpen(port)) {
@@ -449,7 +578,7 @@ export class SerialLinkService implements OnDestroy {
     const text = e instanceof Error ? e.message : String(e);
     if (/failed to open|access denied|busy|in use/i.test(text)) {
       this.setMessage('SCREEN.MSG.BUSY');
-    } else if (/stopped responding/i.test(text)) {
+    } else if (/stopped responding|did not come back/i.test(text)) {
       this.setMessage('SCREEN.MSG.NOT_RESPONDING');
     } else {
       this.setMessage('SCREEN.MSG.GENERIC', text);

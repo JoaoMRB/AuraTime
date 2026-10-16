@@ -341,7 +341,8 @@
         "DEMO_TOGGLE": "Mostrar dados de exemplo enquanto não houver ecrã ligado",
         "REDRAW": "Redesenhar tudo",
         "HINT": "Se os problemas desaparecerem com \"ecrã inteiro\", o defeito está nas atualizações parciais; se desaparecerem com \"envio lento\", o ecrã precisa de mais tempo entre blocos.",
-        "LAST_SEND": "Última imagem: {w}×{h} px · {bytes} B · {ms} ms · maior pausa entre blocos {gap} ms"
+        "LAST_SEND": "Última imagem: {w}×{h} px · {bytes} B · {ms} ms · maior pausa entre blocos {gap} ms",
+        "COUNTERS": "Quadros enviados: {frames} · faixas: {bands} · tempos de escrita esgotados: {timeouts} · redesenhos completos forçados: {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "O Desk Display precisa do Chrome ou do Edge num computador",

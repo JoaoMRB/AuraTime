@@ -11,6 +11,7 @@ import { DisplaySnapshot } from './display-snapshot';
 import { englishLabels } from './testing/english-labels';
 import { FakePort, FakeSerial } from './testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from './screen-renderer';
+import { cmdDisplayBitmap } from './turing-protocol';
 import { DESK_STATUS_KEY, DeskDisplayStatusService } from './desk-display-status.service';
 
 function snap(overrides: Partial<DisplaySnapshot> = {}): DisplaySnapshot {
@@ -46,8 +47,16 @@ describe('ScreenOutputService', () => {
   let service: ScreenOutputService;
   let link: SerialLinkService;
 
+  /** Every DISPLAY_BITMAP header sent, with the bands of one tall frame merged back into one rectangle. */
   function bitmapHeaders(): Uint8Array[] {
-    return port.writes.filter(w => w.length === 6 && w[5] === 197);
+    const merged: ReturnType<typeof headerRect>[] = [];
+    for (const w of port.writes.filter(w => w.length === 6 && w[5] === 197)) {
+      const r = headerRect(w);
+      const last = merged[merged.length - 1];
+      if (last && last.x0 === r.x0 && last.x1 === r.x1 && last.y1 + 1 === r.y0) last.y1 = r.y1;
+      else merged.push(r);
+    }
+    return merged.map(r => cmdDisplayBitmap(r));
   }
   function brightnessWrites(): number[] {
     return port.writes
@@ -677,7 +686,7 @@ describe('ScreenOutputService', () => {
       const m = link.lastSend()!;
       expect(m.width).toBe(480);
       expect(m.height).toBe(320);
-      expect(m.bytes).toBe(6 + 480 * 320 * 2);
+      expect(m.bytes).toBe(8 * 6 + 480 * 320 * 2); // eight 40-row bands, each with its own header
       expect(m.ms).toBeGreaterThanOrEqual(0);
       expect(m.maxGapMs).toBeGreaterThanOrEqual(0);
     });

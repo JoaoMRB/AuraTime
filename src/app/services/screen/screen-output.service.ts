@@ -150,6 +150,8 @@ export class ScreenOutputService implements OnDestroy {
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
   /** The view currently on screen (useful for the preview UI). */
   readonly activeView = signal<ScreenView>('clock');
+  /** Diagnostic: full redraws forced because a transfer failed (the display's state was then unknown). */
+  readonly forcedFullRedraws = signal<number>(0);
   /** Backlight actually applied right now (after the night schedule). */
   readonly appliedBrightness = signal<number>(DEFAULT_PREFS.brightness.base);
 
@@ -414,7 +416,11 @@ export class ScreenOutputService implements OnDestroy {
       }
       await this.pushFrame();
     } catch (e) {
+      // A bitmap may have been cut off mid-way: the display could be waiting for pixels that will never come,
+      // so nothing it shows can be trusted. Drop the port (the reconnection re-initialises it) and redraw it
+      // all, band by band, before any partial update is sent again.
       this.invalidateFrame();
+      this.forcedFullRedraws.update(n => n + 1);
       await this.link.fail(e);
     } finally {
       this.busy = false;

@@ -288,7 +288,8 @@
         "DEMO_TOGGLE": "Mostra dati di esempio finché nessuno schermo è collegato",
         "REDRAW": "Ridisegna tutto",
         "HINT": "Se i difetti spariscono con \"schermo intero\", il problema è negli aggiornamenti parziali; se spariscono con \"invio lento\", lo schermo ha bisogno di più tempo tra i blocchi.",
-        "LAST_SEND": "Ultima immagine: {w}×{h} px · {bytes} B · {ms} ms · pausa massima tra i blocchi {gap} ms"
+        "LAST_SEND": "Ultima immagine: {w}×{h} px · {bytes} B · {ms} ms · pausa massima tra i blocchi {gap} ms",
+        "COUNTERS": "Immagini inviate: {frames} · bande: {bands} · timeout di scrittura: {timeouts} · ridisegni completi forzati: {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display richiede Chrome o Edge su un computer",

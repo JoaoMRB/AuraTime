@@ -1,0 +1,82 @@
+<section #section class="aura-panel p-5 sm:p-6" aria-labelledby="views-title">
+  <header class="mb-4 flex items-end justify-between gap-3">
+    <div>
+      <p class="aura-eyebrow">{{ ts.t('SCREEN.UI.VIEWS.EYEBROW') }}</p>
+      <h2 id="views-title" class="font-playfair text-xl text-white">{{ ts.t('SCREEN.UI.VIEWS.TITLE') }}</h2>
+    </div>
+  </header>
+  <p class="mb-4 text-sm text-gray-300">{{ ts.t('SCREEN.UI.VIEWS.HINT') }}</p>
+
+  <ul class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2" role="list">
+    @for (card of cards(); track card.id; let i = $index; let first = $first; let last = $last) {
+      <li #cardEl class="group relative flex flex-col overflow-hidden rounded-2xl border bg-black/30 transition-colors"
+          [class]="dropTarget() === card.id && dragging() !== card.id ? 'border-luxury-gold' : 'border-white/10'"
+          [class.opacity-50]="dragging() === card.id"
+          [attr.data-view]="card.id"
+          (dragover)="onDragOver($event, card.id)" (drop)="onDrop($event, card.id)">
+        <!-- Thumbnail -->
+        <div class="relative aspect-[3/2] w-full bg-black">
+          <canvas #thumb [attr.data-view]="card.id" [width]="thumbWidth" [height]="thumbHeight"
+                  class="block h-full w-full transition-opacity" [class.opacity-35]="!card.enabled || !card.hasContent"
+                  role="img" [attr.aria-label]="ts.format('SCREEN.UI.VIEWS.THUMB', { view: viewLabel(card.id) })"></canvas>
+          <span class="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-black/70 px-1.5 text-[11px] font-bold text-luxury-gold ring-1 ring-white/15">{{ i + 1 }}</span>
+          @if (!card.hasContent) {
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent px-3 pb-2 pt-8" data-testid="empty-hint">
+              <p class="text-xs font-semibold text-amber-200">{{ ts.t('SCREEN.UI.VIEWS.EMPTY_TITLE') }}</p>
+              <p class="text-[11px] leading-snug text-gray-200">{{ ts.t('SCREEN.UI.VIEWS.EMPTY.' + card.id.toUpperCase()) }}</p>
+            </div>
+          }
+        </div>
+
+        <div class="flex flex-1 flex-col gap-3 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="min-w-0 truncate text-sm font-semibold text-white">{{ viewLabel(card.id) }}</h3>
+            <button type="button" role="switch" class="aura-switch" data-testid="toggle"
+                    [attr.aria-checked]="card.enabled"
+                    [attr.aria-label]="ts.format('SCREEN.UI.VIEWS.TOGGLE', { view: viewLabel(card.id) })"
+                    (click)="toggle(card.id, !card.enabled)"></button>
+          </div>
+
+          @if (!card.hasContent) {
+            <a routerLink="/app" target="_blank" class="aura-focus inline-flex items-center gap-1.5 self-start rounded text-xs font-semibold text-luxury-gold underline-offset-2 hover:underline">
+              {{ ts.t('SCREEN.UI.VIEWS.EMPTY_LINK.' + card.id.toUpperCase()) }}
+              <span class="h-3.5 w-3.5"><app-screen-icon name="external" /></span>
+            </a>
+          }
+
+          <div>
+            <label class="flex items-center justify-between text-xs text-gray-300" [for]="'dur-' + card.id">
+              <span>{{ ts.t('SCREEN.UI.VIEWS.DURATION') }}</span>
+              <span class="font-mono text-white">{{ card.seconds }} s</span>
+            </label>
+            <input [id]="'dur-' + card.id" type="range" class="aura-range" data-testid="duration"
+                   [min]="minSeconds" [max]="maxSeconds" step="5"
+                   [value]="card.seconds" [style.--fill]="fill(card.seconds)" [disabled]="!card.enabled"
+                   [attr.aria-label]="ts.format('SCREEN.UI.VIEWS.DURATION_FOR', { view: viewLabel(card.id) })"
+                   [attr.aria-valuetext]="card.seconds + ' s'"
+                   (input)="output.setViewSeconds(card.id, +$any($event.target).value)">
+          </div>
+
+          <div class="mt-auto flex items-center justify-between border-t border-white/10 pt-2">
+            <span class="aura-focus inline-flex h-9 w-9 cursor-grab items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 hover:text-white active:cursor-grabbing"
+                  draggable="true" data-testid="grip" aria-hidden="true" [title]="ts.t('SCREEN.UI.VIEWS.DRAG')"
+                  (dragstart)="onDragStart($event, card.id, cardEl)" (dragend)="endDrag()">
+              <app-screen-icon name="grip" />
+            </span>
+            <div class="flex items-center gap-1">
+              <button type="button" class="aura-icon-btn !h-9 !w-9" data-testid="up" [disabled]="first" (click)="move(card.id, -1)"
+                      [attr.aria-label]="ts.format('SCREEN.UI.VIEWS.MOVE_UP', { view: viewLabel(card.id) })">
+                <span class="h-4 w-4"><app-screen-icon name="up" /></span>
+              </button>
+              <button type="button" class="aura-icon-btn !h-9 !w-9" data-testid="down" [disabled]="last" (click)="move(card.id, 1)"
+                      [attr.aria-label]="ts.format('SCREEN.UI.VIEWS.MOVE_DOWN', { view: viewLabel(card.id) })">
+                <span class="h-4 w-4"><app-screen-icon name="down" /></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </li>
+    }
+  </ul>
+  <p class="sr-only" role="status" aria-live="polite">{{ announcement() }}</p>
+</section>

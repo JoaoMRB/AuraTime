@@ -307,6 +307,99 @@
         "TITLE": "Web Serial benötigt HTTPS oder localhost",
         "TEXT": "Diese Seite ist über einfaches http von einer Netzwerkadresse geöffnet, wo Browser Web Serial abschalten. Öffne sie mit https:// oder von localhost (zum Beispiel http://localhost:4200)."
       }
+    },
+    "UI": {
+      "NAV": "Desk-Display-Navigation",
+      "HERO": {
+        "PREVIEW_NEXT": "Vorschau des Displays. Aktivieren, um die nächste Ansicht zu zeigen.",
+        "TRANSPORT": "Ansichtssteuerung",
+        "PREVIOUS": "Vorherige Ansicht",
+        "NEXT": "Nächste Ansicht",
+        "PAUSE": "Rotation anhalten",
+        "RESUME": "Rotation fortsetzen",
+        "PAUSE_PINNED": "Eine angeheftete Ansicht bleibt ohnehin stehen",
+        "PIN": "Diese Ansicht anheften",
+        "UNPIN": "Lösen: zurück zur Rotation",
+        "PROGRESS": "Zeit in dieser Ansicht",
+        "KEYS": "Tastatur: ← → wechseln die Ansicht · Leertaste pausiert",
+        "STATE_ROTATING": "Rotation · weiter in {seconds} s",
+        "STATE_PAUSED": "Rotation angehalten",
+        "STATE_PINNED": "An diese Ansicht angeheftet",
+        "STATE_HELD": "Von einem laufenden Pomodoro gehalten",
+        "STATE_SINGLE": "Nur eine Ansicht in der Rotation"
+      },
+      "PILL": {
+        "CONNECTED": "Verbunden",
+        "CONNECTED_MODEL": "Verbunden · {model}"
+      },
+      "CC": {
+        "NOT_CONNECTED": "Kein Display verbunden: Sie passen die Demo-Vorschau an.",
+        "BACK_TO_SETUP": "Zurück zur Einrichtung"
+      },
+      "SETUP": {
+        "STEP3_TEXT": "Ansichten, Aussehen und Nachtplan: alles in der Steuerzentrale.",
+        "CUSTOMIZE": "Anpassen"
+      },
+      "VIEWS": {
+        "EYEBROW": "Was angezeigt wird",
+        "TITLE": "Ansichten",
+        "HINT": "Ansichten ein- oder ausschalten, neu anordnen und festlegen, wie lange jede angezeigt wird.",
+        "THUMB": "Miniaturansicht: {view}",
+        "EMPTY_TITLE": "Noch nichts anzuzeigen",
+        "EMPTY": {
+          "WEEK": "Schließen Sie eine Fokus-Sitzung ab, dann erscheint die Woche hier.",
+          "ALARM": "Es ist kein Wecker und kein Countdown eingestellt.",
+          "WORLD": "Sie haben noch keine Weltzeituhren.",
+          "WEATHER": "Das Wetter ist aus oder hat noch keine Daten."
+        },
+        "EMPTY_LINK": {
+          "WEEK": "Fokus-Sitzung starten",
+          "ALARM": "Wecker stellen",
+          "WORLD": "Weltzeituhr hinzufügen",
+          "WEATHER": "Wetter einschalten"
+        },
+        "TOGGLE": "{view} in der Rotation anzeigen",
+        "DURATION": "Anzeigedauer",
+        "DURATION_FOR": "Sekunden auf dem Display: {view}",
+        "DRAG": "Zum Umordnen ziehen",
+        "MOVE_UP": "{view} nach oben",
+        "MOVE_DOWN": "{view} nach unten",
+        "MOVED": "{view} ist jetzt Nummer {position} von {total}"
+      },
+      "APPEARANCE": {
+        "EYEBROW": "Aussehen",
+        "TITLE": "Darstellung",
+        "FOLLOW": "Der App folgen",
+        "FOLLOW_ON": "Das Display nutzt Theme und Schrift, die Sie in der Uhr gewählt haben.",
+        "FOLLOW_OFF": "Das Display behält sein eigenes Theme und seine Schrift, egal was die App tut."
+      },
+      "SCHEDULE": {
+        "EYEBROW": "Tag und Nacht",
+        "TITLE": "Zeitplan",
+        "NIGHT_STARTS": "Nacht beginnt",
+        "NIGHT_ENDS": "Nacht endet",
+        "SUMMARY": "Nacht von {from} bis {to}, Hintergrundbeleuchtung {level} %.",
+        "NO_NIGHT": "Kein Nachtplan: Die Beleuchtung bleibt auf dem Tagesniveau.",
+        "BLACK_HINT": "Nachts ist der Bildschirm komplett schwarz und die Beleuchtung aus."
+      },
+      "HEALTH": {
+        "EYEBROW": "Verbindung",
+        "TITLE": "Zustand",
+        "STATE_OK": "Alles in Ordnung",
+        "STATE_WARN": "Achtung nötig",
+        "WARNING": "Die Verbindung hatte seit dem Öffnen dieser Seite {count} neue(s) Problem(e) (Schreib-Timeouts oder erzwungene Vollbilder). Das Display wurde jedes Mal komplett neu gezeichnet.",
+        "DISMISS": "Ausblenden",
+        "UPTIME": "Verbunden seit",
+        "FRAMES": "Bilder",
+        "LAST_FRAME": "Letztes Bild",
+        "PAUSE": "Pause pro Streifen",
+        "TIMEOUTS": "Schreib-Timeouts",
+        "REDRAWS": "Erzwungene Vollbilder",
+        "SPARK": "Bilddauer, letzte Minuten",
+        "SPARK_RANGE": "jetzt {last} ms · Spitze {max} ms",
+        "SPARK_LABEL": "Bilddauern der letzten Minuten: zuletzt {last} ms, Spitze {max} ms",
+        "SPARK_EMPTY": "Noch keine Bilder gesendet."
+      }
     }
   },
   "WEATHER": {

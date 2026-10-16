@@ -69,6 +69,7 @@ export interface ConnectOptions {
 
 const DEFAULT_HELLO_TIMEOUT_MS = 700;
 const STALL_WARNING_MS = 4000;
+const MAX_SEND_HISTORY = 300;
 /** Default pause after each band: lets the display finish one band before the next header arrives. */
 export const DEFAULT_BAND_PAUSE_MS = 3;
 export const MAX_BAND_PAUSE_MS = 20;
@@ -122,6 +123,8 @@ export class SerialLinkService implements OnDestroy {
   /** Pause after every band of a bitmap (ms), never between a header and its pixels. 0 = off. */
   readonly bandPauseMs = signal<number>(DEFAULT_BAND_PAUSE_MS);
   readonly lastSend = signal<SendMetrics | null>(null);
+  /** When and how long the most recent frames took (newest last), for the sparkline on the /screen page. */
+  readonly sendHistory = signal<readonly { at: number; ms: number }[]>([]);
   /** Hard limit for one chunk write; exceeded = the link is treated as broken. Adjustable for tests. */
   writeTimeoutMs = DEFAULT_WRITE_TIMEOUT_MS;
 
@@ -256,6 +259,7 @@ export class SerialLinkService implements OnDestroy {
       this.framesSent.update(n => n + 1);
       // Signals are updated once per frame, not per chunk, to keep the write loop tight.
       this.bytesSent.set(this.bytesCounter);
+      this.sendHistory.update(h => [...h.slice(1 - MAX_SEND_HISTORY), { at: Date.now(), ms: Math.round(performance.now() - started) }]);
       this.lastSend.set({
         width,
         height: rect.y1 - rect.y0 + 1,

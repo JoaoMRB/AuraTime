@@ -1,0 +1,63 @@
+<section class="aura-panel p-5 sm:p-6" aria-labelledby="health-title">
+  <header class="mb-4 flex items-end justify-between gap-3">
+    <div>
+      <p class="aura-eyebrow">{{ ts.t('SCREEN.UI.HEALTH.EYEBROW') }}</p>
+      <h2 id="health-title" class="font-playfair text-xl text-white">{{ ts.t('SCREEN.UI.HEALTH.TITLE') }}</h2>
+    </div>
+    <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
+          [class]="warning() ? 'border-amber-300/50 bg-amber-300/10 text-amber-200' : 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200'"
+          data-testid="health-state">
+      <span class="h-3.5 w-3.5"><app-screen-icon [name]="warning() ? 'alert' : 'check'" /></span>
+      {{ warning() ? ts.t('SCREEN.UI.HEALTH.STATE_WARN') : ts.t('SCREEN.UI.HEALTH.STATE_OK') }}
+    </span>
+  </header>
+
+  @if (warning()) {
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/40 bg-amber-300/[0.08] px-4 py-3" role="alert" data-testid="health-warning">
+      <p class="text-sm text-amber-100">{{ ts.format('SCREEN.UI.HEALTH.WARNING', { count: newProblems() }) }}</p>
+      <button type="button" class="aura-pill-btn" data-testid="health-dismiss" (click)="dismiss()">{{ ts.t('SCREEN.UI.HEALTH.DISMISS') }}</button>
+    </div>
+  }
+
+  <dl class="grid grid-cols-2 gap-2.5 min-[480px]:grid-cols-3">
+    <div class="rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.UPTIME') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-uptime">{{ uptime() }}</dd>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.FRAMES') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-frames">{{ link.framesSent() }}</dd>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.LAST_FRAME') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-last">{{ lastFrame() }}</dd>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.PAUSE') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-pause">{{ output.bandPauseMs() }} ms</dd>
+    </div>
+    <div class="rounded-2xl border px-3 py-2.5" [class]="link.writeTimeouts() > 0 && warning() ? 'border-amber-300/50 bg-amber-300/10' : 'border-white/10 bg-black/25'">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.TIMEOUTS') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-timeouts">{{ link.writeTimeouts() }}</dd>
+    </div>
+    <div class="rounded-2xl border px-3 py-2.5" [class]="output.forcedFullRedraws() > 0 && warning() ? 'border-amber-300/50 bg-amber-300/10' : 'border-white/10 bg-black/25'">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.REDRAWS') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-redraws">{{ output.forcedFullRedraws() }}</dd>
+    </div>
+  </dl>
+
+  <figure class="mt-4 rounded-2xl border border-white/10 bg-black/25 px-3 py-3">
+    <figcaption class="mb-1 flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-gray-300">
+      <span>{{ ts.t('SCREEN.UI.HEALTH.SPARK') }}</span>
+      @if (sparkLast() !== null) { <span class="font-mono normal-case text-gray-100">{{ ts.format('SCREEN.UI.HEALTH.SPARK_RANGE', { last: sparkLast()!, max: sparkMax() }) }}</span> }
+    </figcaption>
+    <svg data-testid="spark" class="block h-14 w-full" [attr.viewBox]="'0 0 ' + sparkWidth + ' ' + sparkHeight" preserveAspectRatio="none" role="img"
+         [attr.aria-label]="sparkPath() ? ts.format('SCREEN.UI.HEALTH.SPARK_LABEL', { last: sparkLast()!, max: sparkMax() }) : ts.t('SCREEN.UI.HEALTH.SPARK_EMPTY')">
+      <line x1="0" [attr.x2]="sparkWidth" [attr.y1]="sparkHeight - 4" [attr.y2]="sparkHeight - 4" stroke="rgba(255,255,255,0.15)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>
+      @if (sparkPath()) {
+        <path [attr.d]="sparkPath()" fill="none" stroke="#D4AF37" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" data-testid="spark-path"/>
+      }
+    </svg>
+    @if (!sparkPath()) { <p class="mt-1 text-xs text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.SPARK_EMPTY') }}</p> }
+  </figure>
+</section>

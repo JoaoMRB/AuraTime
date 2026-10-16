@@ -15,6 +15,21 @@ export function viewHasContent(snap: DisplaySnapshot): Record<ScreenView, boolea
   };
 }
 
+/** Shortest and longest time one view may stay on screen during the automatic rotation. */
+export const MIN_VIEW_SECONDS = 10;
+export const MAX_VIEW_SECONDS = 60;
+
+export type ViewDurations = Record<ScreenView, number>;
+
+export const DEFAULT_VIEW_DURATIONS: ViewDurations = {
+  clock: VIEW_ROTATION_SECONDS, focus: VIEW_ROTATION_SECONDS, week: VIEW_ROTATION_SECONDS,
+  alarm: VIEW_ROTATION_SECONDS, world: VIEW_ROTATION_SECONDS, weather: VIEW_ROTATION_SECONDS
+};
+
+export function clampViewSeconds(value: number): number {
+  return Math.min(MAX_VIEW_SECONDS, Math.max(MIN_VIEW_SECONDS, Math.round(value)));
+}
+
 export interface ViewInputs {
   mode: ScreenViewMode;
   /** True while a Pomodoro is running: the focus view stays pinned. */
@@ -23,6 +38,44 @@ export interface ViewInputs {
   enabled: readonly ScreenView[];
   hasContent: Record<ScreenView, boolean>;
   nowMs: number;
+  /** Rotation order (default: ALL_SCREEN_VIEWS). */
+  order?: readonly ScreenView[];
+  /** Seconds each view stays on screen (default: 20 for all). */
+  durations?: Partial<Record<ScreenView, number>>;
+  /** Shifts the rotation clock; the previous/next buttons use it to jump to another view. */
+  offsetSec?: number;
+}
+
+export interface RotationInfo {
+  view: ScreenView;
+  /** True while the view is chosen by the rotation (not pinned, not forced by a running Pomodoro). */
+  rotating: boolean;
+  /** Seconds the view has been on screen, and how long it stays (0 when not rotating). */
+  elapsedSec: number;
+  durationSec: number;
+}
+
+const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+/** The views taking part in the rotation right now, in order, and how long each one stays. */
+function rotationViews(input: ViewInputs): { views: ScreenView[]; seconds: (v: ScreenView) => number } {
+  const order = input.order ?? ALL_SCREEN_VIEWS;
+  const views = order.filter(v => input.enabled.includes(v) && input.hasContent[v]);
+  const seconds = (v: ScreenView) => clampViewSeconds(input.durations?.[v] ?? VIEW_ROTATION_SECONDS);
+  return { views, seconds };
+}
+
+/**
+ * Rotation offset (seconds) that makes `view` appear `elapsedSec` seconds into its slot at the time of
+ * `input.nowMs`. Used to jump to the previous or next view and to resume a paused rotation where it stopped.
+ */
+export function offsetToShow(input: ViewInputs, view: ScreenView, elapsedSec = 0): number {
+  const { views, seconds } = rotationViews({ ...input, offsetSec: 0 });
+  const index = views.indexOf(view);
+  if (index < 0) return input.offsetSec ?? 0;
+  const total = views.reduce((n, v) => n + seconds(v), 0);
+  const start = views.slice(0, index).reduce((n, v) => n + seconds(v), 0);
+  return mod(start + elapsedSec - Math.floor(input.nowMs / 1000), total);
 }
 
 /**
@@ -31,15 +84,24 @@ export interface ViewInputs {
  * during a Pomodoro.
  */
 export function pickView(input: ViewInputs): ScreenView {
-  if (input.mode !== 'auto') {
-    return input.hasContent[input.mode] ? input.mode : 'clock';
-  }
-  if (input.focusRunning && input.enabled.includes('focus')) return 'focus';
+  return rotationInfo(input).view;
+}
 
-  const views = ALL_SCREEN_VIEWS.filter(v => input.enabled.includes(v) && input.hasContent[v]);
-  if (views.length === 0) return 'clock';
-  const slot = Math.floor(input.nowMs / 1000 / VIEW_ROTATION_SECONDS);
-  return views[slot % views.length];
+/** Same choice as pickView, plus where in its slot the rotation currently is (for the progress bar). */
+export function rotationInfo(input: ViewInputs): RotationInfo {
+  const fixed = (view: ScreenView): RotationInfo => ({ view, rotating: false, elapsedSec: 0, durationSec: 0 });
+  if (input.mode !== 'auto') return fixed(input.hasContent[input.mode] ? input.mode : 'clock');
+  if (input.focusRunning && input.enabled.includes('focus')) return fixed('focus');
+
+  const { views, seconds } = rotationViews(input);
+  if (views.length === 0) return fixed('clock');
+  const total = views.reduce((n, v) => n + seconds(v), 0);
+  let t = mod(Math.floor(input.nowMs / 1000) + (input.offsetSec ?? 0), total);
+  for (const view of views) {
+    if (t < seconds(view)) return { view, rotating: views.length > 1, elapsedSec: t, durationSec: seconds(view) };
+    t -= seconds(view);
+  }
+  return fixed('clock'); // unreachable: t is always inside the cycle
 }
 
 /**

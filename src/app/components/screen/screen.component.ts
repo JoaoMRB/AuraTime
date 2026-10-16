@@ -1,41 +1,48 @@
 import {
-  AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
+  AfterViewInit, Component, DestroyRef, ElementRef, HostListener, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
 import { SerialLinkService } from '../../services/screen/serial-link.service';
-import { ALL_SCREEN_VIEWS, ScreenView } from '../../services/screen/display-snapshot';
-import { DisplayStateService } from '../../services/screen/display-state.service';
-import { viewHasContent } from '../../services/screen/screen-logic';
-import { FontId, THEME_IDS, ThemeId } from '../../services/screen/theme-tokens';
+import { ScreenView } from '../../services/screen/display-snapshot';
 import { TranslationService } from '../../services/translation.service';
 import { AlarmService } from '../../services/alarm.service';
+import { ScreenHeroComponent } from './screen-hero.component';
+import { ScreenViewsComponent } from './screen-views.component';
+import { ScreenAppearanceComponent } from './screen-appearance.component';
+import { ScreenScheduleComponent } from './screen-schedule.component';
+import { ScreenHealthComponent } from './screen-health.component';
+import { ScreenIconComponent } from './screen-icon.component';
 
 /**
- * Desk Display: the page that drives the USB screen. A 3-step wizard (check the browser, connect
- * the display, choose the views) around a large live preview. Without a display, or in a browser
- * without Web Serial, the preview runs in demo mode.
+ * Desk Display: the page that drives the USB screen. Two modes around one large preview:
+ *  - setup (no display yet): a compact 3-step flow (check the browser, connect, customise);
+ *  - control centre (connected, or when the visitor chose to customise): transport controls, views, appearance,
+ *    schedule and link health.
+ * Without a display, or in a browser without Web Serial, the preview runs in demo mode.
  *
  * Keep it open (a dedicated window works best): Web Serial and the render loop live in this page.
  */
 @Component({
   selector: 'app-screen',
   standalone: true,
-  imports: [RouterLink],
+  imports: [
+    RouterLink, ScreenHeroComponent, ScreenViewsComponent, ScreenAppearanceComponent, ScreenScheduleComponent,
+    ScreenHealthComponent, ScreenIconComponent
+  ],
   templateUrl: './screen.component.html'
 })
 export class ScreenComponent implements AfterViewInit, OnDestroy {
   readonly ts = inject(TranslationService);
   readonly output = inject(ScreenOutputService);
   readonly link = inject(SerialLinkService);
-  private display = inject(DisplayStateService);
   private title = inject(Title);
   private meta = inject(Meta);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  @ViewChild('preview', { static: true }) previewHost!: ElementRef<HTMLElement>;
+  @ViewChild('statusMenu') statusMenu?: ElementRef<HTMLElement>;
 
   /**
    * False on the server and during the first client render, so the prerendered HTML and the first
@@ -44,24 +51,15 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
   readonly ready = signal(false);
   /** The page is in a background tab or minimized: the browser slows it down and the display can lag. */
   readonly pageHidden = signal(false);
+  /** The visitor opened the customisation before connecting a display (it then works on the demo preview). */
+  readonly customizing = signal(false);
+  readonly menuOpen = signal(false);
 
-  readonly viewOptions: ScreenView[] = [...ALL_SCREEN_VIEWS];
-  readonly themeIds: readonly ThemeId[] = THEME_IDS;
-  readonly fontOptions: { id: FontId; name: string }[] = [
-    { id: 'outfit', name: 'Outfit' },
-    { id: 'orbitron', name: 'Orbitron' },
-    { id: 'inter', name: 'Inter' },
-    { id: 'playfair', name: 'Playfair Display' }
-  ];
-  readonly hours = Array.from({ length: 24 }, (_, h) => h);
-
-  /** Which views currently have something to show (drives the "no data yet" hints). */
-  readonly content = computed(() => viewHasContent(this.display.snapshot()));
   readonly connected = computed(() => this.link.status() === 'connected');
   /** Another /screen window is driving the display: this one only shows a preview. */
   readonly otherWindow = computed(() => this.output.ownership() === 'other');
-  /** 1 = browser not supported, 2 = connect the display, 3 = choose the views. */
-  readonly currentStep = computed(() => (!this.supported ? 1 : this.connected() ? 3 : 2));
+  /** The control centre: shown with a display connected, or on request. Never in a browser that cannot work. */
+  readonly controlCentre = computed(() => this.supported && !this.otherWindow() && (this.connected() || this.customizing()));
   readonly viewName = computed(() => this.viewLabel(this.output.activeView()));
 
   constructor() {
@@ -90,6 +88,11 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
       this.meta.updateTag({ name: 'twitter:title', content: title });
       this.meta.updateTag({ name: 'twitter:description', content: description });
     });
+
+    // The menu belongs to a connected display: close it when the display goes away.
+    effect(() => {
+      if (!this.connected()) this.menuOpen.set(false);
+    }, { allowSignalWrites: true });
   }
 
   /** Whether this browser can talk to USB displays (Web Serial). */
@@ -98,9 +101,7 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (!this.isBrowser || !this.output.canvas) return;
-    this.previewHost.nativeElement.appendChild(this.output.canvas);
-    void this.output.start();
+    if (this.isBrowser && this.output.canvas) void this.output.start();
   }
 
   ngOnDestroy(): void {
@@ -114,10 +115,6 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
 
   viewLabel(view: ScreenView): string {
     return this.ts.t(`SCREEN.VIEWS.${view.toUpperCase()}`);
-  }
-
-  themeLabel(id: ThemeId): string {
-    return this.ts.t(`CLOCK.THEME_${id.toUpperCase().replace(/-/g, '_')}`);
   }
 
   kilobytes(): string {
@@ -138,6 +135,44 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
       case 'connected': return 'text-emerald-400';
       case 'error': return 'text-red-400';
       default: return 'text-gray-200';
+    }
+  }
+
+  /** Dot colour of the header pill. */
+  dotClass(): string {
+    switch (this.link.status()) {
+      case 'connected': return 'bg-emerald-400';
+      case 'connecting': return 'bg-amber-300';
+      case 'error': return 'bg-red-400';
+      default: return 'bg-gray-400';
+    }
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update(open => !open);
+  }
+
+  async disconnect(): Promise<void> {
+    this.menuOpen.set(false);
+    this.customizing.set(false);
+    await this.output.disconnect();
+  }
+
+  redraw(): void {
+    this.menuOpen.set(false);
+    this.output.refreshAll();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.menuOpen() && !this.statusMenu?.nativeElement.contains(event.target as Node)) this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.menuOpen()) {
+      this.menuOpen.set(false);
+      this.statusMenu?.nativeElement.querySelector<HTMLElement>('button')?.focus();
     }
   }
 }

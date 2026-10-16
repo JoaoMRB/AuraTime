@@ -451,7 +451,9 @@
         "SPARK": "Tempo por imagem, últimos minutos",
         "SPARK_RANGE": "agora {last} ms · pico {max} ms",
         "SPARK_LABEL": "Tempos por imagem nos últimos minutos: último {last} ms, pico {max} ms",
-        "SPARK_EMPTY": "Ainda não foi enviada nenhuma imagem."
+        "SPARK_EMPTY": "Ainda não foi enviada nenhuma imagem.",
+        "RESYNCS": "Ressincronizações",
+        "RESETS": "Reinícios do ecrã"
       }
     }
   },

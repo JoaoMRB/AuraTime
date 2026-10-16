@@ -454,11 +454,21 @@ describe('Desk Display control centre', () => {
     });
 
     it('shows stat chips instead of a status line', () => {
-      for (const id of ['uptime', 'frames', 'last', 'pause', 'timeouts', 'redraws']) expect(q(`[data-testid="stat-${id}"]`)).toBeTruthy();
+      for (const id of ['uptime', 'frames', 'last', 'pause', 'timeouts', 'redraws', 'resyncs', 'resets']) expect(q(`[data-testid="stat-${id}"]`)).toBeTruthy();
       expect(text(q('[data-testid="stat-pause"]'))).toBe('0 ms'); // the tests turn the pause off
       expect(Number(q('[data-testid="stat-frames"]').textContent)).toBeGreaterThan(0);
       expect(text(q('[data-testid="stat-last"]'))).toMatch(/^\d+ ms$/);
       expect(text(q('[data-testid="health-state"]'))).toContain('All good');
+      expect(q('[data-testid="stat-resets"]').textContent!.trim()).toBe('1'); // every connection starts with a RESET
+      expect(q('[data-testid="stat-resyncs"]').textContent!.trim()).toBe('0');
+    });
+
+    it('counts a resync (a stuck link that had to be reset) as a problem, with its own chip', () => {
+      const link = TestBed.inject(SerialLinkService);
+      link.resyncs.update(n => n + 1);
+      fixture.detectChanges();
+      expect(q('[data-testid="stat-resyncs"]').textContent!.trim()).toBe('1');
+      expect(text(q('[data-testid="health-warning"]'))).toContain('1 new problem(s)');
     });
 
     it('draws a sparkline of the frame times', () => {

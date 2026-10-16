@@ -44,6 +44,14 @@
       <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.REDRAWS') }}</dt>
       <dd class="font-mono text-lg text-white" data-testid="stat-redraws">{{ output.forcedFullRedraws() }}</dd>
     </div>
+    <div class="rounded-2xl border px-3 py-2.5" [class]="link.resyncs() > 0 && warning() ? 'border-amber-300/50 bg-amber-300/10' : 'border-white/10 bg-black/25'">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.RESYNCS') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-resyncs">{{ link.resyncs() }}</dd>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5">
+      <dt class="text-[11px] uppercase tracking-[0.14em] text-gray-300">{{ ts.t('SCREEN.UI.HEALTH.RESETS') }}</dt>
+      <dd class="font-mono text-lg text-white" data-testid="stat-resets">{{ link.resets() }}</dd>
+    </div>
   </dl>
 
   <figure class="mt-4 rounded-2xl border border-white/10 bg-black/25 px-3 py-3">

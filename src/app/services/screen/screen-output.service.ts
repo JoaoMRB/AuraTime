@@ -104,6 +104,10 @@ export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
 }
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
+/** A send that has been in progress this long means the link is stuck (a healthy frame takes a second or two). */
+const WATCHDOG_MS = 30000;
+/** After a beforeunload that did not unload the page (something cancelled it), the link is released again. */
+const UNLOAD_GRACE_MS = 2000;
 /**
  * Time between ticks above which we assume the PC slept (ticks are 1 s apart). Only applied while the page is
  * visible: a hidden page is throttled by the browser (1 tick a second, then about 1 a minute) and that gap
@@ -216,6 +220,13 @@ export class ScreenOutputService implements OnDestroy {
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
   private busy = false;
+  /** Identifies the send that owns `busy`: a send abandoned by a resync must not clear it for the next one. */
+  private busyRun = 0;
+  private busySince = 0;
+  private resyncing = false;
+  private unloadTimer: ReturnType<typeof setTimeout> | null = null;
+  /** No frame in progress for this long (while something is waiting to be sent) means the link is stuck. */
+  watchdogMs = WATCHDOG_MS;
   private prevFrame: Uint16Array | null = null;
   /**
    * Bumped whenever prevFrame is invalidated. A send that was already in flight must not
@@ -293,6 +304,8 @@ export class ScreenOutputService implements OnDestroy {
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
     window.addEventListener('pagehide', this.onPageHide);
+    window.addEventListener('beforeunload', this.onBeforeUnload);
+    window.addEventListener('pageshow', this.onPageShow);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     // The first frame also kicks off the reconnection to the display used last time (if any).
@@ -305,6 +318,9 @@ export class ScreenOutputService implements OnDestroy {
     this.started = false;
     if (this.isBrowser) {
       window.removeEventListener('pagehide', this.onPageHide);
+      window.removeEventListener('beforeunload', this.onBeforeUnload);
+      window.removeEventListener('pageshow', this.onPageShow);
+      if (this.unloadTimer) clearTimeout(this.unloadTimer);
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
       if (this.isOwner()) this.deskStatus.publish(false); // a window that never owned the display says nothing
       this.releaseDisplay();
@@ -358,8 +374,34 @@ export class ScreenOutputService implements OnDestroy {
 
   /** The Desk Display window is going away: other windows must not keep showing "connected". */
   private onPageHide = () => {
+    this.link.suspend();
     if (this.isOwner()) this.deskStatus.publish(false);
   };
+
+  /**
+   * The page may be about to go away (a reload, the dev server's live reload, closing the window): stop queuing
+   * frames so no bitmap is left half-sent. A frame in progress stops after its current band. If the page
+   * stays (something cancelled the unload) the link is released again after a moment, and redrawn in full.
+   */
+  private onBeforeUnload = () => {
+    this.link.suspend();
+    if (this.unloadTimer) clearTimeout(this.unloadTimer);
+    this.unloadTimer = setTimeout(() => {
+      this.unloadTimer = null;
+      this.resumeAfterUnload();
+    }, UNLOAD_GRACE_MS);
+  };
+
+  /** Back from the back/forward cache: the display may have been reset meanwhile. */
+  private onPageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) this.resumeAfterUnload();
+  };
+
+  private resumeAfterUnload(): void {
+    if (!this.link.isSuspended()) return;
+    this.link.resume();
+    this.invalidateFrame(); // a frame may have been stopped between two bands
+  }
 
   /** Tell the other windows right away that this page is (no longer) hidden, so their indicator stays right. */
   private onVisibilityChange = () => {
@@ -577,8 +619,15 @@ export class ScreenOutputService implements OnDestroy {
       return;
     }
     this.reconnectFailures = 0;
-    if (this.busy) return;
+    // The page is unloading: no new frame may start (it could be left half-sent).
+    if (this.link.isSuspended()) return;
+    if (this.busy) {
+      if (wallNow - this.busySince > this.watchdogMs) await this.resync();
+      return;
+    }
     this.busy = true;
+    this.busySince = wallNow;
+    const run = ++this.busyRun;
     try {
       if (now.getTime() - this.lastFullRefresh > FULL_REFRESH_MS) {
         this.invalidateFrame();
@@ -588,8 +637,11 @@ export class ScreenOutputService implements OnDestroy {
         await this.link.setBrightness(level);
         this.lastSentBrightness = level;
       }
+      // A full frame starts from a known orientation: the display may have lost it (a reset, a power glitch).
+      if (this.prevFrame === null && !this.alwaysFullFrame()) await this.link.setOrientation();
       await this.pushFrame();
     } catch (e) {
+      if (run !== this.busyRun) return; // this send was abandoned by a resync: the link was rebuilt meanwhile
       // A bitmap may have been cut off mid-way: the display could be waiting for pixels that will never come,
       // so nothing it shows can be trusted. Drop the port (the reconnection re-initialises it) and redraw it
       // all, band by band, before any partial update is sent again.
@@ -597,7 +649,25 @@ export class ScreenOutputService implements OnDestroy {
       this.forcedFullRedraws.update(n => n + 1);
       await this.link.fail(e);
     } finally {
+      if (run === this.busyRun) this.busy = false;
+    }
+  }
+
+  /**
+   * The link says "connected" but a send has not finished for `watchdogMs`: treat the display as stuck. Drops
+   * the port and brings it back with a RESET; the next frame is a full, banded redraw.
+   */
+  private async resync(): Promise<void> {
+    if (this.resyncing) return;
+    this.resyncing = true;
+    try {
+      this.busyRun++; // the stuck send no longer owns `busy`
       this.busy = false;
+      this.invalidateFrame();
+      this.forcedFullRedraws.update(n => n + 1);
+      await this.link.hardResync(this.connectOptions());
+    } finally {
+      this.resyncing = false;
     }
   }
 

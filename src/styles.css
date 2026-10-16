@@ -79,3 +79,59 @@ html, body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Desk Display page (/screen): shared building blocks of the control centre. */
+@layer components {
+  .aura-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-luxury-gold focus-visible:ring-offset-2 focus-visible:ring-offset-luxury-charcoal;
+  }
+  .aura-panel {
+    @apply rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.35)];
+  }
+  .aura-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-luxury-gold;
+  }
+  .aura-icon-btn {
+    @apply aura-focus inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white transition-colors hover:border-luxury-gold hover:text-luxury-gold disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer;
+  }
+  .aura-pill-btn {
+    @apply aura-focus inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:border-luxury-gold hover:text-luxury-gold cursor-pointer;
+  }
+  .aura-gold-btn {
+    @apply aura-focus inline-flex items-center justify-center rounded-full bg-luxury-gold px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-luxury-charcoal transition-colors hover:bg-white disabled:opacity-50 cursor-pointer;
+  }
+  /* A native range input with a gold thumb and a track that shows its value (--fill: 0..100%). */
+  .aura-range {
+    @apply aura-focus h-6 w-full cursor-pointer appearance-none bg-transparent;
+  }
+  .aura-range::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 9999px;
+    background: linear-gradient(to right, #D4AF37 var(--fill, 50%), rgba(255, 255, 255, 0.16) var(--fill, 50%));
+  }
+  .aura-range::-moz-range-track { height: 6px; border-radius: 9999px; background: rgba(255, 255, 255, 0.16); }
+  .aura-range::-moz-range-progress { height: 6px; border-radius: 9999px; background: #D4AF37; }
+  .aura-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; margin-top: -7px; height: 20px; width: 20px; border-radius: 9999px;
+    background: #fff; border: 3px solid #D4AF37; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .aura-range::-moz-range-thumb { height: 16px; width: 16px; border-radius: 9999px; background: #fff; border: 3px solid #D4AF37; }
+  /* An on/off switch: a button with role="switch". */
+  .aura-switch {
+    @apply aura-focus relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-white/20 bg-white/10 transition-colors;
+  }
+  .aura-switch[aria-checked='true'] { @apply border-luxury-gold bg-luxury-gold/80; }
+  .aura-switch::after {
+    content: ''; @apply absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform;
+  }
+  .aura-switch[aria-checked='true']::after { transform: translateX(1.25rem); }
+}
+
+/* Reduced motion: no animation or smooth transitions anywhere on the page. */
+@media (prefers-reduced-motion: reduce) {
+  .aura-screen *, .aura-screen *::before, .aura-screen *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

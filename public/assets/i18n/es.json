@@ -289,7 +289,8 @@
         "REDRAW": "Redibujar todo",
         "HINT": "Si los fallos desaparecen con \"pantalla completa\", el problema está en las actualizaciones parciales; si desaparecen con \"envío lento\", la pantalla necesita más tiempo entre bloques.",
         "LAST_SEND": "Última imagen: {w}×{h} px · {bytes} B · {ms} ms · mayor pausa entre bloques {gap} ms",
-        "COUNTERS": "Fotogramas enviados: {frames} · bandas: {bands} · tiempos de escritura agotados: {timeouts} · redibujados completos forzados: {redraws}"
+        "BAND_PAUSE": "Pausa tras cada banda",
+        "COUNTERS": "Fotogramas enviados: {frames} · bandas: {bands} · tiempos de escritura agotados: {timeouts} · redibujados completos forzados: {redraws} · pausa por banda: {pause} ms"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display necesita Chrome o Edge en un ordenador",
@@ -305,6 +306,101 @@
       "INSECURE": {
         "TITLE": "Web Serial necesita HTTPS o localhost",
         "TEXT": "Esta página está abierta por http simple desde una dirección de red, donde los navegadores desactivan Web Serial. Ábrela con https:// o desde localhost (por ejemplo http://localhost:4200)."
+      }
+    },
+    "UI": {
+      "NAV": "Navegación de Desk Display",
+      "HERO": {
+        "PREVIEW_NEXT": "Vista previa de la pantalla. Actívala para mostrar la vista siguiente.",
+        "TRANSPORT": "Controles de vista",
+        "PREVIOUS": "Vista anterior",
+        "NEXT": "Vista siguiente",
+        "PAUSE": "Pausar la rotación",
+        "RESUME": "Reanudar la rotación",
+        "PAUSE_PINNED": "Una vista fijada ya permanece en pantalla",
+        "PIN": "Fijar esta vista",
+        "UNPIN": "Soltar: volver a la rotación",
+        "PROGRESS": "Tiempo en esta vista",
+        "KEYS": "Teclado: ← → cambian de vista · Espacio pausa",
+        "STATE_ROTATING": "Rotando · siguiente en {seconds} s",
+        "STATE_PAUSED": "Rotación en pausa",
+        "STATE_PINNED": "Fijada en esta vista",
+        "STATE_HELD": "Mantenida por un Pomodoro en curso",
+        "STATE_SINGLE": "Solo hay una vista en la rotación"
+      },
+      "PILL": {
+        "CONNECTED": "Conectado",
+        "CONNECTED_MODEL": "Conectado · {model}"
+      },
+      "CC": {
+        "NOT_CONNECTED": "Ninguna pantalla conectada: estás personalizando la vista previa de demostración.",
+        "BACK_TO_SETUP": "Volver a la configuración"
+      },
+      "SETUP": {
+        "STEP3_TEXT": "Vistas, aspecto y horario nocturno: todo en el centro de control.",
+        "CUSTOMIZE": "Personalizar"
+      },
+      "VIEWS": {
+        "EYEBROW": "Qué muestra",
+        "TITLE": "Vistas",
+        "HINT": "Activa o desactiva vistas, reordénalas y elige cuánto tiempo se queda cada una en pantalla.",
+        "THUMB": "Miniatura de la vista {view}",
+        "EMPTY_TITLE": "Nada que mostrar todavía",
+        "EMPTY": {
+          "WEEK": "Completa una sesión de enfoque y la semana aparecerá aquí.",
+          "ALARM": "No hay ninguna alarma ni cuenta atrás.",
+          "WORLD": "Todavía no tienes relojes mundiales.",
+          "WEATHER": "El tiempo está desactivado o aún sin datos."
+        },
+        "EMPTY_LINK": {
+          "WEEK": "Iniciar una sesión de enfoque",
+          "ALARM": "Poner una alarma",
+          "WORLD": "Añadir un reloj mundial",
+          "WEATHER": "Activar el tiempo"
+        },
+        "TOGGLE": "Mostrar {view} en la rotación",
+        "DURATION": "Tiempo en pantalla",
+        "DURATION_FOR": "Segundos en pantalla: {view}",
+        "DRAG": "Arrastra para reordenar",
+        "MOVE_UP": "Subir {view}",
+        "MOVE_DOWN": "Bajar {view}",
+        "MOVED": "{view} es ahora la número {position} de {total}"
+      },
+      "APPEARANCE": {
+        "EYEBROW": "Aspecto",
+        "TITLE": "Apariencia",
+        "FOLLOW": "Seguir la app",
+        "FOLLOW_ON": "La pantalla usa el tema y la fuente elegidos en el reloj.",
+        "FOLLOW_OFF": "La pantalla mantiene su propio tema y fuente, haga lo que haga la app."
+      },
+      "SCHEDULE": {
+        "EYEBROW": "Día y noche",
+        "TITLE": "Horario",
+        "NIGHT_STARTS": "La noche empieza",
+        "NIGHT_ENDS": "La noche termina",
+        "SUMMARY": "Noche de {from} a {to}, retroiluminación al {level}%.",
+        "NO_NIGHT": "Sin horario nocturno: la retroiluminación se queda en el nivel diurno.",
+        "BLACK_HINT": "De noche la pantalla queda totalmente negra y la retroiluminación apagada."
+      },
+      "HEALTH": {
+        "EYEBROW": "Conexión",
+        "TITLE": "Estado",
+        "STATE_OK": "Todo bien",
+        "STATE_WARN": "Requiere atención",
+        "WARNING": "La conexión tuvo {count} problema(s) nuevo(s) (tiempos de escritura agotados o redibujados completos forzados) desde que abriste esta página. La pantalla se redibujó entera cada vez.",
+        "DISMISS": "Descartar",
+        "UPTIME": "Conectado desde hace",
+        "FRAMES": "Imágenes",
+        "LAST_FRAME": "Última imagen",
+        "PAUSE": "Pausa por banda",
+        "TIMEOUTS": "Tiempos agotados",
+        "REDRAWS": "Redibujados forzados",
+        "SPARK": "Tiempo por imagen, últimos minutos",
+        "SPARK_RANGE": "ahora {last} ms · máx. {max} ms",
+        "SPARK_LABEL": "Tiempos por imagen en los últimos minutos: último {last} ms, máximo {max} ms",
+        "SPARK_EMPTY": "Aún no se ha enviado ninguna imagen.",
+        "RESYNCS": "Resincronizaciones",
+        "RESETS": "Reinicios de la pantalla"
       }
     }
   },

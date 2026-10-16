@@ -289,7 +289,8 @@
         "REDRAW": "Ridisegna tutto",
         "HINT": "Se i difetti spariscono con \"schermo intero\", il problema è negli aggiornamenti parziali; se spariscono con \"invio lento\", lo schermo ha bisogno di più tempo tra i blocchi.",
         "LAST_SEND": "Ultima immagine: {w}×{h} px · {bytes} B · {ms} ms · pausa massima tra i blocchi {gap} ms",
-        "COUNTERS": "Immagini inviate: {frames} · bande: {bands} · timeout di scrittura: {timeouts} · ridisegni completi forzati: {redraws}"
+        "BAND_PAUSE": "Pausa dopo ogni banda",
+        "COUNTERS": "Immagini inviate: {frames} · bande: {bands} · timeout di scrittura: {timeouts} · ridisegni completi forzati: {redraws} · pausa per banda: {pause} ms"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display richiede Chrome o Edge su un computer",
@@ -305,6 +306,101 @@
       "INSECURE": {
         "TITLE": "Web Serial richiede HTTPS o localhost",
         "TEXT": "Questa pagina è aperta con http semplice da un indirizzo di rete, dove i browser disattivano Web Serial. Aprila con https:// o da localhost (per esempio http://localhost:4200)."
+      }
+    },
+    "UI": {
+      "NAV": "Navigazione di Desk Display",
+      "HERO": {
+        "PREVIEW_NEXT": "Anteprima dello schermo. Attiva per mostrare la vista successiva.",
+        "TRANSPORT": "Controlli della vista",
+        "PREVIOUS": "Vista precedente",
+        "NEXT": "Vista successiva",
+        "PAUSE": "Metti in pausa la rotazione",
+        "RESUME": "Riprendi la rotazione",
+        "PAUSE_PINNED": "Una vista bloccata resta già sullo schermo",
+        "PIN": "Blocca questa vista",
+        "UNPIN": "Sblocca: torna alla rotazione",
+        "PROGRESS": "Tempo su questa vista",
+        "KEYS": "Tastiera: ← → cambiano vista · Spazio mette in pausa",
+        "STATE_ROTATING": "In rotazione · prossima tra {seconds} s",
+        "STATE_PAUSED": "Rotazione in pausa",
+        "STATE_PINNED": "Bloccata su questa vista",
+        "STATE_HELD": "Mantenuta da un Pomodoro in corso",
+        "STATE_SINGLE": "Una sola vista nella rotazione"
+      },
+      "PILL": {
+        "CONNECTED": "Connesso",
+        "CONNECTED_MODEL": "Connesso · {model}"
+      },
+      "CC": {
+        "NOT_CONNECTED": "Nessuno schermo collegato: stai personalizzando l’anteprima dimostrativa.",
+        "BACK_TO_SETUP": "Torna alla configurazione"
+      },
+      "SETUP": {
+        "STEP3_TEXT": "Viste, aspetto e orario notturno: tutto nel centro di controllo.",
+        "CUSTOMIZE": "Personalizza"
+      },
+      "VIEWS": {
+        "EYEBROW": "Cosa mostra",
+        "TITLE": "Viste",
+        "HINT": "Attiva o disattiva le viste, riordinale e scegli quanto resta ciascuna sullo schermo.",
+        "THUMB": "Miniatura della vista {view}",
+        "EMPTY_TITLE": "Ancora niente da mostrare",
+        "EMPTY": {
+          "WEEK": "Completa una sessione di focus e la settimana compare qui.",
+          "ALARM": "Non c’è nessuna sveglia né conto alla rovescia.",
+          "WORLD": "Non hai ancora orologi mondiali.",
+          "WEATHER": "Il meteo è disattivato o senza dati."
+        },
+        "EMPTY_LINK": {
+          "WEEK": "Avvia una sessione di focus",
+          "ALARM": "Imposta una sveglia",
+          "WORLD": "Aggiungi un orologio mondiale",
+          "WEATHER": "Attiva il meteo"
+        },
+        "TOGGLE": "Mostra {view} nella rotazione",
+        "DURATION": "Tempo sullo schermo",
+        "DURATION_FOR": "Secondi sullo schermo: {view}",
+        "DRAG": "Trascina per riordinare",
+        "MOVE_UP": "Sposta {view} su",
+        "MOVE_DOWN": "Sposta {view} giù",
+        "MOVED": "{view} è ora la numero {position} su {total}"
+      },
+      "APPEARANCE": {
+        "EYEBROW": "Aspetto",
+        "TITLE": "Aspetto",
+        "FOLLOW": "Segui l’app",
+        "FOLLOW_ON": "Lo schermo usa il tema e il carattere scelti nell’orologio.",
+        "FOLLOW_OFF": "Lo schermo mantiene tema e carattere propri, qualunque cosa faccia l’app."
+      },
+      "SCHEDULE": {
+        "EYEBROW": "Giorno e notte",
+        "TITLE": "Programma",
+        "NIGHT_STARTS": "La notte inizia",
+        "NIGHT_ENDS": "La notte finisce",
+        "SUMMARY": "Notte dalle {from} alle {to}, retroilluminazione al {level}%.",
+        "NO_NIGHT": "Nessun orario notturno: la retroilluminazione resta al livello diurno.",
+        "BLACK_HINT": "Di notte lo schermo è completamente nero e la retroilluminazione spenta."
+      },
+      "HEALTH": {
+        "EYEBROW": "Collegamento",
+        "TITLE": "Stato",
+        "STATE_OK": "Tutto bene",
+        "STATE_WARN": "Richiede attenzione",
+        "WARNING": "Il collegamento ha avuto {count} nuovo/i problema/i (timeout di scrittura o ridisegni completi forzati) da quando hai aperto questa pagina. Lo schermo è stato ridisegnato per intero ogni volta.",
+        "DISMISS": "Ignora",
+        "UPTIME": "Connesso da",
+        "FRAMES": "Immagini",
+        "LAST_FRAME": "Ultima immagine",
+        "PAUSE": "Pausa per banda",
+        "TIMEOUTS": "Timeout di scrittura",
+        "REDRAWS": "Ridisegni forzati",
+        "SPARK": "Tempo per immagine, ultimi minuti",
+        "SPARK_RANGE": "ora {last} ms · picco {max} ms",
+        "SPARK_LABEL": "Tempi per immagine negli ultimi minuti: ultimo {last} ms, picco {max} ms",
+        "SPARK_EMPTY": "Nessuna immagine ancora inviata.",
+        "RESYNCS": "Risincronizzazioni",
+        "RESETS": "Reset dello schermo"
       }
     }
   },

@@ -160,6 +160,12 @@ the window is minimized). Press *Connect display* once in that window the first 
 Use `-Url https://...` instead of `-ServeLocal` for a hosted copy (Web Serial needs HTTPS or `localhost`),
 and `-DryRun` to see what would be created without creating it.
 
+For everyday and always-on use run the **production build** through this launcher, not `npm start`. The dev
+server reloads the page on every saved file, and a reload in the middle of a transfer can leave the display half
+drawn. Every connection now begins with a RESET of the display (it drops off USB for a few seconds and the page waits
+for it to come back), so such a display recovers by itself: a stuck link is detected after 30 s and reset the same
+way, and the orientation is re-sent with every full redraw. But there is no reason to cause it.
+
 The shortcut starts PowerShell with `-ExecutionPolicy Bypass`. That applies only to these two scripts, so they
 run even where scripts are blocked; your system-wide execution policy is not changed.
 

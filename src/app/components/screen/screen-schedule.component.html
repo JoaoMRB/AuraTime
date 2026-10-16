@@ -1,0 +1,88 @@
+<section class="aura-panel p-5 sm:p-6" aria-labelledby="schedule-title">
+  <header class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="aura-eyebrow">{{ ts.t('SCREEN.UI.SCHEDULE.EYEBROW') }}</p>
+      <h2 id="schedule-title" class="font-playfair text-xl text-white">{{ ts.t('SCREEN.UI.SCHEDULE.TITLE') }}</h2>
+    </div>
+    <div class="flex items-center gap-3 text-sm text-gray-200">
+      <span id="night-label">{{ ts.t('SCREEN.PAGE.S3.NIGHT') }}</span>
+      <button type="button" role="switch" class="aura-switch" data-testid="night-enabled"
+              aria-labelledby="night-label" [attr.aria-checked]="b().nightEnabled"
+              (click)="output.patchBrightness({ nightEnabled: !b().nightEnabled })"></button>
+    </div>
+  </header>
+
+  <!-- 24 h timeline -->
+  <div class="px-3 pt-8">
+    <div #bar class="relative h-10 cursor-pointer rounded-full border border-white/15 bg-black/40" data-testid="timeline" (click)="onBarClick($event)">
+      <div class="absolute inset-0 overflow-hidden rounded-full" aria-hidden="true">
+        <div class="absolute inset-0" [style.background]="dayColor()"></div>
+        @for (seg of nightSegments(); track seg[0]) {
+          <div class="absolute inset-y-0" data-testid="night-segment"
+               [style.left.%]="pct(seg[0])" [style.width.%]="pct(seg[1] - seg[0])" [style.background]="nightColor()"></div>
+        }
+        <div class="absolute inset-y-0 w-px bg-white/90" [style.left.%]="nowPercent()"></div>
+      </div>
+
+      @for (handle of ['from', 'to']; track handle) {
+        <div role="slider" tabindex="0" [attr.data-handle]="handle"
+             class="aura-focus absolute top-1/2 z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border-2 border-luxury-gold bg-luxury-charcoal text-luxury-gold shadow-lg active:cursor-grabbing"
+             [style.left.%]="pct(hourOf($any(handle)))"
+             [class.opacity-50]="!b().nightEnabled"
+             aria-valuemin="0" aria-valuemax="23"
+             [attr.aria-valuenow]="hourOf($any(handle))" [attr.aria-valuetext]="label(hourOf($any(handle)))"
+             [attr.aria-label]="handle === 'from' ? ts.t('SCREEN.UI.SCHEDULE.NIGHT_STARTS') : ts.t('SCREEN.UI.SCHEDULE.NIGHT_ENDS')"
+             (keydown)="onKey($event, $any(handle))"
+             (pointerdown)="onPointerDown($event, $any(handle))" (pointermove)="onPointerMove($event, $any(handle))"
+             (pointerup)="onPointerEnd()" (pointercancel)="onPointerEnd()" (lostpointercapture)="onPointerEnd()">
+          <span class="h-4 w-4"><app-screen-icon [name]="handle === 'from' ? 'moon' : 'sun'" /></span>
+          <span class="pointer-events-none absolute -top-6 whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 font-mono text-[11px] text-white">{{ label(hourOf($any(handle))) }}</span>
+        </div>
+      }
+    </div>
+    <div class="relative mt-2 h-4 text-[11px] text-gray-300" aria-hidden="true">
+      @for (h of axis; track h) {
+        <span class="absolute -translate-x-1/2 font-mono" [style.left.%]="pct(h)">{{ h === 24 ? '24' : h }}</span>
+      }
+    </div>
+  </div>
+
+  <p class="mt-4 text-sm text-gray-200" data-testid="schedule-summary">
+    @if (nightOn()) {
+      {{ ts.format('SCREEN.UI.SCHEDULE.SUMMARY', { from: label(b().nightFromHour), to: label(b().nightToHour), level: b().nightBlack ? 0 : b().nightLevel }) }}
+    } @else {
+      {{ ts.t('SCREEN.UI.SCHEDULE.NO_NIGHT') }}
+    }
+  </p>
+
+  <div class="mt-5 grid gap-5 sm:grid-cols-2">
+    <div>
+      <label class="flex items-center justify-between text-sm text-gray-200" for="day-level">
+        <span class="inline-flex items-center gap-2"><span class="h-4 w-4 text-luxury-gold"><app-screen-icon name="sun" /></span>{{ ts.t('SCREEN.PAGE.S3.BACKLIGHT_DAY') }}</span>
+        <span class="font-mono text-white">{{ b().base }}%</span>
+      </label>
+      <input id="day-level" type="range" min="0" max="100" class="aura-range" data-testid="day-level"
+             [value]="b().base" [style.--fill]="fill(b().base)"
+             (input)="output.setBrightnessBase(+$any($event.target).value)">
+    </div>
+    <div [class.opacity-50]="!b().nightEnabled">
+      <label class="flex items-center justify-between text-sm text-gray-200" for="night-level">
+        <span class="inline-flex items-center gap-2"><span class="h-4 w-4 text-indigo-300"><app-screen-icon name="moon" /></span>{{ ts.t('SCREEN.PAGE.S3.NIGHT_LEVEL') }}</span>
+        <span class="font-mono text-white">{{ b().nightBlack ? 0 : b().nightLevel }}%</span>
+      </label>
+      <input id="night-level" type="range" min="0" max="100" class="aura-range" data-testid="night-level"
+             [value]="b().nightLevel" [style.--fill]="fill(b().nightLevel)" [disabled]="!b().nightEnabled || b().nightBlack"
+             (input)="output.patchBrightness({ nightLevel: +$any($event.target).value })">
+    </div>
+  </div>
+
+  <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3" [class.opacity-50]="!b().nightEnabled">
+    <div class="min-w-0">
+      <p id="black-label" class="text-sm text-white">{{ ts.t('SCREEN.PAGE.S3.NIGHT_BLACK') }}</p>
+      <p class="text-xs text-gray-300">{{ ts.t('SCREEN.UI.SCHEDULE.BLACK_HINT') }}</p>
+    </div>
+    <button type="button" role="switch" class="aura-switch" data-testid="night-black"
+            aria-labelledby="black-label" [attr.aria-checked]="b().nightBlack" [disabled]="!b().nightEnabled"
+            (click)="output.patchBrightness({ nightBlack: !b().nightBlack })"></button>
+  </div>
+</section>

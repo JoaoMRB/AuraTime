@@ -3,7 +3,8 @@ import { SERIAL_API, SerialLinkService } from './serial-link.service';
 import { FakePort, FakeSerial } from './testing/fake-serial';
 
 describe('SerialLinkService: closing, reopening and retrying', () => {
-  const OPTIONS = { flowControl: true, brightness: 60, helloTimeoutMs: 20 };
+  // These tests are about opening and closing the port: the RESET that normally starts a connection has its own tests.
+  const OPTIONS = { flowControl: true, brightness: 60, helloTimeoutMs: 20, skipReset: true };
   const HELLO_OK = new Uint8Array([1, 1, 1, 1, 1, 1]);
   let serial: FakeSerial;
   let port: FakePort;

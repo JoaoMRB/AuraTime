@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { EnvironmentInjector, createEnvironmentInjector, signal } from '@angular/core';
 import { ScreenOutputService, sanitizeScreenPrefs } from './screen-output.service';
 import { DisplayStateService } from './display-state.service';
-import { SERIAL_API } from './serial-link.service';
+import { DEVICE_RESET_WAIT_MS, SERIAL_API } from './serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { FakeLockManager, flushLocks } from '../testing/fake-locks';
 import { SerialLinkService } from './serial-link.service';
@@ -570,6 +570,7 @@ describe('ScreenOutputService', () => {
     serial2.ports = [port2];
     TestBed.configureTestingModule({
       providers: [
+        { provide: DEVICE_RESET_WAIT_MS, useValue: 0 },
         { provide: DisplayStateService, useValue: { snapshot: signal(snap()) } },
         { provide: SERIAL_API, useValue: serial2 },
         { provide: LOCKS_API, useValue: null }
@@ -602,6 +603,8 @@ describe('ScreenOutputService', () => {
           const r = headerRect(w);
           remaining = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1) * 2;
           bitmaps++;
+        } else if (w.length === 16) {
+          expect(w[5]).withContext('only SET_ORIENTATION is 16 bytes long').toBe(121); // re-asserted before a full frame
         } else {
           expect(w.length).withContext('stray write between bitmaps').toBe(6);
           expect([109, 110, 69]).toContain(w[5]);

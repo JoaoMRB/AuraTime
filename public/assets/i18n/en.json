@@ -451,7 +451,9 @@
         "SPARK": "Frame time, last minutes",
         "SPARK_RANGE": "now {last} ms · peak {max} ms",
         "SPARK_LABEL": "Frame times over the last minutes: latest {last} ms, peak {max} ms",
-        "SPARK_EMPTY": "No frames sent yet."
+        "SPARK_EMPTY": "No frames sent yet.",
+        "RESYNCS": "Resyncs",
+        "RESETS": "Display resets"
       }
     }
   },

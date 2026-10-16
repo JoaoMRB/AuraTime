@@ -136,6 +136,8 @@ export const DESK_DISPLAY_EN: any = {
         "PAUSE": "Pause per band",
         "TIMEOUTS": "Write timeouts",
         "REDRAWS": "Forced redraws",
+        "RESYNCS": "Resyncs",
+        "RESETS": "Display resets",
         "SPARK": "Frame time, last minutes",
         "SPARK_RANGE": "now {last} ms · peak {max} ms",
         "SPARK_LABEL": "Frame times over the last minutes: latest {last} ms, peak {max} ms",

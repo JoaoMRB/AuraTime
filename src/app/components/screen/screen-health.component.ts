@@ -73,7 +73,7 @@ export class ScreenHealthComponent {
   });
 
   private problemTotal(): number {
-    return this.link.writeTimeouts() + this.output.forcedFullRedraws();
+    return this.link.writeTimeouts() + this.output.forcedFullRedraws() + this.link.resyncs();
   }
 
   dismiss(): void {

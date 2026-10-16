@@ -398,7 +398,9 @@
         "SPARK": "Bilddauer, letzte Minuten",
         "SPARK_RANGE": "jetzt {last} ms · Spitze {max} ms",
         "SPARK_LABEL": "Bilddauern der letzten Minuten: zuletzt {last} ms, Spitze {max} ms",
-        "SPARK_EMPTY": "Noch keine Bilder gesendet."
+        "SPARK_EMPTY": "Noch keine Bilder gesendet.",
+        "RESYNCS": "Neusynchronisierungen",
+        "RESETS": "Display-Resets"
       }
     }
   },

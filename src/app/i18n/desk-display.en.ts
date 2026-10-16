@@ -130,7 +130,8 @@ export const DESK_DISPLAY_EN: any = {
         "DEMO_TOGGLE": "Show sample data while no display is connected",
         "REDRAW": "Redraw everything",
         "HINT": "If glitches disappear with \"full screen\", the problem is in the partial updates; if they disappear with \"slow send\", the display needs more time between chunks.",
-        "LAST_SEND": "Last image: {w}×{h} px · {bytes} B · {ms} ms · longest pause between chunks {gap} ms"
+        "LAST_SEND": "Last image: {w}×{h} px · {bytes} B · {ms} ms · longest pause between chunks {gap} ms",
+        "COUNTERS": "Frames sent: {frames} · bands: {bands} · write timeouts: {timeouts} · forced full redraws: {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display needs Chrome or Edge on a computer",

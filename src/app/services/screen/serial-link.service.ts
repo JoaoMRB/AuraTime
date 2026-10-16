@@ -2,7 +2,7 @@ import { Injectable, InjectionToken, OnDestroy, PLATFORM_ID, inject, signal } fr
 import { isPlatformBrowser } from '@angular/common';
 import {
   Orientation, Rect, TURING_BAUD_RATE, TURING_USB_PRODUCT_ID, TURING_USB_VENDOR_ID, WRITE_CHUNK_BYTES,
-  cmdBrightness, cmdDisplayBitmap, cmdHello, cmdOrientation, cmdScreenOn, isUsbMonitorHelloReply, rgb565ToBytes
+  cmdBrightness, cmdDisplayBitmap, cmdHello, cmdOrientation, cmdScreenOn, isUsbMonitorHelloReply, rgb565ToBytes, splitBands
 } from './turing-protocol';
 
 /* Minimal structural types for the parts of Web Serial we use (not in the TS 5.5 DOM lib). */
@@ -108,7 +108,11 @@ export class SerialLinkService implements OnDestroy {
    * did not answer the HELLO handshake). Not an error: the display is used anyway.
    */
   readonly warning = signal<string>('');
+  /** Frames (changed rectangles) sent since connecting; a tall frame goes out as several bands. */
   readonly framesSent = signal<number>(0);
+  /** Diagnostics for the /screen page; unlike framesSent they survive reconnections. */
+  readonly bandsSent = signal<number>(0);
+  readonly writeTimeouts = signal<number>(0);
   readonly bytesSent = signal<number>(0);
   /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
   readonly chunkDelayMs = signal<number>(0);
@@ -226,21 +230,29 @@ export class SerialLinkService implements OnDestroy {
   /** Sends a rectangle of RGB565 pixels. Writes are serialised. */
   sendBitmap(rect: Rect, pixels: Uint16Array): Promise<void> {
     return this.enqueue(async () => {
-      // Header and pixels are one atomic job: nothing else can be written in between.
+      // Every band (header + pixels) belongs to this one job: nothing else can be written in between. A tall
+      // rectangle goes out as bands so that a lost byte spoils one band at most and the next one starts clean.
       const started = performance.now();
       this.lastChunkEnd = null;
       this.gapMax = 0;
-      const header = cmdDisplayBitmap(rect);
-      const body = rgb565ToBytes(pixels);
-      await this.write(header);
-      await this.write(body);
+      const width = rect.x1 - rect.x0 + 1;
+      let bytes = 0;
+      for (const band of splitBands(rect)) {
+        const rows = band.rect.y1 - band.rect.y0 + 1;
+        const header = cmdDisplayBitmap(band.rect);
+        const body = rgb565ToBytes(pixels.subarray(band.offset, band.offset + rows * width));
+        await this.write(header);
+        await this.write(body);
+        bytes += header.length + body.length;
+        this.bandsSent.update(n => n + 1);
+      }
       this.framesSent.update(n => n + 1);
-      // Signals are updated once per bitmap, not per chunk, to keep the write loop tight.
+      // Signals are updated once per frame, not per chunk, to keep the write loop tight.
       this.bytesSent.set(this.bytesCounter);
       this.lastSend.set({
-        width: rect.x1 - rect.x0 + 1,
+        width,
         height: rect.y1 - rect.y0 + 1,
-        bytes: header.length + body.length,
+        bytes,
         ms: Math.round(performance.now() - started),
         maxGapMs: Math.round(this.gapMax)
       });
@@ -340,7 +352,10 @@ export class SerialLinkService implements OnDestroy {
       }, STALL_WARNING_MS);
       let hardTimer: ReturnType<typeof setTimeout> | undefined;
       const hardTimeout = new Promise<never>((_, reject) => {
-        hardTimer = setTimeout(() => reject(new Error('The display stopped responding.')), this.writeTimeoutMs);
+        hardTimer = setTimeout(() => {
+          this.writeTimeouts.update(n => n + 1);
+          reject(new Error('The display stopped responding.'));
+        }, this.writeTimeoutMs);
       });
       try {
         // Without this a write to a dead port can stay pending forever and freeze the whole output loop.

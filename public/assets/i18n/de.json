@@ -288,7 +288,8 @@
         "DEMO_TOGGLE": "Beispieldaten zeigen, solange kein Bildschirm verbunden ist",
         "REDRAW": "Alles neu zeichnen",
         "HINT": "Verschwinden die Störungen mit „ganzer Bildschirm“, liegt das Problem an den Teilaktualisierungen; verschwinden sie mit „langsames Senden“, braucht der Bildschirm mehr Zeit zwischen den Blöcken.",
-        "LAST_SEND": "Letztes Bild: {w}×{h} px · {bytes} B · {ms} ms · längste Pause zwischen Blöcken {gap} ms"
+        "LAST_SEND": "Letztes Bild: {w}×{h} px · {bytes} B · {ms} ms · längste Pause zwischen Blöcken {gap} ms",
+        "COUNTERS": "Gesendete Bilder: {frames} · Streifen: {bands} · Schreib-Timeouts: {timeouts} · erzwungene Vollbilder: {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display benötigt Chrome oder Edge auf einem Computer",

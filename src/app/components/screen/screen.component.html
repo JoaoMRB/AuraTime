@@ -324,6 +324,9 @@
                   {{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}
                 </button>
                 <p class="text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.ADV.HINT') }}</p>
+                <p class="font-mono text-xs text-gray-300">
+                  {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws() }) }}
+                </p>
                 @if (link.lastSend(); as s) {
                   <p class="font-mono text-xs text-gray-300">
                     {{ ts.format('SCREEN.PAGE.ADV.LAST_SEND', { w: s.width, h: s.height, bytes: s.bytes, ms: s.ms, gap: s.maxGapMs }) }}

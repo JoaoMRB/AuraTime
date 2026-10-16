@@ -147,3 +147,24 @@ export function extractRect(frame: Uint16Array, width: number, rect: Rect): Uint
   }
   return out;
 }
+
+/** Tallest rectangle sent as one DISPLAY_BITMAP: a lost byte then spoils one band at most. */
+export const MAX_BAND_ROWS = 40;
+
+/** One horizontal band of a larger rectangle: its own rect, and where its pixels start in the parent's pixels. */
+export interface Band {
+  rect: Rect;
+  /** Index (in pixels, not bytes) of the band's first pixel inside the parent rectangle's pixel array. */
+  offset: number;
+}
+
+/** Splits a rectangle into horizontal bands of at most `maxRows` rows (one band when it is short enough). */
+export function splitBands(rect: Rect, maxRows = MAX_BAND_ROWS): Band[] {
+  const width = rect.x1 - rect.x0 + 1;
+  const bands: Band[] = [];
+  for (let y = rect.y0; y <= rect.y1; y += maxRows) {
+    const y1 = Math.min(rect.y1, y + maxRows - 1);
+    bands.push({ rect: { x0: rect.x0, y0: y, x1: rect.x1, y1 }, offset: (y - rect.y0) * width });
+  }
+  return bands;
+}

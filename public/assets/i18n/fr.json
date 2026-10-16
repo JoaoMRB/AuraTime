@@ -67,7 +67,7 @@
       "S2_D": "Branchez l'écran USB, appuyez sur Connecter et choisissez-le dans la liste. La fois suivante il se reconnecte tout seul.",
       "S3_T": "Choisissez vos vues",
       "S3_D": "Choisissez ce qui défile, réglez l'horaire de nuit et laissez-le tourner toute la journée.",
-      "COMPAT": "Compatible avec les écrans Turing Smart Screen 3,5\" (USB).",
+      "COMPAT": "Compatible avec les écrans de la classe Turing Smart Screen 3,5\" (USB 1A86:5722, rév. A).",
       "DISCLAIMER": "AuraTime est un projet indépendant, sans lien avec aucun fabricant d'écrans. Les noms de produits appartiennent à leurs propriétaires.",
       "BROWSER_NOTE": "Nécessite Google Chrome ou Microsoft Edge sur ordinateur.",
       "CTA": "Ouvrir Desk Display"
@@ -224,7 +224,10 @@
       "BUSY": "Impossible d'ouvrir le port. Le logiciel d'origine de l'écran (ou un autre onglet) l'utilise-t-il ? Fermez-le et réessayez.",
       "STALLED": "L'écran n'accepte plus de données. Essayez de désactiver le contrôle de flux et reconnectez.",
       "NOT_RESPONDING": "L'écran ne répond plus.",
-      "GENERIC": "Un problème est survenu lors de la communication avec l'écran."
+      "GENERIC": "Un problème est survenu lors de la communication avec l'écran.",
+      "INSECURE": "Web Serial nécessite HTTPS ou localhost.",
+      "NO_HELLO": "L'écran n'a pas répondu à la prise de contact. Si l'image est incorrecte, ce n'est peut-être pas un modèle pris en charge.",
+      "OTHER_WINDOW": "Desk Display est actif dans une autre fenêtre."
     },
     "PAGE": {
       "BACK": "Retour à l'horloge",
@@ -253,7 +256,10 @@
         "DISCONNECTED": "non connecté",
         "ERROR": "erreur",
         "SENT": "{images} images · {kb} Ko envoyés",
-        "FIRST_TIME": "Le navigateur vous demande de choisir l'écran une seule fois. Ensuite il se reconnecte tout seul."
+        "FIRST_TIME": "Le navigateur vous demande de choisir l'écran une seule fois. Ensuite il se reconnecte tout seul.",
+        "WINDOW_NOTE": "Gardez cette page dans une fenêtre à part et visible, ou utilisez le lanceur de démarrage Windows : les navigateurs ralentissent les pages masquées et l'écran prendrait du retard.",
+        "HIDDEN_WARNING": "Cette page est masquée : le navigateur la ralentit et l'écran peut prendre du retard. Mettez la fenêtre au premier plan, ou utilisez le lanceur de démarrage.",
+        "OS_NOTE": "Linux : votre utilisateur doit appartenir au groupe dialout. macOS : la puce USB-série CH34x de l'écran peut nécessiter son pilote."
       },
       "S3": {
         "TITLE": "Choisir ce qui s'affiche",
@@ -282,15 +288,37 @@
         "DEMO_TOGGLE": "Afficher des données exemple tant qu'aucun écran n'est connecté",
         "REDRAW": "Tout redessiner",
         "HINT": "Si les défauts disparaissent avec « écran complet », le problème vient des mises à jour partielles ; s'ils disparaissent avec « envoi lent », l'écran a besoin de plus de temps entre les blocs.",
-        "LAST_SEND": "Dernière image : {w}×{h} px · {bytes} o · {ms} ms · plus longue pause entre blocs {gap} ms"
+        "LAST_SEND": "Dernière image : {w}×{h} px · {bytes} o · {ms} ms · plus longue pause entre blocs {gap} ms",
+        "COUNTERS": "Images envoyées : {frames} · bandes : {bands} · délais d’écriture dépassés : {timeouts} · redessins complets forcés : {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display nécessite Chrome ou Edge sur ordinateur",
         "TEXT": "Ce navigateur (Firefox, Safari ou un navigateur de téléphone) ne peut pas communiquer avec les écrans USB. Ouvrez AuraTime dans Google Chrome ou Microsoft Edge sur un ordinateur Windows, macOS ou Linux pour connecter un écran.",
         "PREVIEW": "Voici ce qu'affiche l'écran :"
       },
-      "COMPAT": "Compatible avec les écrans Turing Smart Screen 3,5\" (USB).",
-      "DISCLAIMER": "AuraTime est un projet indépendant, sans lien avec aucun fabricant d'écrans. Les noms de produits appartiennent à leurs propriétaires."
+      "COMPAT": "Compatible avec les écrans de la classe Turing Smart Screen 3,5\" (USB 1A86:5722, rév. A).",
+      "DISCLAIMER": "AuraTime est un projet indépendant, sans lien avec aucun fabricant d'écrans. Les noms de produits appartiennent à leurs propriétaires.",
+      "OTHER_WINDOW": {
+        "TITLE": "Desk Display actif dans une autre fenêtre",
+        "TEXT": "Une seule fenêtre peut piloter l'écran. Fermez l'autre ; celle-ci prendra le relais toute seule à sa fermeture."
+      },
+      "INSECURE": {
+        "TITLE": "Web Serial nécessite HTTPS ou localhost",
+        "TEXT": "Cette page est ouverte en http simple depuis une adresse réseau, où les navigateurs désactivent Web Serial. Ouvrez-la en https:// ou depuis localhost (par exemple http://localhost:4200)."
+      }
     }
+  },
+  "WEATHER": {
+    "YOUR_LOCATION": "Votre position",
+    "DEFAULT_CITY": "Lisbonne (par défaut)",
+    "REFRESH": "Cliquez pour actualiser la météo",
+    "CITY_TITLE": "Lieu de la météo",
+    "CITY_CURRENT": "Affichage",
+    "CITY_PLACEHOLDER": "Rechercher une ville",
+    "CITY_SEARCH": "Rechercher",
+    "CITY_NO_RESULTS": "Aucune ville trouvée",
+    "CITY_ERROR": "La recherche n'est pas disponible pour le moment",
+    "CITY_USE_LOCATION": "Utiliser ma position",
+    "CITY_DEFAULT_HINT": "Votre position n'est pas disponible, la météo affiche donc Lisbonne. Recherchez votre ville pour la changer."
   }
 }

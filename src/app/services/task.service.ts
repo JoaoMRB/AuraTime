@@ -1,5 +1,7 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { backupCorrupt, isRecord, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeTasks } from './storage-validators';
 
 export interface TaskItem {
   id: string;
@@ -28,44 +30,35 @@ export class TaskService {
           tasks: this.tasks(),
           activeTaskId: this.activeTaskId()
         };
-        try {
-          localStorage.setItem('auratime_tasks', JSON.stringify(state));
-        } catch (e) {}
+        writeStorage('auratime_tasks', JSON.stringify(state));
       });
     }
   }
 
   private loadTasks() {
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_tasks' && event.newValue) {
-        this.applyRaw(event.newValue);
-      }
-    });
+    onStorageChange('auratime_tasks', value => this.applyRaw(value));
 
-    try {
-      const data = localStorage.getItem('auratime_tasks');
-      if (data) {
-        this.applyRaw(data);
-      } else {
-        // Starter sample tasks
-        this.tasks.set([
-          { id: '1', text: 'Define top 3 goals for today', completed: false, pomodoros: 0, createdAt: Date.now() },
-          { id: '2', text: 'Deep work focus block (50m)', completed: false, pomodoros: 0, createdAt: Date.now() }
-        ]);
-        this.activeTaskId.set('1');
-      }
-    } catch (e) {}
+    const data = readStorage('auratime_tasks');
+    if (!(data && this.applyRaw(data))) {
+      // Starter sample tasks (nothing saved yet, or what was saved is unusable)
+      this.tasks.set([
+        { id: '1', text: 'Define top 3 goals for today', completed: false, pomodoros: 0, createdAt: Date.now() },
+        { id: '2', text: 'Deep work focus block (50m)', completed: false, pomodoros: 0, createdAt: Date.now() }
+      ]);
+      this.activeTaskId.set('1');
+    }
   }
 
-  private applyRaw(data: string): void {
-    try {
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed.tasks)) {
-        this.tasks.set(parsed.tasks);
-      }
-      this.activeTaskId.set(parsed.activeTaskId ?? null);
-    } catch (e) {}
+  /** Applies saved tasks; entries that are not valid tasks are dropped. Returns false if there was nothing usable. */
+  private applyRaw(data: string): boolean {
+    const raw = parseJson(data);
+    const parsed = sanitizeTasks(raw);
+    if (lostEntries(isRecord(raw) ? raw['tasks'] : null, parsed?.tasks ?? null)) backupCorrupt('auratime_tasks', data);
+    if (!parsed) return false;
+    this.tasks.set(parsed.tasks);
+    this.activeTaskId.set(parsed.activeTaskId);
+    return true;
   }
 
   addTask(text: string): void {

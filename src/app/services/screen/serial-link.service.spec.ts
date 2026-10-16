@@ -58,16 +58,16 @@ describe('SerialLinkService', () => {
     await service.connect(OPTIONS);
     port.writes.length = 0;
 
-    const rect = { x0: 0, y0: 0, x1: 99, y1: 49 }; // 5000 px = 10000 bytes
-    await service.sendBitmap(rect, new Uint16Array(5000).fill(0xf800));
+    const rect = { x0: 0, y0: 0, x1: 99, y1: 39 }; // 4000 px = 8000 bytes: one band
+    await service.sendBitmap(rect, new Uint16Array(4000).fill(0xf800));
 
     expect(port.writes[0][5]).toBe(197); // DISPLAY_BITMAP header
     const body = port.writes.slice(1);
     expect(body.every(c => c.length <= 2560)).toBeTrue();
-    expect(body.reduce((n, c) => n + c.length, 0)).toBe(10000);
+    expect(body.reduce((n, c) => n + c.length, 0)).toBe(8000);
     expect(Array.from(body[0].subarray(0, 2))).toEqual([0x00, 0xf8]); // little-endian RGB565
     expect(service.framesSent()).toBe(1);
-    expect(service.bytesSent()).toBeGreaterThan(10000);
+    expect(service.bytesSent()).toBeGreaterThan(8000);
   });
 
   it('gives up on a write that never completes instead of freezing (dead port after sleep)', async () => {

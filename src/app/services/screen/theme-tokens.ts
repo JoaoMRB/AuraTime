@@ -32,7 +32,8 @@ export function isThemeId(value: string): value is ThemeId {
 export function resolveThemeId(value: string | null | undefined): ThemeId {
   if (!value) return DEFAULT_THEME_ID;
   if (isThemeId(value)) return value;
-  return THEME_ALIASES[value] ?? DEFAULT_THEME_ID;
+  // hasOwn: a stored "constructor" or "__proto__" must not find something on Object.prototype
+  return Object.hasOwn(THEME_ALIASES, value) ? THEME_ALIASES[value] : DEFAULT_THEME_ID;
 }
 
 export interface RGBA {
@@ -184,8 +185,12 @@ export const FONT_TOKENS: Record<FontId, FontTokens> = {
   outfit: { id: 'outfit', family: "'Outfit', sans-serif", weight: 500, italic: false }
 };
 
+export function isFontId(value: unknown): value is FontId {
+  return typeof value === 'string' && Object.hasOwn(FONT_TOKENS, value);
+}
+
 export function resolveFont(value: string | null | undefined): FontTokens {
-  return FONT_TOKENS[(value ?? 'outfit') as FontId] ?? FONT_TOKENS.outfit;
+  return isFontId(value) ? FONT_TOKENS[value] : FONT_TOKENS.outfit;
 }
 
 /** Builds a canvas/CSS font shorthand, e.g. "italic 400 48px 'Playfair Display', serif". */

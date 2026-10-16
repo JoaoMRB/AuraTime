@@ -1,5 +1,7 @@
 import { Injectable, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { parseJson, readStorage, writeStorage } from './safe-storage';
+import { sanitizeSoundscape } from './storage-validators';
 
 export interface SoundTrack {
   id: string;
@@ -82,29 +84,23 @@ export class SoundscapeService {
           isMuted: this.isMuted(),
           tracks: this.tracks().map(t => ({ id: t.id, volume: t.volume, active: t.active }))
         };
-        try {
-          localStorage.setItem('auratime_soundscape', JSON.stringify(state));
-        } catch (e) {}
+        writeStorage('auratime_soundscape', JSON.stringify(state));
       });
     }
   }
 
   private loadSavedSettings() {
-    try {
-      const data = localStorage.getItem('auratime_soundscape');
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (parsed.masterVolume !== undefined) this.masterVolume.set(parsed.masterVolume);
-        if (parsed.tracks && Array.isArray(parsed.tracks)) {
-          this.tracks.update(current =>
-            current.map(track => {
-              const saved = parsed.tracks.find((s: any) => s.id === track.id);
-              return saved ? { ...track, volume: saved.volume ?? track.volume, active: false } : track;
-            })
-          );
-        }
-      }
-    } catch (e) {}
+    const parsed = sanitizeSoundscape(parseJson(readStorage('auratime_soundscape')));
+    if (parsed.masterVolume !== undefined) this.masterVolume.set(parsed.masterVolume);
+    const savedTracks = parsed.tracks;
+    if (savedTracks) {
+      this.tracks.update(current =>
+        current.map(track => {
+          const saved = savedTracks.find(s => s.id === track.id);
+          return saved ? { ...track, volume: saved.volume, active: false } : track;
+        })
+      );
+    }
   }
 
   async initAudio(): Promise<void> {

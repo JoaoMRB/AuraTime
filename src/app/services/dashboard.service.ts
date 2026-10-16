@@ -1,5 +1,7 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { backupCorrupt, isRecord, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeCountdown, sanitizeLinks } from './storage-validators';
 
 export interface QuickLink {
   id: string;
@@ -66,32 +68,26 @@ export class DashboardService {
           links: this.links(),
           countdown: this.countdown()
         };
-        try {
-          localStorage.setItem('auratime_dashboard', JSON.stringify(state));
-        } catch (e) {}
+        writeStorage('auratime_dashboard', JSON.stringify(state));
       });
     }
   }
 
   private loadDashboardData() {
-    this.applyRaw(localStorage.getItem('auratime_dashboard'));
+    this.applyRaw(readStorage('auratime_dashboard'));
 
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_dashboard' && event.newValue) {
-        this.applyRaw(event.newValue);
-      }
-    });
+    onStorageChange('auratime_dashboard', value => this.applyRaw(value));
   }
 
   private applyRaw(data: string | null) {
-    try {
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed.links)) this.links.set(parsed.links);
-        if (parsed.countdown) this.countdown.set(parsed.countdown);
-      }
-    } catch (e) {}
+    const parsed = parseJson(data);
+    if (!isRecord(parsed)) return;
+    const links = sanitizeLinks(parsed['links']); // only http(s) addresses survive
+    if (parsed['links'] !== undefined && lostEntries(parsed['links'], links)) backupCorrupt('auratime_dashboard', data);
+    if (links) this.links.set(links);
+    const countdown = sanitizeCountdown(parsed['countdown']);
+    if (countdown) this.countdown.set(countdown);
   }
 
   private pickDailyQuote() {

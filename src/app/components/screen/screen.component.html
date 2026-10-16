@@ -100,12 +100,23 @@
             @if (supported) {
               <p class="mt-3 text-sm text-emerald-300/90">{{ ts.t('SCREEN.PAGE.S1.OK') }}</p>
             } @else {
-              <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
-              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
+              @if (link.isInsecureContext()) {
+                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug" data-testid="insecure-context">{{ ts.t('SCREEN.PAGE.INSECURE.TITLE') }}</h3>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.INSECURE.TEXT') }}</p>
+              } @else {
+                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
+              }
             }
           </article>
 
-          @if (supported) {
+          @if (supported && otherWindow()) {
+            <!-- Another window owns the display: this one does not touch the port -->
+            <article class="rounded-3xl border border-amber-300/40 bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6" data-testid="other-window" role="status">
+              <h2 class="font-playfair text-lg text-amber-200">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TITLE') }}</h2>
+              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TEXT') }}</p>
+            </article>
+          } @else if (supported) {
             <!-- Step 2: connect -->
             <article class="rounded-3xl border bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6 transition-colors"
                      [class]="currentStep() === 2 ? 'border-luxury-gold/50 shadow-[0_0_30px_rgba(212,175,55,0.08)]' : 'border-white/10'">
@@ -147,9 +158,21 @@
                   {{ ts.t(link.message()) }}@if (link.messageDetail()) { <span class="opacity-70"> ({{ link.messageDetail() }})</span> }
                 </p>
               }
+              @if (connected() && link.warning()) {
+                <p class="mt-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-gray-300" data-testid="device-warning">
+                  {{ ts.t(link.warning()) }}
+                </p>
+              }
+              @if (connected() && pageHidden()) {
+                <p class="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3 py-2 text-sm text-amber-200" role="alert">
+                  {{ ts.t('SCREEN.PAGE.S2.HIDDEN_WARNING') }}
+                </p>
+              }
               @if (!connected()) {
                 <p class="mt-3 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S2.FIRST_TIME') }}</p>
               }
+              <p class="mt-3 text-xs text-gray-500" data-testid="window-note">{{ ts.t('SCREEN.PAGE.S2.WINDOW_NOTE') }}</p>
+              <p class="mt-1 text-xs text-gray-500" data-testid="os-note">{{ ts.t('SCREEN.PAGE.S2.OS_NOTE') }}</p>
             </article>
 
             <!-- Step 3: choose views -->
@@ -301,6 +324,9 @@
                   {{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}
                 </button>
                 <p class="text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.ADV.HINT') }}</p>
+                <p class="font-mono text-xs text-gray-300">
+                  {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws() }) }}
+                </p>
                 @if (link.lastSend(); as s) {
                   <p class="font-mono text-xs text-gray-300">
                     {{ ts.format('SCREEN.PAGE.ADV.LAST_SEND', { w: s.width, h: s.height, bytes: s.bytes, ms: s.ms, gap: s.maxGapMs }) }}

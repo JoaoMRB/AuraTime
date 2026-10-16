@@ -5,12 +5,14 @@ import { SerialLinkService } from './serial-link.service';
 import { TickService } from './tick.service';
 import { DESK_STATUS_HEARTBEAT_MS, DeskDisplayStatusService } from './desk-display-status.service';
 import { fillDemoData } from './demo-data';
-import { FONT_TOKENS, FontId, ThemeId, isThemeId } from './theme-tokens';
+import { FontId, ThemeId, isFontId, isThemeId } from './theme-tokens';
+import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from '../safe-storage';
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
 import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
   BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
 } from './screen-logic';
+import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
 
 /** User preferences for the screen, persisted under `auratime_screen`. */
@@ -35,9 +37,52 @@ export interface ScreenPrefs {
 }
 
 const STORAGE_KEY = 'auratime_screen';
+
+const clampInt = (value: unknown, min: number, max: number): number | undefined =>
+  isFiniteNumber(value) ? Math.min(max, Math.max(min, Math.round(value))) : undefined;
+
+/**
+ * Keeps only the valid fields of the stored screen preferences (a damaged value is dropped, never trusted).
+ * Exported for the tests.
+ */
+export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
+  if (!isRecord(raw)) return {};
+  const out: Partial<ScreenPrefs> = {};
+
+  const mode = raw['viewMode'];
+  if (mode === 'auto' || (typeof mode === 'string' && (ALL_SCREEN_VIEWS as readonly string[]).includes(mode))) out.viewMode = mode as ScreenViewMode;
+  if (Array.isArray(raw['rotation'])) out.rotation = ALL_SCREEN_VIEWS.filter(v => (raw['rotation'] as unknown[]).includes(v));
+
+  if (isRecord(raw['brightness'])) {
+    const b = raw['brightness'];
+    const brightness: Partial<BrightnessConfig> = {};
+    const base = clampInt(b['base'], 0, 100);
+    const nightLevel = clampInt(b['nightLevel'], 0, 100);
+    const from = clampInt(b['nightFromHour'], 0, 23);
+    const to = clampInt(b['nightToHour'], 0, 23);
+    if (base !== undefined) brightness.base = base;
+    if (nightLevel !== undefined) brightness.nightLevel = nightLevel;
+    if (from !== undefined) brightness.nightFromHour = from;
+    if (to !== undefined) brightness.nightToHour = to;
+    if (typeof b['nightEnabled'] === 'boolean') brightness.nightEnabled = b['nightEnabled'];
+    if (typeof b['nightBlack'] === 'boolean') brightness.nightBlack = b['nightBlack'];
+    out.brightness = { ...DEFAULT_BRIGHTNESS_CONFIG, ...brightness };
+  }
+
+  for (const key of ['flowControl', 'demo', 'alwaysFullFrame', 'slowSend', 'autoConnect'] as const) {
+    if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  if (typeof raw['themePin'] === 'string' && isThemeId(raw['themePin'])) out.themePin = raw['themePin'];
+  if (isFontId(raw['fontPin'])) out.fontPin = raw['fontPin'];
+  return out;
+}
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
-/** Time between ticks above which we assume the PC slept (ticks are 1 s apart). */
+/**
+ * Time between ticks above which we assume the PC slept (ticks are 1 s apart). Only applied while the page is
+ * visible: a hidden page is throttled by the browser (1 tick a second, then about 1 a minute) and that gap
+ * says nothing about the display.
+ */
 const SLEEP_GAP_MS = 5000;
 /** Automatic reconnection: first retry after this long, doubling up to the maximum. */
 const RECONNECT_BASE_MS = 5000;
@@ -73,6 +118,16 @@ export class ScreenOutputService implements OnDestroy {
   private tick = inject(TickService);
   private zone = inject(NgZone);
   private deskStatus = inject(DeskDisplayStatusService);
+  private locks = inject(LOCKS_API);
+
+  /**
+   * Only one /screen window may drive the display: two windows writing to the same port would corrupt the
+   * picture and fight over the shared status. 'unknown' until the lock answers, 'owner' for the window that
+   * holds it, 'other' for a window that found it taken (it keeps a preview but never touches the port).
+   */
+  readonly ownership = signal<'unknown' | 'owner' | 'other'>('unknown');
+  private releaseOwnership: (() => void) | null = null;
+  private abortClaim: AbortController | null = null;
 
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   /** Views that take part in the automatic rotation (only those with content are actually shown). */
@@ -95,6 +150,8 @@ export class ScreenOutputService implements OnDestroy {
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
   /** The view currently on screen (useful for the preview UI). */
   readonly activeView = signal<ScreenView>('clock');
+  /** Diagnostic: full redraws forced because a transfer failed (the display's state was then unknown). */
+  readonly forcedFullRedraws = signal<number>(0);
   /** Backlight actually applied right now (after the night schedule). */
   readonly appliedBrightness = signal<number>(DEFAULT_PREFS.brightness.base);
 
@@ -108,6 +165,8 @@ export class ScreenOutputService implements OnDestroy {
   private lastReconnectAttempt = 0;
   private lastFrameAt = 0;
   private lastHeartbeat = 0;
+  /** The page was hidden at some point since the last frame: the next gap is throttling, not sleep. */
+  private hiddenSinceLastFrame = false;
 
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
@@ -139,6 +198,7 @@ export class ScreenOutputService implements OnDestroy {
       // Tell the other windows (the clock's settings) whether a display is connected.
       effect(() => {
         const connected = this.link.status() === 'connected';
+        this.ownership();
         untracked(() => this.publishStatus(connected));
       });
 
@@ -161,6 +221,7 @@ export class ScreenOutputService implements OnDestroy {
   async start(): Promise<void> {
     if (!this.isBrowser || this.started) return;
     this.started = true;
+    this.claimDisplay();
 
     try {
       await Promise.all(REQUIRED_FONT_SHORTHANDS.map(f => document.fonts.load(f)));
@@ -171,6 +232,7 @@ export class ScreenOutputService implements OnDestroy {
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
     window.addEventListener('pagehide', this.onPageHide);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     // The first frame also kicks off the reconnection to the display used last time (if any).
     await this.zone.runOutsideAngular(() => this.renderFrame());
@@ -182,20 +244,77 @@ export class ScreenOutputService implements OnDestroy {
     this.started = false;
     if (this.isBrowser) {
       window.removeEventListener('pagehide', this.onPageHide);
-      this.deskStatus.publish(false);
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+      if (this.isOwner()) this.deskStatus.publish(false); // a window that never owned the display says nothing
+      this.releaseDisplay();
     }
   }
 
+  private isOwner(): boolean {
+    return this.ownership() === 'owner';
+  }
+
+  /**
+   * Takes the display lock without waiting. If another window has it, this one becomes a read-only preview and
+   * waits in the queue, taking over (and starting to drive the display) when the other window goes away.
+   * Where Web Locks do not exist there is nothing to coordinate with, so the window simply owns the display.
+   */
+  private claimDisplay(): void {
+    const locks = this.locks;
+    if (!locks) {
+      this.ownership.set('owner');
+      return;
+    }
+    const abort = new AbortController();
+    this.abortClaim = abort;
+    const hold = () => new Promise<void>(resolve => (this.releaseOwnership = resolve));
+    const become = async () => {
+      this.ownership.set('owner');
+      await hold();
+    };
+
+    locks
+      .request(LOCK_DESK_DISPLAY, { ifAvailable: true }, async lock => {
+        if (lock) return become();
+        this.ownership.set('other');
+        await locks.request(LOCK_DESK_DISPLAY, { signal: abort.signal }, become);
+      })
+      .catch(error => {
+        if ((error as { name?: string })?.name === 'AbortError') return;
+        // Never leave the display unusable because coordination failed: carry on as the owner.
+        console.warn('[ScreenOutput] could not use the display lock', error);
+        this.ownership.set('owner');
+      });
+  }
+
+  private releaseDisplay(): void {
+    this.abortClaim?.abort();
+    this.abortClaim = null;
+    this.releaseOwnership?.();
+    this.releaseOwnership = null;
+    this.ownership.set('unknown');
+  }
+
   /** The Desk Display window is going away: other windows must not keep showing "connected". */
-  private onPageHide = () => this.deskStatus.publish(false);
+  private onPageHide = () => {
+    if (this.isOwner()) this.deskStatus.publish(false);
+  };
+
+  /** Tell the other windows right away that this page is (no longer) hidden, so their indicator stays right. */
+  private onVisibilityChange = () => {
+    if (document.hidden) this.hiddenSinceLastFrame = true;
+    this.publishStatus(this.link.isConnected());
+  };
 
   private publishStatus(connected: boolean): void {
+    if (!this.isOwner()) return; // the status belongs to the window that drives the display
     this.lastHeartbeat = Date.now();
-    this.deskStatus.publish(connected);
+    this.deskStatus.publish(connected, typeof document !== 'undefined' && document.hidden);
   }
 
   /** Must be called from a click: opens the browser's device picker. */
   async connect(): Promise<boolean> {
+    if (this.ownership() === 'other') return false;
     const ok = await this.zone.runOutsideAngular(() => this.link.connect(this.connectOptions()));
     if (ok) this.autoConnect = true;
     this.persistPrefs();
@@ -203,6 +322,7 @@ export class ScreenOutputService implements OnDestroy {
   }
 
   async disconnect(): Promise<void> {
+    if (this.ownership() === 'other') return;
     this.autoConnect = false;
     await this.link.disconnect();
     this.persistPrefs();
@@ -267,11 +387,15 @@ export class ScreenOutputService implements OnDestroy {
       this.publishStatus(this.link.isConnected());
     }
 
-    // A long gap between frames means the PC slept: the display may have lost its picture.
+    // A long gap between frames while the page is visible means the PC slept: the display may have lost its
+    // picture. While hidden (or just after) the gap is the browser's throttling, and resending the whole
+    // 300 KB picture on every throttled tick would only make things worse.
     const wallNow = Date.now();
-    if (this.lastFrameAt && wallNow - this.lastFrameAt > SLEEP_GAP_MS) {
+    const throttled = document.hidden || this.hiddenSinceLastFrame;
+    if (this.lastFrameAt && wallNow - this.lastFrameAt > SLEEP_GAP_MS && !throttled) {
       this.invalidateFrame();
     }
+    if (!document.hidden) this.hiddenSinceLastFrame = false;
     this.lastFrameAt = wallNow;
 
     if (!this.link.isConnected()) {
@@ -292,7 +416,11 @@ export class ScreenOutputService implements OnDestroy {
       }
       await this.pushFrame();
     } catch (e) {
+      // A bitmap may have been cut off mid-way: the display could be waiting for pixels that will never come,
+      // so nothing it shows can be trusted. Drop the port (the reconnection re-initialises it) and redraw it
+      // all, band by band, before any partial update is sent again.
       this.invalidateFrame();
+      this.forcedFullRedraws.update(n => n + 1);
       await this.link.fail(e);
     } finally {
       this.busy = false;
@@ -304,7 +432,7 @@ export class ScreenOutputService implements OnDestroy {
    * (unplugged, PC slept, write error), retry quietly with a growing delay.
    */
   private async maybeReconnect(wallNow: number): Promise<void> {
-    if (!this.autoConnect || !this.link.isSupported()) return;
+    if (!this.isOwner() || !this.autoConnect || !this.link.isSupported()) return;
     const status = this.link.status();
     if (status === 'connecting' || status === 'connected' || status === 'unsupported') return;
 
@@ -312,7 +440,7 @@ export class ScreenOutputService implements OnDestroy {
     if (wallNow - this.lastReconnectAttempt < delay) return;
     this.lastReconnectAttempt = wallNow;
 
-    const ok = await this.link.reconnect(this.connectOptions());
+    const ok = await this.link.reconnect(this.connectOptions(), { silent: true });
     this.reconnectFailures = ok ? 0 : Math.min(this.reconnectFailures + 1, 10);
   }
 
@@ -335,25 +463,17 @@ export class ScreenOutputService implements OnDestroy {
   }
 
   private loadPrefs(): void {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const p = JSON.parse(raw) as Partial<ScreenPrefs>;
-      if (p.viewMode && (p.viewMode === 'auto' || ALL_SCREEN_VIEWS.includes(p.viewMode))) this.viewMode.set(p.viewMode);
-      if (Array.isArray(p.rotation)) {
-        this.rotation.set(ALL_SCREEN_VIEWS.filter(v => p.rotation!.includes(v)));
-      }
-      if (p.brightness) this.brightness.set({ ...DEFAULT_BRIGHTNESS_CONFIG, ...p.brightness });
-      if (typeof p.flowControl === 'boolean') this.flowControl.set(p.flowControl);
-      if (p.themePin && isThemeId(p.themePin)) this.themePin.set(p.themePin);
-      if (p.fontPin && p.fontPin in FONT_TOKENS) this.fontPin.set(p.fontPin);
-      if (typeof p.demo === 'boolean') this.demoEnabled.set(p.demo);
-      if (typeof p.alwaysFullFrame === 'boolean') this.alwaysFullFrame.set(p.alwaysFullFrame);
-      if (typeof p.slowSend === 'boolean') this.slowSend.set(p.slowSend);
-      if (typeof p.autoConnect === 'boolean') this.autoConnect = p.autoConnect;
-    } catch {
-      /* corrupted prefs: keep defaults */
-    }
+    const p = sanitizeScreenPrefs(parseJson(readStorage(STORAGE_KEY)));
+    if (p.viewMode) this.viewMode.set(p.viewMode);
+    if (p.rotation) this.rotation.set(p.rotation);
+    if (p.brightness) this.brightness.set(p.brightness);
+    if (p.flowControl !== undefined) this.flowControl.set(p.flowControl);
+    if (p.themePin) this.themePin.set(p.themePin);
+    if (p.fontPin) this.fontPin.set(p.fontPin);
+    if (p.demo !== undefined) this.demoEnabled.set(p.demo);
+    if (p.alwaysFullFrame !== undefined) this.alwaysFullFrame.set(p.alwaysFullFrame);
+    if (p.slowSend !== undefined) this.slowSend.set(p.slowSend);
+    if (p.autoConnect !== undefined) this.autoConnect = p.autoConnect;
   }
 
   private persistPrefs(): void {
@@ -369,10 +489,6 @@ export class ScreenOutputService implements OnDestroy {
       slowSend: this.slowSend(),
       autoConnect: this.autoConnect
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    } catch {
-      /* storage unavailable */
-    }
+    writeStorage(STORAGE_KEY, JSON.stringify(prefs));
   }
 }

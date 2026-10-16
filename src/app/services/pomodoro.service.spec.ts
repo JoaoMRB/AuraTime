@@ -3,6 +3,7 @@ import { PomodoroService } from './pomodoro.service';
 import { TaskService } from './task.service';
 import { AnalyticsService } from './analytics.service';
 import { AudioService } from './audio.service';
+import { LOCKS_API } from './web-locks';
 
 describe('PomodoroService', () => {
   const START = new Date(2026, 0, 15, 10, 0, 0);
@@ -10,7 +11,7 @@ describe('PomodoroService', () => {
 
   function setup(): { service: PomodoroService; tasks: TaskService; analytics: AnalyticsService } {
     TestBed.configureTestingModule({
-      providers: [{
+      providers: [{ provide: LOCKS_API, useValue: null }, {
         provide: AudioService,
         useValue: { initAudioContext: () => Promise.resolve(), playChimeSound: () => chimes++ }
       }]

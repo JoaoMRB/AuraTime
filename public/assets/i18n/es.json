@@ -289,7 +289,8 @@
         "REDRAW": "Redibujar todo",
         "HINT": "Si los fallos desaparecen con \"pantalla completa\", el problema está en las actualizaciones parciales; si desaparecen con \"envío lento\", la pantalla necesita más tiempo entre bloques.",
         "LAST_SEND": "Última imagen: {w}×{h} px · {bytes} B · {ms} ms · mayor pausa entre bloques {gap} ms",
-        "COUNTERS": "Fotogramas enviados: {frames} · bandas: {bands} · tiempos de escritura agotados: {timeouts} · redibujados completos forzados: {redraws}"
+        "BAND_PAUSE": "Pausa tras cada banda",
+        "COUNTERS": "Fotogramas enviados: {frames} · bandas: {bands} · tiempos de escritura agotados: {timeouts} · redibujados completos forzados: {redraws} · pausa por banda: {pause} ms"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display necesita Chrome o Edge en un ordenador",

@@ -69,6 +69,9 @@ export interface ConnectOptions {
 
 const DEFAULT_HELLO_TIMEOUT_MS = 700;
 const STALL_WARNING_MS = 4000;
+/** Default pause after each band: lets the display finish one band before the next header arrives. */
+export const DEFAULT_BAND_PAUSE_MS = 3;
+export const MAX_BAND_PAUSE_MS = 20;
 /** A single chunk write that takes longer than this means the port is dead (e.g. after the PC slept). */
 const DEFAULT_WRITE_TIMEOUT_MS = 8000;
 
@@ -116,6 +119,8 @@ export class SerialLinkService implements OnDestroy {
   readonly bytesSent = signal<number>(0);
   /** Diagnostic: extra pause after every chunk (ms). 0 = off. Mirrors the prototype's "slow send". */
   readonly chunkDelayMs = signal<number>(0);
+  /** Pause after every band of a bitmap (ms), never between a header and its pixels. 0 = off. */
+  readonly bandPauseMs = signal<number>(DEFAULT_BAND_PAUSE_MS);
   readonly lastSend = signal<SendMetrics | null>(null);
   /** Hard limit for one chunk write; exceeded = the link is treated as broken. Adjustable for tests. */
   writeTimeoutMs = DEFAULT_WRITE_TIMEOUT_MS;
@@ -245,6 +250,8 @@ export class SerialLinkService implements OnDestroy {
         await this.write(body);
         bytes += header.length + body.length;
         this.bandsSent.update(n => n + 1);
+        const pause = this.bandPauseMs();
+        if (pause > 0) await sleep(pause);
       }
       this.framesSent.update(n => n + 1);
       // Signals are updated once per frame, not per chunk, to keep the write loop tight.

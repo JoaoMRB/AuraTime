@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { EnvironmentInjector, createEnvironmentInjector, signal } from '@angular/core';
-import { ScreenOutputService } from './screen-output.service';
+import { ScreenOutputService, sanitizeScreenPrefs } from './screen-output.service';
 import { DisplayStateService } from './display-state.service';
 import { SERIAL_API } from './serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
@@ -82,6 +82,7 @@ describe('ScreenOutputService', () => {
     });
     service = TestBed.inject(ScreenOutputService);
     service.ownership.set('owner'); // as after start(): this window drives the display
+    service.bandPauseMs.set(0); // tests that mock the clock would wait forever for a real pause between bands
     link = TestBed.inject(SerialLinkService);
   });
 
@@ -669,6 +670,31 @@ describe('ScreenOutputService', () => {
       const headers = bitmapHeaders().slice(before);
       expect(headers.length).toBe(2);
       for (const h of headers) expect(headerRect(h)).toEqual({ x0: 0, y0: 0, x1: 479, y1: 319 });
+    });
+
+    it('the pause after each band defaults to 3 ms, reaches the link, is remembered and stays within 0-20 ms', () => {
+      localStorage.clear();
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: DisplayStateService, useValue: { snapshot: state } },
+          { provide: SERIAL_API, useValue: serial },
+          { provide: LOCKS_API, useValue: null }
+        ]
+      });
+      const fresh = TestBed.inject(ScreenOutputService);
+      TestBed.flushEffects();
+      expect(fresh.bandPauseMs()).toBe(3);
+      expect(TestBed.inject(SerialLinkService).bandPauseMs()).toBe(3);
+
+      fresh.bandPauseMs.set(12);
+      TestBed.flushEffects();
+      expect(TestBed.inject(SerialLinkService).bandPauseMs()).toBe(12);
+      expect(JSON.parse(localStorage.getItem('auratime_screen')!).bandPauseMs).toBe(12);
+
+      expect(sanitizeScreenPrefs({ bandPauseMs: 99 }).bandPauseMs).toBe(20);
+      expect(sanitizeScreenPrefs({ bandPauseMs: -4 }).bandPauseMs).toBe(0);
+      expect(sanitizeScreenPrefs({ bandPauseMs: 'x' }).bandPauseMs).toBeUndefined();
     });
 
     it('"slow send" sets a per-chunk pause on the link and is remembered', async () => {

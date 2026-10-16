@@ -289,7 +289,8 @@
         "REDRAW": "Tout redessiner",
         "HINT": "Si les défauts disparaissent avec « écran complet », le problème vient des mises à jour partielles ; s'ils disparaissent avec « envoi lent », l'écran a besoin de plus de temps entre les blocs.",
         "LAST_SEND": "Dernière image : {w}×{h} px · {bytes} o · {ms} ms · plus longue pause entre blocs {gap} ms",
-        "COUNTERS": "Images envoyées : {frames} · bandes : {bands} · délais d’écriture dépassés : {timeouts} · redessins complets forcés : {redraws}"
+        "BAND_PAUSE": "Pause après chaque bande",
+        "COUNTERS": "Images envoyées : {frames} · bandes : {bands} · délais d’écriture dépassés : {timeouts} · redessins complets forcés : {redraws} · pause par bande: {pause} ms"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display nécessite Chrome ou Edge sur ordinateur",

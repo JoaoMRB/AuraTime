@@ -1,347 +1,267 @@
-<!-- Ambient glows, same atmosphere as the rest of the app -->
-<div class="fixed inset-0 -z-50 overflow-hidden bg-luxury-charcoal" aria-hidden="true">
-  <div class="absolute -top-40 -left-40 w-[700px] h-[700px] rounded-full bg-luxury-emerald/25 blur-[140px] animate-liquid-slow mix-blend-screen"></div>
-  <div class="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-luxury-gold/10 blur-[130px] animate-liquid-fast mix-blend-screen"></div>
-  <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:5rem_5rem]"></div>
-</div>
+<div class="aura-screen min-h-screen text-luxury-platinum font-outfit">
+  <!-- Ambient glows, same atmosphere as the rest of the app -->
+  <div class="fixed inset-0 -z-50 overflow-hidden bg-luxury-charcoal" aria-hidden="true">
+    <div class="absolute -top-40 -left-40 w-[700px] h-[700px] rounded-full bg-luxury-emerald/25 blur-[140px] animate-liquid-slow mix-blend-screen"></div>
+    <div class="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-luxury-gold/10 blur-[130px] animate-liquid-fast mix-blend-screen"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:5rem_5rem]"></div>
+  </div>
 
-<div class="min-h-screen text-luxury-platinum font-outfit">
-  <header class="w-full px-4 py-5 sm:px-6 md:px-16">
-    <nav class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
-      <a routerLink="/" class="flex items-center gap-3 group" aria-label="AuraTime">
-        <span class="relative w-8 h-8 rounded-full border border-luxury-gold flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.15)] group-hover:border-white transition-colors duration-500">
-          <span class="absolute w-[1px] h-3 bg-luxury-gold group-hover:bg-white origin-bottom bottom-1/2 left-[15px] rotate-[30deg]"></span>
-          <span class="absolute w-[1px] h-2 bg-luxury-gold group-hover:bg-white origin-bottom bottom-1/2 left-[15px] rotate-[135deg]"></span>
+  <header class="sticky top-0 z-40 w-full border-b border-white/10 bg-luxury-charcoal/80 backdrop-blur-xl">
+    <nav class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6 lg:px-10" [attr.aria-label]="ts.t('SCREEN.UI.NAV')">
+      <a routerLink="/" class="aura-focus group flex items-center gap-3 rounded-full" aria-label="AuraTime">
+        <span class="relative flex h-8 w-8 items-center justify-center rounded-full border border-luxury-gold shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-colors duration-500 group-hover:border-white">
+          <span class="absolute bottom-1/2 left-[15px] h-3 w-[1px] origin-bottom rotate-[30deg] bg-luxury-gold group-hover:bg-white"></span>
+          <span class="absolute bottom-1/2 left-[15px] h-2 w-[1px] origin-bottom rotate-[135deg] bg-luxury-gold group-hover:bg-white"></span>
         </span>
-        <span class="font-playfair font-light text-base tracking-[0.4em] uppercase text-white group-hover:text-luxury-gold transition-colors">AURA</span>
+        <span class="hidden font-playfair text-base font-light uppercase tracking-[0.4em] text-white transition-colors group-hover:text-luxury-gold min-[420px]:inline">AURA</span>
       </a>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
+        @if (ready() && supported) {
+          <!-- Link status: a menu while connected -->
+          <div class="relative" #statusMenu>
+            @if (connected()) {
+              <button type="button" class="aura-focus inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-300/10 px-3.5 py-2 text-xs font-semibold text-emerald-100 transition-colors hover:bg-emerald-300/20 cursor-pointer"
+                      data-testid="status-pill" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
+                <span class="relative flex h-2 w-2" aria-hidden="true">
+                  <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping"></span>
+                  <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+                </span>
+                <span>{{ link.model() ? ts.format('SCREEN.UI.PILL.CONNECTED_MODEL', { model: link.model() }) : ts.t('SCREEN.UI.PILL.CONNECTED') }}</span>
+                <span class="h-4 w-4"><app-screen-icon name="chevron" /></span>
+              </button>
+              @if (menuOpen()) {
+                <div role="menu" class="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-white/15 bg-luxury-charcoal p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)]" data-testid="status-menu">
+                  <button type="button" role="menuitem" class="aura-focus flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-white hover:bg-white/10 cursor-pointer" (click)="redraw()">
+                    <span class="h-4 w-4 text-luxury-gold"><app-screen-icon name="refresh" /></span>{{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}
+                  </button>
+                  <button type="button" role="menuitem" class="aura-focus flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-red-200 hover:bg-white/10 cursor-pointer" data-testid="disconnect" (click)="disconnect()">
+                    <span class="h-4 w-4"><app-screen-icon name="power" /></span>{{ ts.t('SCREEN.PAGE.S2.DISCONNECT') }}
+                  </button>
+                </div>
+              }
+            } @else {
+              <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-gray-100" role="status" data-testid="status-pill">
+                <span class="h-2 w-2 rounded-full" [class]="dotClass()" aria-hidden="true"></span>
+                <span>{{ statusText() }}</span>
+              </span>
+            }
+          </div>
+        }
+
         <label class="sr-only" for="lang">{{ ts.t('SCREEN.PAGE.LANGUAGE') }}</label>
         <select id="lang"
-                class="rounded-full border border-white/20 bg-black/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white focus:outline-none focus:border-luxury-gold"
+                class="aura-focus rounded-full border border-white/20 bg-black/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white"
                 (change)="changeLang($any($event.target).value)">
           @for (language of ts.getAvailableLanguages(); track language.code) {
             <option [value]="language.code" [selected]="language.code === ts.currentLang()" class="bg-luxury-charcoal">{{ language.name }}</option>
           }
         </select>
-        <a routerLink="/app" target="_blank"
-           class="inline-flex px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white border border-white/20 hover:border-luxury-gold hover:text-luxury-gold rounded-full transition-all whitespace-nowrap">
-          {{ ts.t('SCREEN.PAGE.BACK') }}
-        </a>
+        <a routerLink="/app" target="_blank" class="aura-pill-btn whitespace-nowrap max-sm:hidden">{{ ts.t('SCREEN.PAGE.BACK') }}</a>
       </div>
     </nav>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 md:px-16 pb-20 pt-4">
-    <div class="space-y-3 mb-8 max-w-2xl">
-      <h1 class="text-3xl md:text-5xl font-playfair font-light text-white leading-tight">{{ ts.t('SCREEN.NAME') }}</h1>
-      <p class="text-gray-300 font-light leading-relaxed">{{ ts.t('SCREEN.PAGE.SUBTITLE') }}</p>
+  <main class="mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-6 lg:px-10">
+    <div class="mb-6 max-w-2xl space-y-2" [class.lg:mb-8]="!controlCentre()">
+      <h1 class="font-playfair font-light leading-tight text-white" [class]="controlCentre() ? 'text-2xl md:text-3xl' : 'text-3xl md:text-5xl'">{{ ts.t('SCREEN.NAME') }}</h1>
+      @if (!controlCentre()) {
+        <p class="font-light leading-relaxed text-gray-200">{{ ts.t('SCREEN.PAGE.SUBTITLE') }}</p>
+      }
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-
-      <!-- Preview: the star of the page -->
-      <section class="lg:col-span-7 lg:sticky lg:top-6" aria-labelledby="preview-title">
-        <h2 id="preview-title" class="sr-only">{{ output.demoActive() ? ts.t('SCREEN.PAGE.PREVIEW.DEMO') : ts.t('SCREEN.PAGE.PREVIEW.LIVE') }}</h2>
-
-        @if (ready() && !supported) {
-          <p class="mb-3 text-sm text-gray-400">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.PREVIEW') }}</p>
-        }
-
-        <div class="relative rounded-[2rem] border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-3 sm:p-4 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
-          <div class="absolute -inset-px rounded-[2rem] pointer-events-none shadow-[0_0_60px_rgba(212,175,55,0.07)]"></div>
-          <div class="relative rounded-2xl bg-black overflow-hidden border border-black ring-1 ring-white/10">
-            <div #preview class="w-full [&>canvas]:block [&>canvas]:w-full [&>canvas]:h-auto" style="aspect-ratio: 480 / 320"></div>
-
-            @if (ready()) {
-              <span class="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] backdrop-blur"
-                    [class]="output.demoActive() ? 'bg-amber-400/15 text-amber-300 border border-amber-300/30' : 'bg-emerald-400/15 text-emerald-300 border border-emerald-300/30'">
-                <span class="w-1.5 h-1.5 rounded-full" [class]="output.demoActive() ? 'bg-amber-300' : 'bg-emerald-300 animate-pulse'"></span>
-                {{ output.demoActive() ? ts.t('SCREEN.PAGE.PREVIEW.DEMO') : ts.t('SCREEN.PAGE.PREVIEW.LIVE') }}
-              </span>
-            }
+    @if (ready() && controlCentre()) {
+      <!-- Notices that matter while the display is in use -->
+      @if (link.message()) {
+        <p class="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-sm text-amber-100" role="status">
+          {{ ts.t(link.message()) }}@if (link.messageDetail()) { <span class="opacity-80"> ({{ link.messageDetail() }})</span> }
+        </p>
+      }
+      @if (connected() && link.warning()) {
+        <p class="mb-4 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-gray-100" data-testid="device-warning">{{ ts.t(link.warning()) }}</p>
+      }
+      @if (connected() && pageHidden()) {
+        <p class="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-sm text-amber-100" role="alert">{{ ts.t('SCREEN.PAGE.S2.HIDDEN_WARNING') }}</p>
+      }
+      @if (!connected()) {
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3" data-testid="not-connected-banner">
+          <p class="text-sm text-amber-100">{{ ts.t('SCREEN.UI.CC.NOT_CONNECTED') }}</p>
+          <div class="flex items-center gap-2">
+            <button type="button" class="aura-pill-btn" (click)="customizing.set(false)">{{ ts.t('SCREEN.UI.CC.BACK_TO_SETUP') }}</button>
+            <button type="button" class="aura-gold-btn" (click)="output.connect()" [disabled]="link.status() === 'connecting'">
+              {{ link.status() === 'connecting' ? ts.t('SCREEN.PAGE.S2.CONNECTING') : ts.t('SCREEN.PAGE.S2.CONNECT') }}
+            </button>
           </div>
         </div>
+      }
+    }
 
-        @if (ready()) {
-          <p class="mt-3 text-center text-xs text-gray-400" aria-live="off">
-            {{ ts.format('SCREEN.PAGE.PREVIEW.INFO', { view: viewName(), level: output.appliedBrightness() }) }}
-          </p>
-          @if (output.demoActive()) {
-            <p class="mt-1 text-center text-xs text-amber-300/80">{{ ts.t('SCREEN.PAGE.PREVIEW.DEMO_NOTE') }}</p>
-          }
+    <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+
+      <!-- The preview: one instance, in both modes -->
+      <div class="lg:sticky lg:top-24" [class]="controlCentre() ? 'lg:col-span-5' : 'lg:col-span-7'">
+        @if (ready() && !supported) {
+          <p class="mb-3 text-sm text-gray-300">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.PREVIEW') }}</p>
         }
+        <app-screen-hero [controls]="ready() && controlCentre()" [ready]="ready()" />
+        @if (controlCentre()) {
+          <p class="mt-6 text-xs leading-relaxed text-gray-300" data-testid="window-note">{{ ts.t('SCREEN.PAGE.S2.WINDOW_NOTE') }}</p>
+        }
+      </div>
 
-        <p class="mt-6 text-xs text-gray-500 leading-relaxed">
-          <span class="text-gray-300">{{ ts.t('SCREEN.PAGE.COMPAT') }}</span><br>
-          {{ ts.t('SCREEN.PAGE.DISCLAIMER') }}
-        </p>
-      </section>
-
-      <!-- The 3-step wizard -->
-      <section class="lg:col-span-5 space-y-4" aria-label="Desk Display setup">
+      <div [class]="controlCentre() ? 'space-y-6 lg:col-span-7' : 'space-y-4 lg:col-span-5'">
         @if (!ready()) {
-          <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 animate-pulse h-40" aria-hidden="true"></div>
+          <div class="h-40 animate-pulse rounded-3xl border border-white/10 bg-white/[0.03]" aria-hidden="true"></div>
+        } @else if (controlCentre()) {
+
+          <!-- Control centre -->
+          <app-screen-views />
+          <app-screen-appearance />
+          <app-screen-schedule />
+          <app-screen-health />
+
         } @else {
 
-          <!-- Step 1: browser -->
-          <article class="rounded-3xl border bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6 transition-colors"
-                   [class]="supported ? 'border-white/10' : 'border-amber-300/40'">
-            <header class="flex items-center gap-3">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                    [class]="supported ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-300/40' : 'bg-amber-400/20 text-amber-300 border border-amber-300/40'"
-                    [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 1'">
-                {{ supported ? '✓' : '1' }}
-              </span>
-              <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S1.TITLE') }}</h2>
-            </header>
-
-            @if (supported) {
-              <p class="mt-3 text-sm text-emerald-300/90">{{ ts.t('SCREEN.PAGE.S1.OK') }}</p>
-            } @else {
+          <!-- Setup: step 1, the browser -->
+          @if (supported) {
+            <article class="aura-panel flex items-center gap-3 px-4 py-3" data-testid="step-browser">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/20 text-emerald-300"
+                    [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 1'"><span class="h-4 w-4"><app-screen-icon name="check" /></span></span>
+              <div class="min-w-0">
+                <h2 class="font-playfair text-base text-white">{{ ts.t('SCREEN.PAGE.S1.TITLE') }}</h2>
+                <p class="text-sm text-emerald-200">{{ ts.t('SCREEN.PAGE.S1.OK') }}</p>
+              </div>
+            </article>
+          } @else {
+            <article class="aura-panel border-amber-300/40 p-5 sm:p-6" data-testid="step-browser">
+              <header class="flex items-center gap-3">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/20 text-sm font-bold text-amber-300"
+                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 1'">1</span>
+                <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S1.TITLE') }}</h2>
+              </header>
               @if (link.isInsecureContext()) {
-                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug" data-testid="insecure-context">{{ ts.t('SCREEN.PAGE.INSECURE.TITLE') }}</h3>
-                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.INSECURE.TEXT') }}</p>
+                <h3 class="mt-4 font-playfair text-xl leading-snug text-amber-200" data-testid="insecure-context">{{ ts.t('SCREEN.PAGE.INSECURE.TITLE') }}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-gray-200">{{ ts.t('SCREEN.PAGE.INSECURE.TEXT') }}</p>
               } @else {
-                <h3 class="mt-4 font-playfair text-xl text-amber-200 leading-snug">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
-                <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
+                <h3 class="mt-4 font-playfair text-xl leading-snug text-amber-200">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TITLE') }}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-gray-200">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.TEXT') }}</p>
               }
-            }
-          </article>
+            </article>
+          }
 
           @if (supported && otherWindow()) {
             <!-- Another window owns the display: this one does not touch the port -->
-            <article class="rounded-3xl border border-amber-300/40 bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6" data-testid="other-window" role="status">
+            <article class="aura-panel border-amber-300/40 p-5 sm:p-6" data-testid="other-window" role="status">
               <h2 class="font-playfair text-lg text-amber-200">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TITLE') }}</h2>
-              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TEXT') }}</p>
+              <p class="mt-2 text-sm leading-relaxed text-gray-200">{{ ts.t('SCREEN.PAGE.OTHER_WINDOW.TEXT') }}</p>
             </article>
           } @else if (supported) {
             <!-- Step 2: connect -->
-            <article class="rounded-3xl border bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6 transition-colors"
-                     [class]="currentStep() === 2 ? 'border-luxury-gold/50 shadow-[0_0_30px_rgba(212,175,55,0.08)]' : 'border-white/10'">
+            <article class="aura-panel border-luxury-gold/50 p-5 shadow-[0_0_30px_rgba(212,175,55,0.08)] sm:p-6">
               <header class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                      [class]="connected() ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-300/40' : 'bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/40'"
-                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 2'">
-                  {{ connected() ? '✓' : '2' }}
-                </span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold"
+                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 2'">2</span>
                 <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S2.TITLE') }}</h2>
               </header>
 
-              <p class="mt-3 text-sm text-gray-400 leading-relaxed">{{ ts.t('SCREEN.PAGE.S2.HINT') }}</p>
+              <p class="mt-3 text-sm leading-relaxed text-gray-200">{{ ts.t('SCREEN.PAGE.S2.HINT') }}</p>
 
               <div class="mt-4 flex flex-wrap items-center gap-3">
-                @if (!connected()) {
-                  <button type="button" (click)="output.connect()" [disabled]="link.status() === 'connecting'"
-                          class="inline-flex items-center justify-center rounded-full bg-luxury-gold px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-luxury-charcoal hover:bg-white transition-colors disabled:opacity-50 cursor-pointer">
-                    {{ link.status() === 'connecting' ? ts.t('SCREEN.PAGE.S2.CONNECTING') : ts.t('SCREEN.PAGE.S2.CONNECT') }}
-                  </button>
-                } @else {
-                  <button type="button" (click)="output.disconnect()"
-                          class="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white hover:border-luxury-gold hover:text-luxury-gold transition-colors cursor-pointer">
-                    {{ ts.t('SCREEN.PAGE.S2.DISCONNECT') }}
-                  </button>
-                }
+                <button type="button" class="aura-gold-btn" (click)="output.connect()" [disabled]="link.status() === 'connecting'">
+                  {{ link.status() === 'connecting' ? ts.t('SCREEN.PAGE.S2.CONNECTING') : ts.t('SCREEN.PAGE.S2.CONNECT') }}
+                </button>
               </div>
 
               <p class="mt-4 text-sm" aria-live="polite">
-                <span class="text-gray-400">{{ ts.t('SCREEN.PAGE.S2.STATUS') }}:</span>
+                <span class="text-gray-300">{{ ts.t('SCREEN.PAGE.S2.STATUS') }}:</span>
                 {{ ' ' }}<b [class]="statusClass()">{{ statusText() }}</b>
-                @if (link.model()) { <span class="text-gray-400"> · {{ link.model() }}</span> }
-                @if (connected()) {
-                  <span class="text-gray-400"> · {{ ts.format('SCREEN.PAGE.S2.SENT', { images: link.framesSent(), kb: kilobytes() }) }}</span>
-                }
               </p>
               @if (link.message()) {
-                <p class="mt-2 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3 py-2 text-sm text-amber-200">
-                  {{ ts.t(link.message()) }}@if (link.messageDetail()) { <span class="opacity-70"> ({{ link.messageDetail() }})</span> }
+                <p class="mt-2 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3 py-2 text-sm text-amber-100">
+                  {{ ts.t(link.message()) }}@if (link.messageDetail()) { <span class="opacity-80"> ({{ link.messageDetail() }})</span> }
                 </p>
               }
-              @if (connected() && link.warning()) {
-                <p class="mt-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-gray-300" data-testid="device-warning">
-                  {{ ts.t(link.warning()) }}
-                </p>
-              }
-              @if (connected() && pageHidden()) {
-                <p class="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-3 py-2 text-sm text-amber-200" role="alert">
-                  {{ ts.t('SCREEN.PAGE.S2.HIDDEN_WARNING') }}
-                </p>
-              }
-              @if (!connected()) {
-                <p class="mt-3 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S2.FIRST_TIME') }}</p>
-              }
-              <p class="mt-3 text-xs text-gray-500" data-testid="window-note">{{ ts.t('SCREEN.PAGE.S2.WINDOW_NOTE') }}</p>
-              <p class="mt-1 text-xs text-gray-500" data-testid="os-note">{{ ts.t('SCREEN.PAGE.S2.OS_NOTE') }}</p>
+              <p class="mt-3 text-xs text-gray-300">{{ ts.t('SCREEN.PAGE.S2.FIRST_TIME') }}</p>
+              <p class="mt-3 text-xs text-gray-300" data-testid="window-note">{{ ts.t('SCREEN.PAGE.S2.WINDOW_NOTE') }}</p>
+              <p class="mt-1 text-xs text-gray-300" data-testid="os-note">{{ ts.t('SCREEN.PAGE.S2.OS_NOTE') }}</p>
             </article>
 
-            <!-- Step 3: choose views -->
-            <article class="rounded-3xl border bg-white/[0.03] backdrop-blur-xl p-5 sm:p-6 transition-colors"
-                     [class]="currentStep() === 3 ? 'border-luxury-gold/50 shadow-[0_0_30px_rgba(212,175,55,0.08)]' : 'border-white/10'">
-              <header class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/40"
+            <!-- Step 3: customise (works on the demo preview too) -->
+            <article class="aura-panel flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold"
                       [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 3'">3</span>
-                <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S3.TITLE') }}</h2>
-              </header>
-
-              <div class="mt-4 space-y-5">
-                <!-- Views -->
-                <div>
-                  <label class="block text-xs uppercase tracking-[0.14em] text-gray-400 mb-1.5" for="view">{{ ts.t('SCREEN.PAGE.S3.VIEW_MODE') }}</label>
-                  <select id="view" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-luxury-gold"
-                          (change)="output.viewMode.set($any($event.target).value)">
-                    <option value="auto" [selected]="output.viewMode() === 'auto'" class="bg-luxury-charcoal">{{ ts.t('SCREEN.VIEWS.AUTO') }}</option>
-                    @for (v of viewOptions; track v) {
-                      <option [value]="v" [selected]="output.viewMode() === v" class="bg-luxury-charcoal">{{ viewLabel(v) }}</option>
-                    }
-                  </select>
-                  <p class="mt-2 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S3.VIEW_MODE_NOTE') }}</p>
-                </div>
-
-                <fieldset>
-                  <legend class="text-xs uppercase tracking-[0.14em] text-gray-400 mb-2">{{ ts.t('SCREEN.PAGE.S3.ROTATION') }}</legend>
-                  <div class="grid gap-2">
-                    @for (v of viewOptions; track v) {
-                      <label class="flex items-center gap-2.5 text-sm text-gray-200 cursor-pointer">
-                        <input type="checkbox" class="accent-[#D4AF37] h-4 w-4"
-                               [checked]="output.rotation().includes(v)"
-                               (change)="output.setInRotation(v, $any($event.target).checked)">
-                        <span>{{ viewLabel(v) }}</span>
-                        @if (!content()[v]) {
-                          <span class="whitespace-nowrap rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-gray-400">{{ ts.t('SCREEN.PAGE.S3.NO_DATA') }}</span>
-                        }
-                      </label>
-                    }
-                  </div>
-                  <p class="mt-2 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S3.ROTATION_NOTE') }}</p>
-                </fieldset>
-
-                <!-- Appearance -->
-                <div>
-                  <h3 class="text-xs uppercase tracking-[0.14em] text-gray-400 mb-2">{{ ts.t('SCREEN.PAGE.S3.APPEARANCE') }}</h3>
-                  <div class="grid grid-cols-2 gap-3">
-                    <div>
-                      <label class="block text-xs text-gray-400 mb-1" for="theme">{{ ts.t('SCREEN.PAGE.S3.THEME') }}</label>
-                      <select id="theme" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-luxury-gold"
-                              (change)="output.themePin.set($any($event.target).value || null)">
-                        <option value="" [selected]="!output.themePin()" class="bg-luxury-charcoal">{{ ts.t('SCREEN.PAGE.S3.FOLLOW') }}</option>
-                        @for (id of themeIds; track id) {
-                          <option [value]="id" [selected]="output.themePin() === id" class="bg-luxury-charcoal">{{ themeLabel(id) }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-xs text-gray-400 mb-1" for="font">{{ ts.t('SCREEN.PAGE.S3.FONT') }}</label>
-                      <select id="font" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-luxury-gold"
-                              (change)="output.fontPin.set($any($event.target).value || null)">
-                        <option value="" [selected]="!output.fontPin()" class="bg-luxury-charcoal">{{ ts.t('SCREEN.PAGE.S3.FOLLOW') }}</option>
-                        @for (f of fontOptions; track f.id) {
-                          <option [value]="f.id" [selected]="output.fontPin() === f.id" class="bg-luxury-charcoal">{{ f.name }}</option>
-                        }
-                      </select>
-                    </div>
-                  </div>
-                  <p class="mt-2 text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.S3.FOLLOW_NOTE') }}</p>
-                </div>
-
-                <!-- Brightness -->
-                <div>
-                  <label class="block text-xs text-gray-400 mb-1" for="brightness">
-                    {{ ts.t('SCREEN.PAGE.S3.BACKLIGHT_DAY') }}: {{ output.brightness().base }}%
-                  </label>
-                  <input id="brightness" type="range" min="0" max="100" class="w-full accent-[#D4AF37]"
-                         [value]="output.brightness().base" (input)="output.setBrightnessBase(+$any($event.target).value)">
-                </div>
-
-                <div>
-                  <label class="flex items-center gap-2.5 text-sm text-gray-200 cursor-pointer">
-                    <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.brightness().nightEnabled"
-                           (change)="output.patchBrightness({ nightEnabled: $any($event.target).checked })">
-                    {{ ts.t('SCREEN.PAGE.S3.NIGHT') }}
-                  </label>
-                  <div class="mt-3 grid grid-cols-2 gap-3" [class.opacity-40]="!output.brightness().nightEnabled">
-                    <div>
-                      <label class="block text-xs text-gray-400 mb-1" for="from">{{ ts.t('SCREEN.PAGE.S3.FROM') }}</label>
-                      <select id="from" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-luxury-gold"
-                              (change)="output.patchBrightness({ nightFromHour: +$any($event.target).value })">
-                        @for (h of hours; track h) { <option [value]="h" [selected]="h === output.brightness().nightFromHour" class="bg-luxury-charcoal">{{ h }}:00</option> }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-xs text-gray-400 mb-1" for="to">{{ ts.t('SCREEN.PAGE.S3.TO') }}</label>
-                      <select id="to" class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-luxury-gold"
-                              (change)="output.patchBrightness({ nightToHour: +$any($event.target).value })">
-                        @for (h of hours; track h) { <option [value]="h" [selected]="h === output.brightness().nightToHour" class="bg-luxury-charcoal">{{ h }}:00</option> }
-                      </select>
-                    </div>
-                    <div class="col-span-2">
-                      <label class="block text-xs text-gray-400 mb-1" for="night">
-                        {{ ts.t('SCREEN.PAGE.S3.NIGHT_LEVEL') }}: {{ output.brightness().nightLevel }}%
-                      </label>
-                      <input id="night" type="range" min="0" max="100" class="w-full accent-[#D4AF37]"
-                             [value]="output.brightness().nightLevel" (input)="output.patchBrightness({ nightLevel: +$any($event.target).value })">
-                    </div>
-                    <label class="col-span-2 flex items-center gap-2.5 text-sm text-gray-200 cursor-pointer">
-                      <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.brightness().nightBlack"
-                             (change)="output.patchBrightness({ nightBlack: $any($event.target).checked })">
-                      {{ ts.t('SCREEN.PAGE.S3.NIGHT_BLACK') }}
-                    </label>
-                  </div>
+                <div class="min-w-0">
+                  <h2 class="font-playfair text-base text-white">{{ ts.t('SCREEN.PAGE.S3.TITLE') }}</h2>
+                  <p class="text-sm text-gray-200">{{ ts.t('SCREEN.UI.SETUP.STEP3_TEXT') }}</p>
                 </div>
               </div>
+              <button type="button" class="aura-pill-btn" data-testid="customize" (click)="customizing.set(true)">{{ ts.t('SCREEN.UI.SETUP.CUSTOMIZE') }}</button>
             </article>
-
-            <!-- Advanced (collapsed) -->
-            <details class="group rounded-3xl border border-white/10 bg-white/[0.02] px-5 sm:px-6 py-4">
-              <summary class="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.14em] text-gray-300 hover:text-luxury-gold">
-                {{ ts.t('SCREEN.PAGE.ADV.TITLE') }}
-                <span class="text-gray-500 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
-              </summary>
-
-              <div class="mt-4 space-y-3 text-sm text-gray-200">
-                <label class="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.demoEnabled()"
-                         (change)="output.demoEnabled.set($any($event.target).checked)">
-                  {{ ts.t('SCREEN.PAGE.ADV.DEMO_TOGGLE') }}
-                </label>
-                <label class="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.flowControl()"
-                         (change)="output.flowControl.set($any($event.target).checked)">
-                  {{ ts.t('SCREEN.PAGE.ADV.FLOW') }}
-                </label>
-                <label class="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.alwaysFullFrame()"
-                         (change)="output.alwaysFullFrame.set($any($event.target).checked)">
-                  {{ ts.t('SCREEN.PAGE.ADV.FULL') }}
-                </label>
-                <label class="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" class="accent-[#D4AF37] h-4 w-4" [checked]="output.slowSend()"
-                         (change)="output.slowSend.set($any($event.target).checked)">
-                  {{ ts.t('SCREEN.PAGE.ADV.SLOW') }}
-                </label>
-                <label class="block">
-                  <span class="flex justify-between"><span>{{ ts.t('SCREEN.PAGE.ADV.BAND_PAUSE') }}</span><span class="font-mono">{{ output.bandPauseMs() }} ms</span></span>
-                  <input type="range" min="0" max="20" step="1" class="w-full accent-[#D4AF37]"
-                         [value]="output.bandPauseMs()" (input)="output.bandPauseMs.set(+$any($event.target).value)">
-                </label>
-                <button type="button" (click)="output.refreshAll()"
-                        class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] hover:border-luxury-gold hover:text-luxury-gold transition-colors cursor-pointer">
-                  {{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}
-                </button>
-                <p class="text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.ADV.HINT') }}</p>
-                <p class="font-mono text-xs text-gray-300">
-                  {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws(), pause: output.bandPauseMs() }) }}
-                </p>
-                @if (link.lastSend(); as s) {
-                  <p class="font-mono text-xs text-gray-300">
-                    {{ ts.format('SCREEN.PAGE.ADV.LAST_SEND', { w: s.width, h: s.height, bytes: s.bytes, ms: s.ms, gap: s.maxGapMs }) }}
-                  </p>
-                }
-              </div>
-            </details>
           }
         }
-      </section>
+      </div>
     </div>
+
+    <!-- Advanced (collapsed) -->
+    @if (ready() && supported && !otherWindow()) {
+      <details class="group mt-8 rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4 sm:px-6">
+        <summary class="aura-focus flex cursor-pointer list-none items-center justify-between rounded text-sm font-semibold uppercase tracking-[0.14em] text-gray-200 hover:text-luxury-gold">
+          {{ ts.t('SCREEN.PAGE.ADV.TITLE') }}
+          <span class="text-gray-300 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+        </summary>
+
+        <div class="mt-4 grid gap-x-10 gap-y-3 text-sm text-gray-100 md:grid-cols-2">
+          <div class="space-y-3">
+            <label class="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" class="h-4 w-4 accent-[#D4AF37]" [checked]="output.demoEnabled()"
+                     (change)="output.demoEnabled.set($any($event.target).checked)">
+              {{ ts.t('SCREEN.PAGE.ADV.DEMO_TOGGLE') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" class="h-4 w-4 accent-[#D4AF37]" [checked]="output.flowControl()"
+                     (change)="output.flowControl.set($any($event.target).checked)">
+              {{ ts.t('SCREEN.PAGE.ADV.FLOW') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" class="h-4 w-4 accent-[#D4AF37]" [checked]="output.alwaysFullFrame()"
+                     (change)="output.alwaysFullFrame.set($any($event.target).checked)">
+              {{ ts.t('SCREEN.PAGE.ADV.FULL') }}
+            </label>
+            <label class="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" class="h-4 w-4 accent-[#D4AF37]" [checked]="output.slowSend()"
+                     (change)="output.slowSend.set($any($event.target).checked)">
+              {{ ts.t('SCREEN.PAGE.ADV.SLOW') }}
+            </label>
+          </div>
+          <div class="space-y-3">
+            <label class="block">
+              <span class="flex justify-between"><span>{{ ts.t('SCREEN.PAGE.ADV.BAND_PAUSE') }}</span><span class="font-mono">{{ output.bandPauseMs() }} ms</span></span>
+              <input type="range" min="0" max="20" step="1" class="aura-range" [style.--fill]="(output.bandPauseMs() / 20 * 100) + '%'"
+                     [value]="output.bandPauseMs()" (input)="output.bandPauseMs.set(+$any($event.target).value)">
+            </label>
+            <button type="button" class="aura-pill-btn" (click)="output.refreshAll()">{{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}</button>
+          </div>
+          <div class="space-y-1 md:col-span-2">
+            <p class="text-xs text-gray-300">{{ ts.t('SCREEN.PAGE.ADV.HINT') }}</p>
+            <p class="font-mono text-xs text-gray-100">
+              {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws(), pause: output.bandPauseMs() }) }}
+              · {{ ts.format('SCREEN.PAGE.S2.SENT', { images: link.framesSent(), kb: kilobytes() }) }}
+            </p>
+            @if (link.lastSend(); as s) {
+              <p class="font-mono text-xs text-gray-100">
+                {{ ts.format('SCREEN.PAGE.ADV.LAST_SEND', { w: s.width, h: s.height, bytes: s.bytes, ms: s.ms, gap: s.maxGapMs }) }}
+              </p>
+            }
+            <p class="text-xs text-gray-300" data-testid="os-note-adv">{{ ts.t('SCREEN.PAGE.S2.OS_NOTE') }}</p>
+          </div>
+        </div>
+      </details>
+    }
+
+    <p class="mt-10 max-w-3xl text-xs leading-relaxed text-gray-300">
+      <span class="text-gray-100">{{ ts.t('SCREEN.PAGE.COMPAT') }}</span><br>
+      {{ ts.t('SCREEN.PAGE.DISCLAIMER') }}
+    </p>
   </main>
 </div>

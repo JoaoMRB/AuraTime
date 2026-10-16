@@ -10,8 +10,10 @@ import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from '
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
 import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
-  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
+  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, DEFAULT_VIEW_DURATIONS, ViewDurations, ViewInputs, RotationInfo,
+  clampViewSeconds, MIN_VIEW_SECONDS, MAX_VIEW_SECONDS, effectiveBrightness, offsetToShow, rotationInfo, pixelShift, viewHasContent
 } from './screen-logic';
+import { DisplaySnapshot } from './display-snapshot';
 import { DEFAULT_BAND_PAUSE_MS, MAX_BAND_PAUSE_MS } from './serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
@@ -35,6 +37,10 @@ export interface ScreenPrefs {
   slowSend: boolean;
   /** Pause after each band of a tall frame, 0..20 ms. */
   bandPauseMs: number;
+  /** Order of the views in the rotation (a permutation of every view). */
+  viewOrder: ScreenView[];
+  /** Seconds each view stays on screen in the automatic rotation (10..60). */
+  viewSeconds: ViewDurations;
   /** The display was connected last time: try to reconnect on startup. */
   autoConnect: boolean;
 }
@@ -72,6 +78,20 @@ export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
     out.brightness = { ...DEFAULT_BRIGHTNESS_CONFIG, ...brightness };
   }
 
+  if (Array.isArray(raw['viewOrder'])) {
+    // keep the stored order of the valid, distinct views, then add any view the list was missing
+    const seen = (raw['viewOrder'] as unknown[]).filter((v, i, all): v is ScreenView =>
+      (ALL_SCREEN_VIEWS as readonly unknown[]).includes(v) && all.indexOf(v) === i);
+    out.viewOrder = [...seen, ...ALL_SCREEN_VIEWS.filter(v => !seen.includes(v))];
+  }
+  if (isRecord(raw['viewSeconds'])) {
+    const seconds = { ...DEFAULT_VIEW_DURATIONS };
+    for (const view of ALL_SCREEN_VIEWS) {
+      const value = clampInt(raw['viewSeconds'][view], MIN_VIEW_SECONDS, MAX_VIEW_SECONDS);
+      if (value !== undefined) seconds[view] = value;
+    }
+    out.viewSeconds = seconds;
+  }
   const pause = clampInt(raw['bandPauseMs'], 0, MAX_BAND_PAUSE_MS);
   if (pause !== undefined) out.bandPauseMs = pause;
 
@@ -105,6 +125,8 @@ const DEFAULT_PREFS: ScreenPrefs = {
   alwaysFullFrame: false,
   slowSend: false,
   bandPauseMs: DEFAULT_BAND_PAUSE_MS,
+  viewOrder: [...ALL_SCREEN_VIEWS],
+  viewSeconds: { ...DEFAULT_VIEW_DURATIONS },
   autoConnect: false
 };
 
@@ -139,6 +161,21 @@ export class ScreenOutputService implements OnDestroy {
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   /** Views that take part in the automatic rotation (only those with content are actually shown). */
   readonly rotation = signal<ScreenView[]>(DEFAULT_PREFS.rotation);
+  /** Order in which the views rotate (every view appears once; `rotation` says which of them take part). */
+  readonly viewOrder = signal<ScreenView[]>(DEFAULT_PREFS.viewOrder);
+  /** Seconds each view stays on screen in the automatic rotation. */
+  readonly viewSeconds = signal<ViewDurations>(DEFAULT_PREFS.viewSeconds);
+  /** The automatic rotation is held on the current view (not saved: a reload resumes the rotation). */
+  readonly paused = signal(false);
+  private pausedView: ScreenView = 'clock';
+  /** A view is pinned (the display stays on it). */
+  readonly pinned = computed(() => this.viewMode() !== 'auto');
+  /** Where the rotation is right now, for the progress bar. */
+  readonly rotationProgress = signal<RotationInfo>({ view: 'clock', rotating: false, elapsedSec: 0, durationSec: 0 });
+  /** When the current connection came up (ms since the epoch), or null. */
+  readonly connectedAt = signal<number | null>(null);
+  private rotationOffsetSec = 0;
+  private redrawQueued = false;
   readonly brightness = signal<BrightnessConfig>(DEFAULT_PREFS.brightness);
   readonly flowControl = signal<boolean>(DEFAULT_PREFS.flowControl);
   /** Pinned theme / font; null means "follow the app". */
@@ -215,6 +252,18 @@ export class ScreenOutputService implements OnDestroy {
       });
 
       // A fresh connection starts from a blank display: resend everything.
+      effect(() => {
+        const connected = this.link.status() === 'connected';
+        untracked(() => this.connectedAt.set(connected ? (this.connectedAt() ?? Date.now()) : null));
+      }, { allowSignalWrites: true });
+
+      // A change made on the page shows in the preview at once, not on the next tick.
+      effect(() => {
+        this.viewMode(); this.rotation(); this.viewOrder(); this.viewSeconds(); this.paused();
+        this.themePin(); this.fontPin(); this.brightness(); this.demoActive();
+        untracked(() => this.scheduleRedraw());
+      });
+
       effect(() => {
         if (this.link.status() === 'connected') {
           untracked(() => {
@@ -372,28 +421,141 @@ export class ScreenOutputService implements OnDestroy {
 
   /* ------------------------------ rendering ------------------------------ */
 
-  /** Draws the current snapshot and, if connected, pushes the changes. Safe to call at any time. */
-  async renderFrame(): Promise<void> {
-    if (!this.ctx || !this.canvas) return;
-
+  /** The snapshot the display draws: the app's data, or sample data in demo mode, with the pinned theme and font. */
+  buildSnapshot(): DisplaySnapshot {
     let snap = this.display.snapshot();
     if (this.demoActive()) snap = fillDemoData(snap);
     const themePin = this.themePin();
     const fontPin = this.fontPin();
     if (themePin || fontPin) snap = { ...snap, theme: themePin ?? snap.theme, fontId: fontPin ?? snap.fontId };
-    const now = snap.now;
-    const view = pickView({
-      mode: this.viewMode(),
+    return snap;
+  }
+
+  /** What to show right now, from the snapshot and the user's choices. */
+  private rotationInputs(snap: DisplaySnapshot): ViewInputs {
+    return {
+      mode: this.paused() && this.viewMode() === 'auto' ? this.pausedView : this.viewMode(),
       focusRunning: snap.focus.phase !== 'idle',
       enabled: this.rotation(),
       hasContent: viewHasContent(snap),
-      nowMs: now.getTime()
-    });
-    const { level, black } = effectiveBrightness(now, this.brightness());
+      nowMs: snap.now.getTime(),
+      order: this.viewOrder(),
+      durations: this.viewSeconds(),
+      offsetSec: this.rotationOffsetSec
+    };
+  }
 
-    this.activeView.set(view);
+  /** Draws the current state on the canvas (the preview, and the picture sent to the display). */
+  private paint(): { now: Date; level: number } {
+    const snap = this.buildSnapshot();
+    const now = snap.now;
+    const info = rotationInfo(this.rotationInputs(snap));
+    const { level, black } = effectiveBrightness(now, this.brightness());
+    this.activeView.set(info.view);
+    this.rotationProgress.set(info);
     this.appliedBrightness.set(level);
-    drawScreen(this.ctx, snap, view, { shift: pixelShift(now), black });
+    drawScreen(this.ctx!, snap, info.view, { shift: pixelShift(now), black });
+    return { now, level };
+  }
+
+  /** Redraws the preview only (never sends), at most once per animation frame. */
+  private scheduleRedraw(): void {
+    if (!this.isBrowser || !this.ctx || this.redrawQueued || !this.started) return;
+    this.redrawQueued = true;
+    this.zone.runOutsideAngular(() => requestAnimationFrame(() => {
+      this.redrawQueued = false;
+      if (this.started) this.paint();
+    }));
+  }
+
+  /** A frame is being handed to the display right now. */
+  isSending(): boolean {
+    return this.busy;
+  }
+
+  /** Draws and sends right away, outside Angular's zone (for the previous / next buttons). */
+  renderNow(): void {
+    this.zone.runOutsideAngular(() => void this.renderFrame());
+  }
+
+  /* ------------------------------ view controls ------------------------------ */
+
+  /** Views the rotation shows right now: enabled, with something to show, in rotation order. */
+  activeRotation(): ScreenView[] {
+    const content = viewHasContent(this.buildSnapshot());
+    return this.viewOrder().filter(v => this.rotation().includes(v) && content[v]);
+  }
+
+  private neighbour(delta: 1 | -1): ScreenView {
+    const views = this.activeRotation();
+    const list = views.length ? views : this.viewOrder();
+    const at = list.indexOf(this.activeView());
+    return list[at < 0 ? 0 : (at + delta + list.length) % list.length];
+  }
+
+  /** Previous / next view. Pinned: moves the pin. Paused: moves the held view. Rotating: jumps in the rotation. */
+  stepView(delta: 1 | -1): void {
+    const target = this.neighbour(delta);
+    if (this.pinned()) {
+      this.viewMode.set(target);
+    } else if (this.paused()) {
+      this.pausedView = target;
+    } else {
+      const snap = this.buildSnapshot();
+      this.rotationOffsetSec = offsetToShow({ ...this.rotationInputs(snap), offsetSec: 0 }, target, 0);
+    }
+    this.paint();
+    this.renderNow();
+  }
+
+  /** Holds the rotation on the view now showing, or lets it go on from where it stopped. */
+  togglePause(): void {
+    if (this.pinned()) return; // a pinned view is already held
+    if (this.paused()) {
+      const snap = this.buildSnapshot();
+      const info = this.rotationProgress();
+      this.rotationOffsetSec = offsetToShow({ ...this.rotationInputs(snap), mode: 'auto', offsetSec: 0 }, this.pausedView, info.elapsedSec);
+      this.paused.set(false);
+    } else {
+      this.pausedView = this.activeView();
+      this.paused.set(true);
+    }
+    this.paint();
+  }
+
+  /** Keeps the display on one view (or, with null, goes back to the automatic rotation). */
+  pinView(view: ScreenView | null): void {
+    this.paused.set(false);
+    this.viewMode.set(view ?? 'auto');
+    this.paint();
+    this.renderNow();
+  }
+
+  /** Moves a view up or down in the rotation order. */
+  moveView(view: ScreenView, delta: -1 | 1): void {
+    this.moveViewTo(view, this.viewOrder().indexOf(view) + delta);
+  }
+
+  /** Puts a view at a given position of the rotation order. */
+  moveViewTo(view: ScreenView, index: number): void {
+    const order = this.viewOrder();
+    const from = order.indexOf(view);
+    const to = Math.min(order.length - 1, Math.max(0, index));
+    if (from < 0 || from === to) return;
+    const next = order.filter(v => v !== view);
+    next.splice(to, 0, view);
+    this.viewOrder.set(next);
+  }
+
+  setViewSeconds(view: ScreenView, seconds: number): void {
+    this.viewSeconds.update(d => ({ ...d, [view]: clampViewSeconds(seconds) }));
+  }
+
+  /** Draws the current snapshot and, if connected, pushes the changes. Safe to call at any time. */
+  async renderFrame(): Promise<void> {
+    if (!this.ctx || !this.canvas) return;
+
+    const { now, level } = this.paint();
 
     if (Date.now() - this.lastHeartbeat >= DESK_STATUS_HEARTBEAT_MS) {
       this.publishStatus(this.link.isConnected());
@@ -478,6 +640,8 @@ export class ScreenOutputService implements OnDestroy {
     const p = sanitizeScreenPrefs(parseJson(readStorage(STORAGE_KEY)));
     if (p.viewMode) this.viewMode.set(p.viewMode);
     if (p.rotation) this.rotation.set(p.rotation);
+    if (p.viewOrder) this.viewOrder.set(p.viewOrder);
+    if (p.viewSeconds) this.viewSeconds.set(p.viewSeconds);
     if (p.brightness) this.brightness.set(p.brightness);
     if (p.flowControl !== undefined) this.flowControl.set(p.flowControl);
     if (p.themePin) this.themePin.set(p.themePin);
@@ -493,6 +657,8 @@ export class ScreenOutputService implements OnDestroy {
     const prefs: ScreenPrefs = {
       viewMode: this.viewMode(),
       rotation: this.rotation(),
+      viewOrder: this.viewOrder(),
+      viewSeconds: this.viewSeconds(),
       brightness: this.brightness(),
       flowControl: this.flowControl(),
       themePin: this.themePin(),

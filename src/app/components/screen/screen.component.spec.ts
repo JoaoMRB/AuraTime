@@ -120,47 +120,52 @@ describe('ScreenComponent (Desk Display page)', () => {
     it('lets the user pin the theme and font, and follow the app again', async () => {
       const { el, fixture } = await render();
       const output = TestBed.inject(ScreenOutputService);
-      const theme = el.querySelector('#theme') as HTMLSelectElement;
-      const font = el.querySelector('#font') as HTMLSelectElement;
-      expect(theme.value).toBe(''); // follows the app by default
-      expect(font.value).toBe('');
+      (el.querySelector('[data-testid="customize"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
 
-      theme.value = 'obsidian-platinum';
-      theme.dispatchEvent(new Event('change'));
-      font.value = 'orbitron';
-      font.dispatchEvent(new Event('change'));
+      const follow = el.querySelector('[data-testid="follow"]') as HTMLButtonElement;
+      expect(follow.getAttribute('aria-checked')).toBe('true'); // follows the app by default
+
+      (el.querySelector('[data-testid="theme-swatch"][data-theme="obsidian-platinum"]') as HTMLButtonElement).click();
+      (el.querySelector('[data-testid="font-option"][data-font="orbitron"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
       expect(output.themePin()).toBe('obsidian-platinum');
       expect(output.fontPin()).toBe('orbitron');
+      expect(follow.getAttribute('aria-checked')).toBe('false');
 
-      theme.value = '';
-      theme.dispatchEvent(new Event('change'));
+      follow.click();
       fixture.detectChanges();
       expect(output.themePin()).toBeNull();
+      expect(output.fontPin()).toBeNull();
     });
 
     it('shows the saved choices in the controls (not the defaults)', async () => {
       localStorage.setItem('auratime_screen', JSON.stringify({
-        themePin: 'dark-glass', fontPin: 'playfair', viewMode: 'week',
+        themePin: 'dark-glass', fontPin: 'playfair', viewMode: 'focus',
         brightness: { base: 30, nightEnabled: true, nightFromHour: 22, nightToHour: 6, nightLevel: 5, nightBlack: false }
       }));
-      const { el } = await render();
-      expect((el.querySelector('#theme') as HTMLSelectElement).value).toBe('dark-glass');
-      expect((el.querySelector('#font') as HTMLSelectElement).value).toBe('playfair');
-      expect((el.querySelector('#view') as HTMLSelectElement).value).toBe('week');
-      expect((el.querySelector('#from') as HTMLSelectElement).value).toBe('22');
-      expect((el.querySelector('#to') as HTMLSelectElement).value).toBe('6');
+      const { el, fixture } = await render();
+      (el.querySelector('[data-testid="customize"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="theme-swatch"][aria-checked="true"]')!.getAttribute('data-theme')).toBe('dark-glass');
+      expect(el.querySelector('[data-testid="font-option"][aria-checked="true"]')!.getAttribute('data-font')).toBe('playfair');
+      expect(el.querySelector('[data-handle="from"]')!.getAttribute('aria-valuenow')).toBe('22');
+      expect(el.querySelector('[data-handle="to"]')!.getAttribute('aria-valuenow')).toBe('6');
+      expect((el.querySelector('[data-testid="day-level"]') as HTMLInputElement).value).toBe('30');
+      expect(el.querySelector('[data-testid="pin"]')!.getAttribute('aria-pressed')).toBe('true'); // the saved pinned view
     });
 
-    it('lists every view in the rotation with a checkbox', async () => {
-      const { el } = await render();
-      const items = Array.from(el.querySelectorAll('fieldset label')).map(l => text(l as HTMLElement));
-      expect(items.length).toBe(6);
-      expect(items.join(' ')).toContain('World clocks');
+    it('lists every view in the rotation with a switch', async () => {
+      const { el, fixture } = await render();
+      (el.querySelector('[data-testid="customize"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const cards = Array.from(el.querySelectorAll('app-screen-views li'));
+      expect(cards.length).toBe(6);
+      expect(text(el.querySelector('app-screen-views') as HTMLElement)).toContain('World clocks');
       const output = TestBed.inject(ScreenOutputService);
-      const worldBox = (Array.from(el.querySelectorAll('fieldset label')).find(l => (l.textContent ?? '').includes('World clocks'))!
-        .querySelector('input') as HTMLInputElement);
-      worldBox.checked = false;
-      worldBox.dispatchEvent(new Event('change'));
+      const worldSwitch = el.querySelector('app-screen-views li[data-view="world"] [data-testid="toggle"]') as HTMLButtonElement;
+      expect(worldSwitch.getAttribute('aria-checked')).toBe('true');
+      worldSwitch.click();
       expect(output.rotation()).not.toContain('world');
     });
 
@@ -191,7 +196,7 @@ describe('ScreenComponent (Desk Display page)', () => {
       await TestBed.inject(ScreenOutputService).connect(); // the fake port stays silent
       await new Promise(r => setTimeout(r, 1000));
       fixture.detectChanges();
-      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="status-pill"]')!.textContent).toContain('Connected');
       expect(el.querySelector('[data-testid="device-warning"]')!.textContent).toContain('did not answer the handshake');
     });
 
@@ -201,7 +206,7 @@ describe('ScreenComponent (Desk Display page)', () => {
       await TestBed.inject(ScreenOutputService).connect();
       await new Promise(r => setTimeout(r, 400));
       fixture.detectChanges();
-      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="status-pill"]')!.textContent).toContain('UsbMonitor 3.5');
       expect(el.querySelector('[data-testid="device-warning"]')).toBeNull();
     });
 

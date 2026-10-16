@@ -360,6 +360,99 @@
         "TITLE": "Web Serial needs HTTPS or localhost",
         "TEXT": "This page is open over plain http from a network address, where browsers turn Web Serial off. Open it with https:// or from localhost (for example http://localhost:4200)."
       }
+    },
+    "UI": {
+      "NAV": "Desk Display navigation",
+      "HERO": {
+        "PREVIEW_NEXT": "Preview of the display. Activate to show the next view.",
+        "TRANSPORT": "View controls",
+        "PREVIOUS": "Previous view",
+        "NEXT": "Next view",
+        "PAUSE": "Pause rotation",
+        "RESUME": "Resume rotation",
+        "PAUSE_PINNED": "A pinned view already stays on screen",
+        "PIN": "Pin this view",
+        "UNPIN": "Unpin: back to the rotation",
+        "PROGRESS": "Time on this view",
+        "KEYS": "Keyboard: ← → change view · Space pauses",
+        "STATE_ROTATING": "Rotating · next in {seconds} s",
+        "STATE_PAUSED": "Rotation paused",
+        "STATE_PINNED": "Pinned to this view",
+        "STATE_HELD": "Held by a running Pomodoro",
+        "STATE_SINGLE": "Only one view in the rotation"
+      },
+      "PILL": {
+        "CONNECTED": "Connected",
+        "CONNECTED_MODEL": "Connected · {model}"
+      },
+      "CC": {
+        "NOT_CONNECTED": "No display connected: you are customising the demo preview.",
+        "BACK_TO_SETUP": "Back to setup"
+      },
+      "SETUP": {
+        "STEP3_TEXT": "Views, look and night schedule: all in the control centre.",
+        "CUSTOMIZE": "Customise"
+      },
+      "VIEWS": {
+        "EYEBROW": "What it shows",
+        "TITLE": "Views",
+        "HINT": "Switch views on or off, reorder them and choose how long each stays on screen.",
+        "THUMB": "Thumbnail of the {view} view",
+        "EMPTY_TITLE": "Nothing to show yet",
+        "EMPTY": {
+          "WEEK": "Complete a focus session and this week appears here.",
+          "ALARM": "No alarm or countdown is set.",
+          "WORLD": "You have no world clocks yet.",
+          "WEATHER": "Weather is off or has no data yet."
+        },
+        "EMPTY_LINK": {
+          "WEEK": "Start a focus session",
+          "ALARM": "Set an alarm",
+          "WORLD": "Add a world clock",
+          "WEATHER": "Turn on weather"
+        },
+        "TOGGLE": "Show {view} in the rotation",
+        "DURATION": "Time on screen",
+        "DURATION_FOR": "Seconds on screen: {view}",
+        "DRAG": "Drag to reorder",
+        "MOVE_UP": "Move {view} up",
+        "MOVE_DOWN": "Move {view} down",
+        "MOVED": "{view} is now number {position} of {total}"
+      },
+      "APPEARANCE": {
+        "EYEBROW": "Look",
+        "TITLE": "Appearance",
+        "FOLLOW": "Follow the app",
+        "FOLLOW_ON": "The display uses the theme and font you picked in the clock.",
+        "FOLLOW_OFF": "The display keeps its own theme and font, whatever the app does."
+      },
+      "SCHEDULE": {
+        "EYEBROW": "Day and night",
+        "TITLE": "Schedule",
+        "NIGHT_STARTS": "Night starts",
+        "NIGHT_ENDS": "Night ends",
+        "SUMMARY": "Night from {from} to {to}, backlight {level}%.",
+        "NO_NIGHT": "No night schedule: the backlight stays at the day level.",
+        "BLACK_HINT": "At night the screen is completely black and the backlight off."
+      },
+      "HEALTH": {
+        "EYEBROW": "Link",
+        "TITLE": "Health",
+        "STATE_OK": "All good",
+        "STATE_WARN": "Needs attention",
+        "WARNING": "The link had {count} new problem(s) (write timeouts or forced full redraws) since you opened this page. The display was redrawn in full each time.",
+        "DISMISS": "Dismiss",
+        "UPTIME": "Connected for",
+        "FRAMES": "Frames",
+        "LAST_FRAME": "Last frame",
+        "PAUSE": "Pause per band",
+        "TIMEOUTS": "Write timeouts",
+        "REDRAWS": "Forced redraws",
+        "SPARK": "Frame time, last minutes",
+        "SPARK_RANGE": "now {last} ms · peak {max} ms",
+        "SPARK_LABEL": "Frame times over the last minutes: latest {last} ms, peak {max} ms",
+        "SPARK_EMPTY": "No frames sent yet."
+      }
     }
   },
   "WEATHER": {

@@ -307,6 +307,99 @@
         "TITLE": "Web Serial nécessite HTTPS ou localhost",
         "TEXT": "Cette page est ouverte en http simple depuis une adresse réseau, où les navigateurs désactivent Web Serial. Ouvrez-la en https:// ou depuis localhost (par exemple http://localhost:4200)."
       }
+    },
+    "UI": {
+      "NAV": "Navigation de Desk Display",
+      "HERO": {
+        "PREVIEW_NEXT": "Aperçu de l’écran. Activez pour afficher la vue suivante.",
+        "TRANSPORT": "Commandes de vue",
+        "PREVIOUS": "Vue précédente",
+        "NEXT": "Vue suivante",
+        "PAUSE": "Mettre la rotation en pause",
+        "RESUME": "Reprendre la rotation",
+        "PAUSE_PINNED": "Une vue épinglée reste déjà à l’écran",
+        "PIN": "Épingler cette vue",
+        "UNPIN": "Désépingler : retour à la rotation",
+        "PROGRESS": "Temps sur cette vue",
+        "KEYS": "Clavier : ← → changent de vue · Espace met en pause",
+        "STATE_ROTATING": "Rotation · suivante dans {seconds} s",
+        "STATE_PAUSED": "Rotation en pause",
+        "STATE_PINNED": "Épinglé sur cette vue",
+        "STATE_HELD": "Maintenue par un Pomodoro en cours",
+        "STATE_SINGLE": "Une seule vue dans la rotation"
+      },
+      "PILL": {
+        "CONNECTED": "Connecté",
+        "CONNECTED_MODEL": "Connecté · {model}"
+      },
+      "CC": {
+        "NOT_CONNECTED": "Aucun écran connecté : vous personnalisez l’aperçu de démonstration.",
+        "BACK_TO_SETUP": "Retour à la configuration"
+      },
+      "SETUP": {
+        "STEP3_TEXT": "Vues, apparence et horaire de nuit : tout dans le centre de contrôle.",
+        "CUSTOMIZE": "Personnaliser"
+      },
+      "VIEWS": {
+        "EYEBROW": "Ce qu’il affiche",
+        "TITLE": "Vues",
+        "HINT": "Activez ou désactivez des vues, réorganisez-les et choisissez combien de temps chacune reste à l’écran.",
+        "THUMB": "Miniature de la vue {view}",
+        "EMPTY_TITLE": "Rien à afficher pour l’instant",
+        "EMPTY": {
+          "WEEK": "Terminez une session de concentration et la semaine apparaît ici.",
+          "ALARM": "Aucune alarme ni compte à rebours n’est défini.",
+          "WORLD": "Vous n’avez pas encore d’horloges mondiales.",
+          "WEATHER": "La météo est désactivée ou sans données."
+        },
+        "EMPTY_LINK": {
+          "WEEK": "Lancer une session",
+          "ALARM": "Régler une alarme",
+          "WORLD": "Ajouter une horloge mondiale",
+          "WEATHER": "Activer la météo"
+        },
+        "TOGGLE": "Afficher {view} dans la rotation",
+        "DURATION": "Durée à l’écran",
+        "DURATION_FOR": "Secondes à l’écran : {view}",
+        "DRAG": "Glisser pour réorganiser",
+        "MOVE_UP": "Monter {view}",
+        "MOVE_DOWN": "Descendre {view}",
+        "MOVED": "{view} est maintenant la numéro {position} sur {total}"
+      },
+      "APPEARANCE": {
+        "EYEBROW": "Apparence",
+        "TITLE": "Apparence",
+        "FOLLOW": "Suivre l’appli",
+        "FOLLOW_ON": "L’écran utilise le thème et la police choisis dans l’horloge.",
+        "FOLLOW_OFF": "L’écran garde son propre thème et sa police, quoi que fasse l’appli."
+      },
+      "SCHEDULE": {
+        "EYEBROW": "Jour et nuit",
+        "TITLE": "Horaire",
+        "NIGHT_STARTS": "La nuit commence",
+        "NIGHT_ENDS": "La nuit se termine",
+        "SUMMARY": "Nuit de {from} à {to}, rétroéclairage à {level} %.",
+        "NO_NIGHT": "Pas d’horaire de nuit : le rétroéclairage reste au niveau du jour.",
+        "BLACK_HINT": "La nuit l’écran est entièrement noir et le rétroéclairage éteint."
+      },
+      "HEALTH": {
+        "EYEBROW": "Liaison",
+        "TITLE": "État",
+        "STATE_OK": "Tout va bien",
+        "STATE_WARN": "À surveiller",
+        "WARNING": "La liaison a eu {count} nouveau(x) problème(s) (délais d’écriture dépassés ou redessins complets forcés) depuis l’ouverture de cette page. L’écran a chaque fois été redessiné en entier.",
+        "DISMISS": "Ignorer",
+        "UPTIME": "Connecté depuis",
+        "FRAMES": "Images",
+        "LAST_FRAME": "Dernière image",
+        "PAUSE": "Pause par bande",
+        "TIMEOUTS": "Délais dépassés",
+        "REDRAWS": "Redessins forcés",
+        "SPARK": "Durée par image, dernières minutes",
+        "SPARK_RANGE": "actuel {last} ms · pic {max} ms",
+        "SPARK_LABEL": "Durées par image ces dernières minutes : dernière {last} ms, pic {max} ms",
+        "SPARK_EMPTY": "Aucune image envoyée pour l’instant."
+      }
     }
   },
   "WEATHER": {

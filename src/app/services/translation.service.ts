@@ -2,6 +2,7 @@ import { Injectable, signal, inject, PLATFORM_ID, DestroyRef } from '@angular/co
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { DESK_DISPLAY_EN } from '../i18n/desk-display.en';
+import { readStorage, writeStorage } from './safe-storage';
 
 // Default fallback to ensure SSR loads instantly and safely without HTTP requests
 const DEFAULT_EN: any = {
@@ -230,14 +231,14 @@ export class TranslationService {
   constructor() {
     // Attempt to restore language from localStorage if in browser
     if (isPlatformBrowser(this.platformId)) {
-      const savedLang = localStorage.getItem('auratime_lang');
-      if (savedLang) {
+      const savedLang = readStorage('auratime_lang');
+      if (this.isKnownLanguage(savedLang)) {
         this.applyLanguage(savedLang);
       }
 
       // Another window (e.g. the clock while this is the Desk Display page) changed the language
       const onStorage = (event: StorageEvent) => {
-        if (event.key === 'auratime_lang' && event.newValue && event.newValue !== this.currentLang()) {
+        if (event.key === 'auratime_lang' && this.isKnownLanguage(event.newValue) && event.newValue !== this.currentLang()) {
           this.applyLanguage(event.newValue);
         }
       };
@@ -246,9 +247,15 @@ export class TranslationService {
     }
   }
 
+  /** Only languages we ship: the code ends up in the URL of the file that is fetched. */
+  private isKnownLanguage(lang: string | null | undefined): lang is string {
+    return typeof lang === 'string' && this.getAvailableLanguages().some(l => l.code === lang);
+  }
+
   setLanguage(lang: string) {
+    if (!this.isKnownLanguage(lang)) return;
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem('auratime_lang', lang);
+      writeStorage('auratime_lang', lang);
     }
     this.applyLanguage(lang);
   }
@@ -286,7 +293,7 @@ export class TranslationService {
 
   /** Translates a path and fills {placeholders}, e.g. format('SCREEN.PAGE.S2.SENT', { images: 3, kb: 12 }). */
   format(path: string, params: Record<string, string | number>): string {
-    return this.t(path).replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
+    return this.t(path).replace(/\{(\w+)\}/g, (match, name) => (Object.hasOwn(params, name) ? String(params[name]) : match));
   }
 
   // Translates a path string like 'LANDING.HERO.TITLE'

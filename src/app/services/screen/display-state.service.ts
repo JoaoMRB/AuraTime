@@ -116,7 +116,7 @@ export class DisplayStateService {
             // Translated from the condition; the service's own text is Portuguese-only.
             description: labels.weather[weather.condition] ?? weather.description,
             icon: weather.icon,
-            city: weather.cityName
+            city: this.weatherService.placeLabel(weather)
           }
         : undefined,
       quote: quote ? { text: quote.text, author: quote.author } : undefined,

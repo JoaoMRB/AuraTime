@@ -100,7 +100,6 @@ describe('DisplayStateService', () => {
     });
 
     it('reports the next alarm (12h and 24h) with a relative day label', () => {
-      TestBed.inject(AlarmService).stopChecker();
       TestBed.inject(AlarmService).addAlarm({
         label: 'Evening', time: '22:00', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime'
       });
@@ -122,7 +121,6 @@ describe('DisplayStateService', () => {
     });
 
     it('has no alarm without enabled alarms', () => {
-      TestBed.inject(AlarmService).stopChecker();
       expect(service.snapshot().alarm).toBeUndefined();
     });
 
@@ -153,7 +151,8 @@ describe('DisplayStateService', () => {
 
   it('describes the weather in the app language, not in the service language', () => {
     const weatherService = TestBed.inject(WeatherService) as unknown as { weather: () => unknown };
-    weatherService.weather = () => ({ temperature: 18, condition: 'rainy', description: 'Chuva', icon: 'x', cityName: 'Lisboa' });
+    (weatherService as unknown as { placeLabel: () => string }).placeLabel = () => 'Lisboa';
+    weatherService.weather = () => ({ temperature: 18, condition: 'rainy', description: 'Chuva', icon: 'x', cityName: '', source: 'default' });
     expect(service.snapshot().weather!.description).toBe('Rain');
 
     // The app switches language: translations arrive and the screen texts follow
@@ -163,7 +162,7 @@ describe('DisplayStateService', () => {
     expect(service.snapshot().weather!.description).toBe('Chuva');
     expect(service.snapshot().labels.focus).toBe('FOCO');
 
-    weatherService.weather = () => ({ temperature: 5, condition: 'something-new', description: 'Raw', icon: 'x', cityName: 'x' });
+    weatherService.weather = () => ({ temperature: 5, condition: 'something-new', description: 'Raw', icon: 'x', cityName: '', source: 'default' });
     TestBed.inject(TranslationService).currentLang.set('en'); // changes a signal, so the snapshot is recomputed
     translation.translations.set({}); // back to the built-in English texts
     expect(service.snapshot().weather!.description).toBe('Raw'); // unknown condition: keep the service text

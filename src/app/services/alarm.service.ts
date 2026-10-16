@@ -1,6 +1,8 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AudioService } from './audio.service';
+import { backupCorrupt, onStorageChange, parseJson, readStorage, writeStorage } from './safe-storage';
+import { lostEntries, sanitizeAlarms } from './storage-validators';
 
 export interface Alarm {
   id: string;
@@ -10,6 +12,33 @@ export interface Alarm {
   enabled: boolean;
   snoozeMinutes: number;
   sound: 'chime' | 'bell' | 'digital';
+}
+
+/** Builds a local date; replaceable in tests to simulate a clock change. */
+export type DateBuilder = (year: number, month: number, day: number, hours: number, minutes: number) => Date;
+const buildLocalDate: DateBuilder = (y, m, d, h, min) => new Date(y, m, d, h, min, 0, 0);
+
+/**
+ * The next moment an alarm will really ring, or null. The checker rings only when the clock shows exactly
+ * the alarm's HH:MM, so a time that does not exist on some day (the hour skipped when the clocks go forward)
+ * never rings that day: Date silently turns it into a different time, and counting down to that would show the
+ * wrong time left. Such days are skipped, and the days the alarm is set for are respected.
+ */
+export function nextAlarmOccurrence(
+  alarm: Pick<Alarm, 'time' | 'days'>,
+  now: Date,
+  build: DateBuilder = buildLocalDate
+): Date | null {
+  const [hours, minutes] = alarm.time.split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  for (let offset = 0; offset <= 8; offset++) {
+    const candidate = build(now.getFullYear(), now.getMonth(), now.getDate() + offset, hours, minutes);
+    if (candidate.getHours() !== hours || candidate.getMinutes() !== minutes) continue; // that time does not exist that day
+    if (candidate.getTime() <= now.getTime()) continue;
+    if (alarm.days.length > 0 && !alarm.days.includes(candidate.getDay())) continue;
+    return candidate;
+  }
+  return null;
 }
 
 @Injectable({
@@ -40,6 +69,8 @@ export class AlarmService {
   private checkInterval: any = null;
   private lastMinuteKey = '';
   private dismissedAlarmIds = new Set<string>();
+  /** How many display-only pages currently ask this window not to ring (see suppressRinging). */
+  private ringSuppressions = 0;
 
   constructor() {
     if (this.isBrowser) {
@@ -180,7 +211,7 @@ export class AlarmService {
 
   // Check if any alarm should ring
   private checkAlarms(): void {
-    if (this.isRinging()) return;
+    if (this.isRinging() || this.ringSuppressions > 0) return;
 
     const now = new Date();
     this.syncMinuteWindow(now);
@@ -270,14 +301,8 @@ export class AlarmService {
     if (!alarm) return '';
 
     const now = new Date();
-    const [alarmHours, alarmMinutes] = alarm.time.split(':').map(Number);
-    
-    let alarmDate = new Date();
-    alarmDate.setHours(alarmHours, alarmMinutes, 0, 0);
-    
-    if (alarmDate <= now) {
-      alarmDate.setDate(alarmDate.getDate() + 1);
-    }
+    const alarmDate = nextAlarmOccurrence(alarm, now);
+    if (!alarmDate) return '';
 
     const diff = alarmDate.getTime() - now.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -291,47 +316,41 @@ export class AlarmService {
 
   // Persistence
   private saveToStorage(): void {
-    try {
-      localStorage.setItem('auratime_alarms', JSON.stringify(this.alarms()));
-    } catch (e) {
-      console.warn('Could not save alarms to localStorage', e);
+    if (!writeStorage('auratime_alarms', JSON.stringify(this.alarms()))) {
+      console.warn('Could not save alarms to localStorage');
     }
   }
 
   private loadFromStorage(): void {
-    try {
-      this.applyRaw(localStorage.getItem('auratime_alarms'));
-    } catch (e) {
-      console.warn('Could not load alarms from localStorage', e);
-    }
+    this.applyRaw(readStorage('auratime_alarms'));
 
     // Keep several open tabs/windows (app + /screen) in sync
-    window.addEventListener('storage', (event: StorageEvent) => {
-      if (event.key === 'auratime_alarms' && event.newValue) {
-        try {
-          this.applyRaw(event.newValue);
-        } catch (e) {}
-      }
-    });
+    onStorageChange('auratime_alarms', value => this.applyRaw(value));
   }
 
   private applyRaw(data: string | null): void {
     if (!data) return;
-    const parsed = JSON.parse(data) as Alarm[];
-    if (!Array.isArray(parsed)) return;
+    const raw = parseJson(data);
+    const parsed = sanitizeAlarms(raw); // invalid alarms are dropped, the valid ones kept
+    if (lostEntries(raw, parsed)) backupCorrupt('auratime_alarms', data);
+    if (!parsed) return;
     this.alarms.set(parsed);
     this.calculateNextAlarm();
   }
 
   /**
-   * Stops the once-a-second ring check. Windows that only *display* alarms (the /screen page)
-   * call this so the alarm does not also sound there.
+   * Keeps this window from ringing while a display-only page (the Desk Display) is open, without
+   * touching the shared checker: alarms keep working on every other route, and again as soon as the
+   * returned function is called (the page calls it when it is destroyed). Safe to call twice.
    */
-  stopChecker(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
+  suppressRinging(): () => void {
+    this.ringSuppressions++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.ringSuppressions--;
+    };
   }
 
   // Cleanup

@@ -67,7 +67,7 @@
       "S2_D": "Conecta la pantalla USB, pulsa Conectar y elígela en la lista. La próxima vez se reconecta sola.",
       "S3_T": "Elige tus vistas",
       "S3_D": "Elige qué rota, define el horario nocturno y déjalo funcionando todo el día.",
-      "COMPAT": "Compatible con pantallas Turing Smart Screen 3,5\" (USB).",
+      "COMPAT": "Compatible con pantallas de la clase Turing Smart Screen 3,5\" (USB 1A86:5722, rev. A).",
       "DISCLAIMER": "AuraTime es un proyecto independiente, sin relación con ningún fabricante de pantallas. Los nombres de productos pertenecen a sus propietarios.",
       "BROWSER_NOTE": "Requiere Google Chrome o Microsoft Edge en un ordenador.",
       "CTA": "Abrir Desk Display"
@@ -224,7 +224,10 @@
       "BUSY": "No se pudo abrir el puerto. ¿Lo está usando el software original de la pantalla (u otra pestaña)? Ciérralo e inténtalo de nuevo.",
       "STALLED": "La pantalla no acepta datos. Prueba a desactivar el control de flujo y vuelve a conectar.",
       "NOT_RESPONDING": "La pantalla dejó de responder.",
-      "GENERIC": "Algo salió mal al comunicarse con la pantalla."
+      "GENERIC": "Algo salió mal al comunicarse con la pantalla.",
+      "INSECURE": "Web Serial necesita HTTPS o localhost.",
+      "NO_HELLO": "La pantalla no respondió al saludo inicial. Si la imagen se ve mal, puede que no sea un modelo compatible.",
+      "OTHER_WINDOW": "Desk Display está activo en otra ventana."
     },
     "PAGE": {
       "BACK": "Volver al reloj",
@@ -253,7 +256,10 @@
         "DISCONNECTED": "no conectada",
         "ERROR": "error",
         "SENT": "{images} imágenes · {kb} KB enviados",
-        "FIRST_TIME": "El navegador te pide elegir la pantalla una sola vez. Después se reconecta sola."
+        "FIRST_TIME": "El navegador te pide elegir la pantalla una sola vez. Después se reconecta sola.",
+        "WINDOW_NOTE": "Mantén esta página en una ventana propia y visible, o usa el lanzador de inicio de Windows: los navegadores ralentizan las páginas ocultas y la pantalla se retrasaría.",
+        "HIDDEN_WARNING": "Esta página está oculta, así que el navegador la ralentiza y la pantalla puede retrasarse. Trae la ventana al frente, o usa el lanzador de inicio.",
+        "OS_NOTE": "Linux: tu usuario debe estar en el grupo dialout. macOS: el chip USB-serie CH34x de la pantalla puede necesitar su controlador."
       },
       "S3": {
         "TITLE": "Elegir qué mostrar",
@@ -282,15 +288,37 @@
         "DEMO_TOGGLE": "Mostrar datos de ejemplo mientras no haya pantalla conectada",
         "REDRAW": "Redibujar todo",
         "HINT": "Si los fallos desaparecen con \"pantalla completa\", el problema está en las actualizaciones parciales; si desaparecen con \"envío lento\", la pantalla necesita más tiempo entre bloques.",
-        "LAST_SEND": "Última imagen: {w}×{h} px · {bytes} B · {ms} ms · mayor pausa entre bloques {gap} ms"
+        "LAST_SEND": "Última imagen: {w}×{h} px · {bytes} B · {ms} ms · mayor pausa entre bloques {gap} ms",
+        "COUNTERS": "Fotogramas enviados: {frames} · bandas: {bands} · tiempos de escritura agotados: {timeouts} · redibujados completos forzados: {redraws}"
       },
       "UNSUPPORTED": {
         "TITLE": "Desk Display necesita Chrome o Edge en un ordenador",
         "TEXT": "Este navegador (Firefox, Safari o un navegador de móvil) no puede comunicarse con pantallas USB. Abre AuraTime en Google Chrome o Microsoft Edge en un ordenador con Windows, macOS o Linux para conectar una pantalla.",
         "PREVIEW": "Esto es lo que muestra la pantalla:"
       },
-      "COMPAT": "Compatible con pantallas Turing Smart Screen 3,5\" (USB).",
-      "DISCLAIMER": "AuraTime es un proyecto independiente, sin relación con ningún fabricante de pantallas. Los nombres de productos pertenecen a sus propietarios."
+      "COMPAT": "Compatible con pantallas de la clase Turing Smart Screen 3,5\" (USB 1A86:5722, rev. A).",
+      "DISCLAIMER": "AuraTime es un proyecto independiente, sin relación con ningún fabricante de pantallas. Los nombres de productos pertenecen a sus propietarios.",
+      "OTHER_WINDOW": {
+        "TITLE": "Desk Display activo en otra ventana",
+        "TEXT": "Solo una ventana puede controlar la pantalla. Cierra la otra; esta tomará el control sola cuando se cierre."
+      },
+      "INSECURE": {
+        "TITLE": "Web Serial necesita HTTPS o localhost",
+        "TEXT": "Esta página está abierta por http simple desde una dirección de red, donde los navegadores desactivan Web Serial. Ábrela con https:// o desde localhost (por ejemplo http://localhost:4200)."
+      }
     }
+  },
+  "WEATHER": {
+    "YOUR_LOCATION": "Tu ubicación",
+    "DEFAULT_CITY": "Lisboa (predeterminada)",
+    "REFRESH": "Haz clic para actualizar el tiempo",
+    "CITY_TITLE": "Ubicación del tiempo",
+    "CITY_CURRENT": "Mostrando",
+    "CITY_PLACEHOLDER": "Buscar una ciudad",
+    "CITY_SEARCH": "Buscar",
+    "CITY_NO_RESULTS": "No se encontró ninguna ciudad",
+    "CITY_ERROR": "La búsqueda no está disponible ahora",
+    "CITY_USE_LOCATION": "Usar mi ubicación",
+    "CITY_DEFAULT_HINT": "Tu ubicación no está disponible, así que el tiempo muestra Lisboa. Busca tu ciudad para cambiarla."
   }
 }

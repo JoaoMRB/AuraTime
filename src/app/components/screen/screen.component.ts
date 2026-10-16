@@ -1,5 +1,5 @@
 import {
-  AfterViewInit, Component, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
+  AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, computed, effect, inject, signal
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -42,6 +42,8 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
    * browser render are identical (what the browser supports is only known in the browser).
    */
   readonly ready = signal(false);
+  /** The page is in a background tab or minimized: the browser slows it down and the display can lag. */
+  readonly pageHidden = signal(false);
 
   readonly viewOptions: ScreenView[] = [...ALL_SCREEN_VIEWS];
   readonly themeIds: readonly ThemeId[] = THEME_IDS;
@@ -56,15 +58,26 @@ export class ScreenComponent implements AfterViewInit, OnDestroy {
   /** Which views currently have something to show (drives the "no data yet" hints). */
   readonly content = computed(() => viewHasContent(this.display.snapshot()));
   readonly connected = computed(() => this.link.status() === 'connected');
+  /** Another /screen window is driving the display: this one only shows a preview. */
+  readonly otherWindow = computed(() => this.output.ownership() === 'other');
   /** 1 = browser not supported, 2 = connect the display, 3 = choose the views. */
   readonly currentStep = computed(() => (!this.supported ? 1 : this.connected() ? 3 : 2));
   readonly viewName = computed(() => this.viewLabel(this.output.activeView()));
 
   constructor() {
-    // This page only *shows* the next alarm; ringing stays with the clock window.
-    inject(AlarmService).stopChecker();
+    // This page only *shows* the next alarm; ringing stays with the clock window. The suppression lasts
+    // only as long as this page, so alarms work again as soon as the visitor leaves /screen.
+    const releaseAlarms = inject(AlarmService).suppressRinging();
+    inject(DestroyRef).onDestroy(releaseAlarms);
 
     afterNextRender(() => this.ready.set(true));
+
+    if (this.isBrowser) {
+      this.pageHidden.set(document.hidden);
+      const onVisibility = () => this.pageHidden.set(document.hidden);
+      document.addEventListener('visibilitychange', onVisibility);
+      inject(DestroyRef).onDestroy(() => document.removeEventListener('visibilitychange', onVisibility));
+    }
 
     // Own title and description (also in the prerendered HTML), in the app language
     effect(() => {

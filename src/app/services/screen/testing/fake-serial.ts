@@ -1,8 +1,15 @@
 import { SerialApiLike, SerialPortLike, SerialReaderLike, SerialWriterLike } from '../serial-link.service';
 
-/** In-memory Web Serial doubles for unit tests. */
+/**
+ * In-memory Web Serial doubles for unit tests. They are deliberately as picky as the real thing about the
+ * order of operations: a port with a locked stream cannot be closed, an open port cannot be opened again, and
+ * a writer with a write still pending cannot simply be released (it has to be aborted first).
+ */
 export class FakeReader implements SerialReaderLike {
   replies: Uint8Array[] = [];
+  locked = false;
+  /** Make cancel()/releaseLock() fail, to test that failures are reported. */
+  failCancel = false;
   private pending: ((r: { done: boolean; value?: Uint8Array }) => void) | null = null;
 
   read(): Promise<{ done: boolean; value?: Uint8Array }> {
@@ -10,42 +17,149 @@ export class FakeReader implements SerialReaderLike {
     return new Promise(resolve => (this.pending = resolve));
   }
   cancel(): Promise<void> {
+    if (this.failCancel) return Promise.reject(new Error('cancel failed'));
     this.pending?.({ done: true });
     this.pending = null;
     return Promise.resolve();
   }
-  releaseLock(): void {}
+  onRelease: (() => void) | null = null;
+  releaseLock(): void {
+    this.locked = false;
+    this.onRelease?.();
+  }
+}
+
+export class FakeWriter implements SerialWriterLike {
+  pendingWrites = 0;
+  aborted = false;
+  released = false;
+
+  constructor(private port: FakePort) {}
+
+  async write(chunk: Uint8Array): Promise<void> {
+    this.pendingWrites++;
+    try {
+      if (this.port.stallAfterWrites !== null && this.port.writeCount >= this.port.stallAfterWrites) {
+        await new Promise<never>(() => { /* the display stopped accepting data mid-frame */ });
+      }
+      this.port.writeCount++;
+      if (this.port.gate) await this.port.gate;
+      if (this.port.writeDelayMs > 0) await new Promise(r => setTimeout(r, this.port.writeDelayMs));
+      if (this.aborted) return; // the stream was aborted while this write was waiting
+      this.port.writes.push(chunk.slice());
+      this.port.deliver(chunk);
+    } finally {
+      this.pendingWrites--;
+    }
+  }
+
+  abort(): Promise<void> {
+    this.port.events.push('writer.abort');
+    this.aborted = true;
+    this.pendingWrites = 0;
+    return Promise.resolve();
+  }
+
+  releaseLock(): void {
+    if (this.pendingWrites > 0 && !this.aborted) {
+      throw new TypeError('Cannot release the lock of a writer with pending writes');
+    }
+    this.port.events.push('writer.release');
+    this.released = true;
+    this.port.writerLocked = false;
+  }
 }
 
 export class FakePort implements SerialPortLike {
   writes: Uint8Array[] = [];
+  /** Order of the teardown calls, to check that it is the one Web Serial requires. */
+  events: string[] = [];
   openArgs: unknown = null;
+  isOpen = false;
+  openCount = 0;
+  closeCount = 0;
   closed = false;
   failOpen: string | null = null;
+  /** Make close() fail this many times. */
+  failClose = 0;
   /** When set, writes wait for it: lets a test hold a bitmap "in flight". */
   gate: Promise<void> | null = null;
+  /** Writes accepted so far, and the count after which every further write hangs (null = never). */
+  writeCount = 0;
+  stallAfterWrites: number | null = null;
+  /** Every write takes this long to be accepted (a slow display behind flow control). */
+  writeDelayMs = 0;
+  /** Silently loses bytes [from, from + count) of the stream written to this port (counted from the first write). */
+  loss: { from: number; count: number } | null = null;
+  /** What actually reached the device: everything written, minus the lost bytes. */
+  delivered: number[] = [];
+  private seen = 0;
   reader = new FakeReader();
+  readerLocked = false;
+  writerLocked = false;
+
   constructor(public info: { usbVendorId?: number; usbProductId?: number } = { usbVendorId: 0x1a86, usbProductId: 0x5722 }) {}
 
-  readable = { getReader: () => this.reader };
-  writable = {
-    getWriter: (): SerialWriterLike => ({
-      write: async (chunk: Uint8Array) => {
-        if (this.gate) await this.gate;
-        this.writes.push(chunk.slice());
-      },
-      releaseLock: () => {}
-    })
-  };
+  /** Called by the writer: records the bytes that survive the (simulated) loss. */
+  deliver(chunk: Uint8Array): void {
+    for (const byte of chunk) {
+      const lost = this.loss && this.seen >= this.loss.from && this.seen < this.loss.from + this.loss.count;
+      if (!lost) this.delivered.push(byte);
+      this.seen++;
+    }
+  }
+
+  /** Like the real SerialPort: null until the port is open. */
+  get readable(): { getReader(): SerialReaderLike } | null {
+    if (!this.isOpen) return null;
+    return {
+      getReader: () => {
+        this.reader.locked = true;
+        this.readerLocked = true;
+        this.reader.onRelease = () => {
+          this.events.push('reader.release');
+          this.readerLocked = false;
+        };
+        return this.reader;
+      }
+    };
+  }
+
+  get writable(): { getWriter(): SerialWriterLike } | null {
+    if (!this.isOpen) return null;
+    return {
+      getWriter: () => {
+        this.writerLocked = true;
+        return new FakeWriter(this);
+      }
+    };
+  }
+
   open(options: { baudRate: number; flowControl: 'none' | 'hardware'; bufferSize?: number }): Promise<void> {
     if (this.failOpen) return Promise.reject(new Error(this.failOpen));
+    if (this.isOpen) return Promise.reject(new DOMException('The port is already open.', 'InvalidStateError'));
+    this.isOpen = true;
+    this.closed = false;
+    this.openCount++;
     this.openArgs = options;
     return Promise.resolve();
   }
+
   close(): Promise<void> {
+    this.events.push('port.close');
+    if (this.failClose > 0) {
+      this.failClose--;
+      return Promise.reject(new Error('close failed'));
+    }
+    if (this.readerLocked || this.writerLocked) {
+      return Promise.reject(new TypeError('Cannot close a port while its streams are locked'));
+    }
+    this.isOpen = false;
     this.closed = true;
+    this.closeCount++;
     return Promise.resolve();
   }
+
   getInfo() { return this.info; }
 }
 

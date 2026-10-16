@@ -5,10 +5,13 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { ScreenComponent } from './screen.component';
 import { ScreenOutputService } from '../../services/screen/screen-output.service';
-import { SERIAL_API } from '../../services/screen/serial-link.service';
+import { SECURE_CONTEXT, SERIAL_API } from '../../services/screen/serial-link.service';
+import { LOCKS_API, LOCK_DESK_DISPLAY } from '../../services/web-locks';
+import { FakeLockManager, flushLocks } from '../../services/testing/fake-locks';
 import { TranslationService } from '../../services/translation.service';
 import { FakePort, FakeSerial } from '../../services/screen/testing/fake-serial';
 import { REQUIRED_FONT_SHORTHANDS } from '../../services/screen/screen-renderer';
+import { AlarmService } from '../../services/alarm.service';
 
 describe('ScreenComponent (Desk Display page)', () => {
   let serial: FakeSerial | null;
@@ -25,7 +28,8 @@ describe('ScreenComponent (Desk Display page)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: SERIAL_API, useValue: serial }
+        { provide: SERIAL_API, useValue: serial },
+        { provide: LOCKS_API, useValue: null }
       ]
     });
     const fixture = TestBed.createComponent(ScreenComponent);
@@ -182,15 +186,94 @@ describe('ScreenComponent (Desk Display page)', () => {
       expect(description).toContain('Chrome or Edge');
     });
 
+    it('flags a display that did not answer the handshake, but keeps using it', async () => {
+      const { el, fixture } = await render();
+      await TestBed.inject(ScreenOutputService).connect(); // the fake port stays silent
+      await new Promise(r => setTimeout(r, 1000));
+      fixture.detectChanges();
+      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="device-warning"]')!.textContent).toContain('did not answer the handshake');
+    });
+
+    it('shows no handshake warning for a display that answers', async () => {
+      const { el, fixture } = await render();
+      serial!.picked!.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+      await TestBed.inject(ScreenOutputService).connect();
+      await new Promise(r => setTimeout(r, 400));
+      fixture.detectChanges();
+      expect(text(el)).toContain('Status: connected');
+      expect(el.querySelector('[data-testid="device-warning"]')).toBeNull();
+    });
+
+    it('tells the visitor to keep the page in its own visible window, or use the startup launcher', async () => {
+      const { el } = await render();
+      const note = el.querySelector('[data-testid="window-note"]')!.textContent!;
+      expect(note).toContain('window of its own and visible');
+      expect(note).toContain('startup launcher');
+    });
+
+    it('adds the Linux and macOS notes', async () => {
+      const { el } = await render();
+      const note = el.querySelector('[data-testid="os-note"]')!.textContent!;
+      expect(note).toContain('dialout');
+      expect(note).toContain('CH34x');
+    });
+
+    it('warns while connected and hidden, and only then', async () => {
+      const { el, fixture } = await render();
+      const hide = (hidden: boolean) => {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+        document.dispatchEvent(new Event('visibilitychange'));
+        fixture.detectChanges();
+      };
+      try {
+        hide(true);
+        expect(text(el)).not.toContain('This page is hidden'); // not connected: nothing to lag
+
+        serial!.picked!.reader.replies.push(new Uint8Array([1, 1, 1, 1, 1, 1]));
+        await TestBed.inject(ScreenOutputService).connect();
+        await new Promise(r => setTimeout(r, 400));
+        fixture.detectChanges();
+        expect(text(el)).toContain('This page is hidden');
+
+        hide(false);
+        expect(text(el)).not.toContain('This page is hidden');
+      } finally {
+        delete (document as unknown as { hidden?: boolean }).hidden;
+      }
+    });
+
     it('states the compatibility without suggesting a partnership', async () => {
       const { el } = await render();
-      expect(text(el)).toContain('Compatible with Turing Smart Screen 3.5" (USB) displays.');
+      expect(text(el)).toContain('Compatible with Turing Smart Screen 3.5" class displays (USB 1A86:5722, rev. A).');
       expect(text(el)).toContain('not affiliated with any display manufacturer');
     });
 
     it('never shows a raw translation key', async () => {
       const { el } = await render();
       expect(text(el)).not.toMatch(/SCREEN\.[A-Z_]+\./);
+    });
+  });
+
+  describe('alarms', () => {
+    it('stay silent while the page is open and work again as soon as the visitor leaves it', async () => {
+      jasmine.clock().install();
+      try {
+        jasmine.clock().mockDate(new Date(2026, 0, 15, 7, 29, 50));
+        const { fixture } = await render();
+        const alarms = TestBed.inject(AlarmService);
+
+        alarms.addAlarm({ label: 'Wake up', time: '07:30', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime' });
+        jasmine.clock().tick(11_000);
+        expect(alarms.isAlarmRinging()).withContext('while on /screen').toBeFalse();
+
+        fixture.destroy(); // navigating away from /screen in the same app
+        alarms.addAlarm({ label: 'Next', time: '07:31', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime' });
+        jasmine.clock().tick(60_000);
+        expect(alarms.isAlarmRinging()).withContext('after leaving /screen').toBeTrue();
+      } finally {
+        jasmine.clock().uninstall();
+      }
     });
   });
 
@@ -224,5 +307,84 @@ describe('ScreenComponent (Desk Display page)', () => {
       await render(false);
       expect(TestBed.inject(ScreenOutputService).demoActive()).toBeTrue();
     });
+  });
+});
+
+describe('ScreenComponent: a second window', () => {
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) await Promise.resolve();
+    await new Promise(r => setTimeout(r, 0));
+  };
+  const hasConnectButton = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button')).some(b => (b.textContent ?? '').includes('Connect display'));
+
+  it('shows "active in another window" and no way to connect while the first window owns the display', async () => {
+    const locks = new FakeLockManager();
+    // The first window already holds the display lock.
+    let release!: () => void;
+    void locks.request(LOCK_DESK_DISPLAY, () => new Promise<void>(r => (release = r)));
+    await settle();
+
+    TestBed.configureTestingModule({
+      imports: [ScreenComponent],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: SERIAL_API, useValue: new FakeSerial() },
+        { provide: LOCKS_API, useValue: locks }
+      ]
+    });
+    const fixture = TestBed.createComponent(ScreenComponent);
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    await settle();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(TestBed.inject(ScreenOutputService).ownership()).toBe('other');
+    expect(el.querySelector('[data-testid="other-window"]')).toBeTruthy();
+    expect((el.textContent ?? '').replace(/\s+/g, ' ')).toContain('Desk Display active in another window');
+    expect(hasConnectButton(el)).toBeFalse();
+    expect(el.querySelector('canvas')).toBeTruthy(); // the preview still works
+
+    // When the other window goes away this one takes over and shows the normal steps.
+    release();
+    await settle();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="other-window"]')).toBeNull();
+    expect(hasConnectButton(el)).toBeTrue();
+    fixture.destroy();
+  });
+});
+
+describe('ScreenComponent: Web Serial missing because of plain http', () => {
+  function render(secure: boolean): HTMLElement {
+    TestBed.configureTestingModule({
+      imports: [ScreenComponent],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: SERIAL_API, useValue: null },
+        { provide: SECURE_CONTEXT, useValue: secure },
+        { provide: LOCKS_API, useValue: null }
+      ]
+    });
+    const fixture = TestBed.createComponent(ScreenComponent);
+    fixture.detectChanges();
+    TestBed.inject(ApplicationRef).tick();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ');
+
+  it('says it needs HTTPS or localhost, not "use Chrome"', () => {
+    const el = render(false);
+    expect(el.querySelector('[data-testid="insecure-context"]')).toBeTruthy();
+    expect(text(el)).toContain('Web Serial needs HTTPS or localhost');
+    expect(text(el)).not.toContain('needs Chrome or Edge');
+  });
+
+  it('a secure page in a browser without Web Serial still says to use Chrome or Edge', () => {
+    const el = render(true);
+    expect(el.querySelector('[data-testid="insecure-context"]')).toBeNull();
+    expect(text(el)).toContain('needs Chrome or Edge');
   });
 });

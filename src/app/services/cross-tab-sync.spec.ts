@@ -5,6 +5,7 @@ import { AnalyticsService } from './analytics.service';
 import { PomodoroService } from './pomodoro.service';
 import { AudioService } from './audio.service';
 import { AlarmService } from './alarm.service';
+import { LOCKS_API } from './web-locks';
 import { DashboardService } from './dashboard.service';
 import { WorldClockService } from './world-clock.service';
 
@@ -58,26 +59,10 @@ describe('cross-tab sync', () => {
 
   it('alarms: applies the list from another tab', () => {
     const alarms = TestBed.inject(AlarmService);
-    alarms.stopChecker();
     otherTabWrites('auratime_alarms', [
       { id: 'a1', label: 'Wake up', time: '07:30', days: [], enabled: true, snoozeMinutes: 10, sound: 'chime' }
     ]);
     expect(alarms.allAlarms().map(a => a.label)).toEqual(['Wake up']);
-  });
-
-  it('alarms: stopChecker stops the ring check interval', () => {
-    jasmine.clock().install();
-    try {
-      const alarms = TestBed.inject(AlarmService);
-      const check = spyOn<any>(alarms, 'checkAlarms');
-      jasmine.clock().tick(2000);
-      expect(check).toHaveBeenCalledTimes(2);
-      alarms.stopChecker();
-      jasmine.clock().tick(5000);
-      expect(check).toHaveBeenCalledTimes(2);
-    } finally {
-      jasmine.clock().uninstall();
-    }
   });
 
   it('dashboard: applies the countdown from another tab', () => {
@@ -101,7 +86,7 @@ describe('cross-tab sync', () => {
 
     function setup(): { pomodoro: PomodoroService; analytics: AnalyticsService } {
       TestBed.configureTestingModule({
-        providers: [{
+        providers: [{ provide: LOCKS_API, useValue: null }, {
           provide: AudioService,
           useValue: { initAudioContext: () => Promise.resolve(), playChimeSound: () => chimes++ }
         }]

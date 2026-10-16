@@ -46,7 +46,7 @@ describe('LandingPageComponent: Desk Display', () => {
     await showMockup(fixture);
     expect(section.querySelector('app-desk-display-mock canvas')).toBeTruthy();
     expect(section.querySelectorAll('ol > li').length).toBe(3);
-    expect(section.textContent).toContain('Compatible with Turing Smart Screen 3.5" (USB) displays.');
+    expect(section.textContent).toContain('Compatible with Turing Smart Screen 3.5" class displays (USB 1A86:5722, rev. A).');
     expect(section.querySelector('a[href="/screen"]')).toBeTruthy();
   });
 

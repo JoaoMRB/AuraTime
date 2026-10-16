@@ -16,7 +16,7 @@ import { SoundscapeService } from '../../services/soundscape.service';
 import { TaskService } from '../../services/task.service';
 import { NotesService } from '../../services/notes.service';
 import { AnalyticsService } from '../../services/analytics.service';
-import { WeatherService } from '../../services/weather.service';
+import { WeatherCity, WeatherService } from '../../services/weather.service';
 import { DashboardService } from '../../services/dashboard.service';
 import { PipService } from '../../services/pip.service';
 import { TickService } from '../../services/screen/tick.service';
@@ -115,6 +115,42 @@ export class ClockComponent implements OnInit, OnDestroy {
   // Edit alarm state
   editingAlarmId = signal<string | null>(null);
   editAlarm = signal<Partial<Alarm> | null>(null);
+
+  // Weather location picker (settings)
+  citySearch = signal<string>('');
+  cityResults = signal<WeatherCity[]>([]);
+  cityState = signal<'idle' | 'searching' | 'empty' | 'error'>('idle');
+
+  /** The place shown next to the weather, in the app language. */
+  weatherPlace = computed(() => {
+    const weather = this.weatherService.weather();
+    return weather ? this.weatherService.placeLabel(weather) : '';
+  });
+
+  async searchCity(): Promise<void> {
+    const query = this.citySearch().trim();
+    if (query.length < 2) return;
+    this.cityState.set('searching');
+    try {
+      const results = await this.weatherService.searchCities(query);
+      this.cityResults.set(results);
+      this.cityState.set(results.length ? 'idle' : 'empty');
+    } catch {
+      this.cityResults.set([]);
+      this.cityState.set('error');
+    }
+  }
+
+  async chooseCity(city: WeatherCity): Promise<void> {
+    this.cityResults.set([]);
+    this.citySearch.set('');
+    this.cityState.set('idle');
+    await this.weatherService.chooseCity(city);
+  }
+
+  async useMyLocation(): Promise<void> {
+    await this.weatherService.useMyLocation();
+  }
 
   // Day labels (index 0 = Sunday)
   getDayLabel(day: number): string {

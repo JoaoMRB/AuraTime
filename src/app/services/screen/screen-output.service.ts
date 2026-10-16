@@ -10,8 +10,11 @@ import { isFiniteNumber, isRecord, parseJson, readStorage, writeStorage } from '
 import { REQUIRED_FONT_SHORTHANDS, drawScreen } from './screen-renderer';
 import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot';
 import {
-  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
+  BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, DEFAULT_VIEW_DURATIONS, ViewDurations, ViewInputs, RotationInfo,
+  clampViewSeconds, MIN_VIEW_SECONDS, MAX_VIEW_SECONDS, effectiveBrightness, offsetToShow, rotationInfo, pixelShift, viewHasContent
 } from './screen-logic';
+import { DisplaySnapshot } from './display-snapshot';
+import { DEFAULT_BAND_PAUSE_MS, MAX_BAND_PAUSE_MS } from './serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
 
@@ -32,6 +35,12 @@ export interface ScreenPrefs {
   alwaysFullFrame: boolean;
   /** Diagnostic: pause 3 ms after every chunk (what the prototype called "slow send"). */
   slowSend: boolean;
+  /** Pause after each band of a tall frame, 0..20 ms. */
+  bandPauseMs: number;
+  /** Order of the views in the rotation (a permutation of every view). */
+  viewOrder: ScreenView[];
+  /** Seconds each view stays on screen in the automatic rotation (10..60). */
+  viewSeconds: ViewDurations;
   /** The display was connected last time: try to reconnect on startup. */
   autoConnect: boolean;
 }
@@ -69,6 +78,23 @@ export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
     out.brightness = { ...DEFAULT_BRIGHTNESS_CONFIG, ...brightness };
   }
 
+  if (Array.isArray(raw['viewOrder'])) {
+    // keep the stored order of the valid, distinct views, then add any view the list was missing
+    const seen = (raw['viewOrder'] as unknown[]).filter((v, i, all): v is ScreenView =>
+      (ALL_SCREEN_VIEWS as readonly unknown[]).includes(v) && all.indexOf(v) === i);
+    out.viewOrder = [...seen, ...ALL_SCREEN_VIEWS.filter(v => !seen.includes(v))];
+  }
+  if (isRecord(raw['viewSeconds'])) {
+    const seconds = { ...DEFAULT_VIEW_DURATIONS };
+    for (const view of ALL_SCREEN_VIEWS) {
+      const value = clampInt(raw['viewSeconds'][view], MIN_VIEW_SECONDS, MAX_VIEW_SECONDS);
+      if (value !== undefined) seconds[view] = value;
+    }
+    out.viewSeconds = seconds;
+  }
+  const pause = clampInt(raw['bandPauseMs'], 0, MAX_BAND_PAUSE_MS);
+  if (pause !== undefined) out.bandPauseMs = pause;
+
   for (const key of ['flowControl', 'demo', 'alwaysFullFrame', 'slowSend', 'autoConnect'] as const) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
   }
@@ -78,6 +104,10 @@ export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
 }
 /** Resend the whole frame this often to heal any glitch on the display. */
 const FULL_REFRESH_MS = 5 * 60 * 1000;
+/** A send that has been in progress this long means the link is stuck (a healthy frame takes a second or two). */
+const WATCHDOG_MS = 30000;
+/** After a beforeunload that did not unload the page (something cancelled it), the link is released again. */
+const UNLOAD_GRACE_MS = 2000;
 /**
  * Time between ticks above which we assume the PC slept (ticks are 1 s apart). Only applied while the page is
  * visible: a hidden page is throttled by the browser (1 tick a second, then about 1 a minute) and that gap
@@ -98,6 +128,9 @@ const DEFAULT_PREFS: ScreenPrefs = {
   demo: true,
   alwaysFullFrame: false,
   slowSend: false,
+  bandPauseMs: DEFAULT_BAND_PAUSE_MS,
+  viewOrder: [...ALL_SCREEN_VIEWS],
+  viewSeconds: { ...DEFAULT_VIEW_DURATIONS },
   autoConnect: false
 };
 
@@ -132,6 +165,21 @@ export class ScreenOutputService implements OnDestroy {
   readonly viewMode = signal<ScreenViewMode>(DEFAULT_PREFS.viewMode);
   /** Views that take part in the automatic rotation (only those with content are actually shown). */
   readonly rotation = signal<ScreenView[]>(DEFAULT_PREFS.rotation);
+  /** Order in which the views rotate (every view appears once; `rotation` says which of them take part). */
+  readonly viewOrder = signal<ScreenView[]>(DEFAULT_PREFS.viewOrder);
+  /** Seconds each view stays on screen in the automatic rotation. */
+  readonly viewSeconds = signal<ViewDurations>(DEFAULT_PREFS.viewSeconds);
+  /** The automatic rotation is held on the current view (not saved: a reload resumes the rotation). */
+  readonly paused = signal(false);
+  private pausedView: ScreenView = 'clock';
+  /** A view is pinned (the display stays on it). */
+  readonly pinned = computed(() => this.viewMode() !== 'auto');
+  /** Where the rotation is right now, for the progress bar. */
+  readonly rotationProgress = signal<RotationInfo>({ view: 'clock', rotating: false, elapsedSec: 0, durationSec: 0 });
+  /** When the current connection came up (ms since the epoch), or null. */
+  readonly connectedAt = signal<number | null>(null);
+  private rotationOffsetSec = 0;
+  private redrawQueued = false;
   readonly brightness = signal<BrightnessConfig>(DEFAULT_PREFS.brightness);
   readonly flowControl = signal<boolean>(DEFAULT_PREFS.flowControl);
   /** Pinned theme / font; null means "follow the app". */
@@ -148,6 +196,7 @@ export class ScreenOutputService implements OnDestroy {
   );
   readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
+  readonly bandPauseMs = signal<number>(DEFAULT_PREFS.bandPauseMs);
   /** The view currently on screen (useful for the preview UI). */
   readonly activeView = signal<ScreenView>('clock');
   /** Diagnostic: full redraws forced because a transfer failed (the display's state was then unknown). */
@@ -171,6 +220,13 @@ export class ScreenOutputService implements OnDestroy {
   private autoConnect = DEFAULT_PREFS.autoConnect;
   private started = false;
   private busy = false;
+  /** Identifies the send that owns `busy`: a send abandoned by a resync must not clear it for the next one. */
+  private busyRun = 0;
+  private busySince = 0;
+  private resyncing = false;
+  private unloadTimer: ReturnType<typeof setTimeout> | null = null;
+  /** No frame in progress for this long (while something is waiting to be sent) means the link is stuck. */
+  watchdogMs = WATCHDOG_MS;
   private prevFrame: Uint16Array | null = null;
   /**
    * Bumped whenever prevFrame is invalidated. A send that was already in flight must not
@@ -191,6 +247,10 @@ export class ScreenOutputService implements OnDestroy {
 
       effect(() => this.persistPrefs());
       effect(() => {
+        const pause = this.bandPauseMs();
+        untracked(() => this.link.bandPauseMs.set(pause));
+      });
+      effect(() => {
         const delay = this.slowSend() ? SLOW_SEND_CHUNK_DELAY_MS : 0;
         untracked(() => this.link.chunkDelayMs.set(delay));
       });
@@ -203,6 +263,18 @@ export class ScreenOutputService implements OnDestroy {
       });
 
       // A fresh connection starts from a blank display: resend everything.
+      effect(() => {
+        const connected = this.link.status() === 'connected';
+        untracked(() => this.connectedAt.set(connected ? (this.connectedAt() ?? Date.now()) : null));
+      }, { allowSignalWrites: true });
+
+      // A change made on the page shows in the preview at once, not on the next tick.
+      effect(() => {
+        this.viewMode(); this.rotation(); this.viewOrder(); this.viewSeconds(); this.paused();
+        this.themePin(); this.fontPin(); this.brightness(); this.demoActive();
+        untracked(() => this.scheduleRedraw());
+      });
+
       effect(() => {
         if (this.link.status() === 'connected') {
           untracked(() => {
@@ -232,6 +304,8 @@ export class ScreenOutputService implements OnDestroy {
     // The loop runs outside Angular's zone: change detection between two chunks of one bitmap
     // would open gaps in the serial stream, which the display may not tolerate.
     window.addEventListener('pagehide', this.onPageHide);
+    window.addEventListener('beforeunload', this.onBeforeUnload);
+    window.addEventListener('pageshow', this.onPageShow);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.unsubscribeTick = this.tick.onTick(() => this.zone.runOutsideAngular(() => void this.renderFrame()));
     // The first frame also kicks off the reconnection to the display used last time (if any).
@@ -244,6 +318,9 @@ export class ScreenOutputService implements OnDestroy {
     this.started = false;
     if (this.isBrowser) {
       window.removeEventListener('pagehide', this.onPageHide);
+      window.removeEventListener('beforeunload', this.onBeforeUnload);
+      window.removeEventListener('pageshow', this.onPageShow);
+      if (this.unloadTimer) clearTimeout(this.unloadTimer);
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
       if (this.isOwner()) this.deskStatus.publish(false); // a window that never owned the display says nothing
       this.releaseDisplay();
@@ -297,8 +374,34 @@ export class ScreenOutputService implements OnDestroy {
 
   /** The Desk Display window is going away: other windows must not keep showing "connected". */
   private onPageHide = () => {
+    this.link.suspend();
     if (this.isOwner()) this.deskStatus.publish(false);
   };
+
+  /**
+   * The page may be about to go away (a reload, the dev server's live reload, closing the window): stop queuing
+   * frames so no bitmap is left half-sent. A frame in progress stops after its current band. If the page
+   * stays (something cancelled the unload) the link is released again after a moment, and redrawn in full.
+   */
+  private onBeforeUnload = () => {
+    this.link.suspend();
+    if (this.unloadTimer) clearTimeout(this.unloadTimer);
+    this.unloadTimer = setTimeout(() => {
+      this.unloadTimer = null;
+      this.resumeAfterUnload();
+    }, UNLOAD_GRACE_MS);
+  };
+
+  /** Back from the back/forward cache: the display may have been reset meanwhile. */
+  private onPageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) this.resumeAfterUnload();
+  };
+
+  private resumeAfterUnload(): void {
+    if (!this.link.isSuspended()) return;
+    this.link.resume();
+    this.invalidateFrame(); // a frame may have been stopped between two bands
+  }
 
   /** Tell the other windows right away that this page is (no longer) hidden, so their indicator stays right. */
   private onVisibilityChange = () => {
@@ -360,28 +463,141 @@ export class ScreenOutputService implements OnDestroy {
 
   /* ------------------------------ rendering ------------------------------ */
 
-  /** Draws the current snapshot and, if connected, pushes the changes. Safe to call at any time. */
-  async renderFrame(): Promise<void> {
-    if (!this.ctx || !this.canvas) return;
-
+  /** The snapshot the display draws: the app's data, or sample data in demo mode, with the pinned theme and font. */
+  buildSnapshot(): DisplaySnapshot {
     let snap = this.display.snapshot();
     if (this.demoActive()) snap = fillDemoData(snap);
     const themePin = this.themePin();
     const fontPin = this.fontPin();
     if (themePin || fontPin) snap = { ...snap, theme: themePin ?? snap.theme, fontId: fontPin ?? snap.fontId };
-    const now = snap.now;
-    const view = pickView({
-      mode: this.viewMode(),
+    return snap;
+  }
+
+  /** What to show right now, from the snapshot and the user's choices. */
+  private rotationInputs(snap: DisplaySnapshot): ViewInputs {
+    return {
+      mode: this.paused() && this.viewMode() === 'auto' ? this.pausedView : this.viewMode(),
       focusRunning: snap.focus.phase !== 'idle',
       enabled: this.rotation(),
       hasContent: viewHasContent(snap),
-      nowMs: now.getTime()
-    });
-    const { level, black } = effectiveBrightness(now, this.brightness());
+      nowMs: snap.now.getTime(),
+      order: this.viewOrder(),
+      durations: this.viewSeconds(),
+      offsetSec: this.rotationOffsetSec
+    };
+  }
 
-    this.activeView.set(view);
+  /** Draws the current state on the canvas (the preview, and the picture sent to the display). */
+  private paint(): { now: Date; level: number } {
+    const snap = this.buildSnapshot();
+    const now = snap.now;
+    const info = rotationInfo(this.rotationInputs(snap));
+    const { level, black } = effectiveBrightness(now, this.brightness());
+    this.activeView.set(info.view);
+    this.rotationProgress.set(info);
     this.appliedBrightness.set(level);
-    drawScreen(this.ctx, snap, view, { shift: pixelShift(now), black });
+    drawScreen(this.ctx!, snap, info.view, { shift: pixelShift(now), black });
+    return { now, level };
+  }
+
+  /** Redraws the preview only (never sends), at most once per animation frame. */
+  private scheduleRedraw(): void {
+    if (!this.isBrowser || !this.ctx || this.redrawQueued || !this.started) return;
+    this.redrawQueued = true;
+    this.zone.runOutsideAngular(() => requestAnimationFrame(() => {
+      this.redrawQueued = false;
+      if (this.started) this.paint();
+    }));
+  }
+
+  /** A frame is being handed to the display right now. */
+  isSending(): boolean {
+    return this.busy;
+  }
+
+  /** Draws and sends right away, outside Angular's zone (for the previous / next buttons). */
+  renderNow(): void {
+    this.zone.runOutsideAngular(() => void this.renderFrame());
+  }
+
+  /* ------------------------------ view controls ------------------------------ */
+
+  /** Views the rotation shows right now: enabled, with something to show, in rotation order. */
+  activeRotation(): ScreenView[] {
+    const content = viewHasContent(this.buildSnapshot());
+    return this.viewOrder().filter(v => this.rotation().includes(v) && content[v]);
+  }
+
+  private neighbour(delta: 1 | -1): ScreenView {
+    const views = this.activeRotation();
+    const list = views.length ? views : this.viewOrder();
+    const at = list.indexOf(this.activeView());
+    return list[at < 0 ? 0 : (at + delta + list.length) % list.length];
+  }
+
+  /** Previous / next view. Pinned: moves the pin. Paused: moves the held view. Rotating: jumps in the rotation. */
+  stepView(delta: 1 | -1): void {
+    const target = this.neighbour(delta);
+    if (this.pinned()) {
+      this.viewMode.set(target);
+    } else if (this.paused()) {
+      this.pausedView = target;
+    } else {
+      const snap = this.buildSnapshot();
+      this.rotationOffsetSec = offsetToShow({ ...this.rotationInputs(snap), offsetSec: 0 }, target, 0);
+    }
+    this.paint();
+    this.renderNow();
+  }
+
+  /** Holds the rotation on the view now showing, or lets it go on from where it stopped. */
+  togglePause(): void {
+    if (this.pinned()) return; // a pinned view is already held
+    if (this.paused()) {
+      const snap = this.buildSnapshot();
+      const info = this.rotationProgress();
+      this.rotationOffsetSec = offsetToShow({ ...this.rotationInputs(snap), mode: 'auto', offsetSec: 0 }, this.pausedView, info.elapsedSec);
+      this.paused.set(false);
+    } else {
+      this.pausedView = this.activeView();
+      this.paused.set(true);
+    }
+    this.paint();
+  }
+
+  /** Keeps the display on one view (or, with null, goes back to the automatic rotation). */
+  pinView(view: ScreenView | null): void {
+    this.paused.set(false);
+    this.viewMode.set(view ?? 'auto');
+    this.paint();
+    this.renderNow();
+  }
+
+  /** Moves a view up or down in the rotation order. */
+  moveView(view: ScreenView, delta: -1 | 1): void {
+    this.moveViewTo(view, this.viewOrder().indexOf(view) + delta);
+  }
+
+  /** Puts a view at a given position of the rotation order. */
+  moveViewTo(view: ScreenView, index: number): void {
+    const order = this.viewOrder();
+    const from = order.indexOf(view);
+    const to = Math.min(order.length - 1, Math.max(0, index));
+    if (from < 0 || from === to) return;
+    const next = order.filter(v => v !== view);
+    next.splice(to, 0, view);
+    this.viewOrder.set(next);
+  }
+
+  setViewSeconds(view: ScreenView, seconds: number): void {
+    this.viewSeconds.update(d => ({ ...d, [view]: clampViewSeconds(seconds) }));
+  }
+
+  /** Draws the current snapshot and, if connected, pushes the changes. Safe to call at any time. */
+  async renderFrame(): Promise<void> {
+    if (!this.ctx || !this.canvas) return;
+
+    const { now, level } = this.paint();
 
     if (Date.now() - this.lastHeartbeat >= DESK_STATUS_HEARTBEAT_MS) {
       this.publishStatus(this.link.isConnected());
@@ -403,8 +619,15 @@ export class ScreenOutputService implements OnDestroy {
       return;
     }
     this.reconnectFailures = 0;
-    if (this.busy) return;
+    // The page is unloading: no new frame may start (it could be left half-sent).
+    if (this.link.isSuspended()) return;
+    if (this.busy) {
+      if (wallNow - this.busySince > this.watchdogMs) await this.resync();
+      return;
+    }
     this.busy = true;
+    this.busySince = wallNow;
+    const run = ++this.busyRun;
     try {
       if (now.getTime() - this.lastFullRefresh > FULL_REFRESH_MS) {
         this.invalidateFrame();
@@ -414,8 +637,11 @@ export class ScreenOutputService implements OnDestroy {
         await this.link.setBrightness(level);
         this.lastSentBrightness = level;
       }
+      // A full frame starts from a known orientation: the display may have lost it (a reset, a power glitch).
+      if (this.prevFrame === null && !this.alwaysFullFrame()) await this.link.setOrientation();
       await this.pushFrame();
     } catch (e) {
+      if (run !== this.busyRun) return; // this send was abandoned by a resync: the link was rebuilt meanwhile
       // A bitmap may have been cut off mid-way: the display could be waiting for pixels that will never come,
       // so nothing it shows can be trusted. Drop the port (the reconnection re-initialises it) and redraw it
       // all, band by band, before any partial update is sent again.
@@ -423,7 +649,25 @@ export class ScreenOutputService implements OnDestroy {
       this.forcedFullRedraws.update(n => n + 1);
       await this.link.fail(e);
     } finally {
+      if (run === this.busyRun) this.busy = false;
+    }
+  }
+
+  /**
+   * The link says "connected" but a send has not finished for `watchdogMs`: treat the display as stuck. Drops
+   * the port and brings it back with a RESET; the next frame is a full, banded redraw.
+   */
+  private async resync(): Promise<void> {
+    if (this.resyncing) return;
+    this.resyncing = true;
+    try {
+      this.busyRun++; // the stuck send no longer owns `busy`
       this.busy = false;
+      this.invalidateFrame();
+      this.forcedFullRedraws.update(n => n + 1);
+      await this.link.hardResync(this.connectOptions());
+    } finally {
+      this.resyncing = false;
     }
   }
 
@@ -466,6 +710,8 @@ export class ScreenOutputService implements OnDestroy {
     const p = sanitizeScreenPrefs(parseJson(readStorage(STORAGE_KEY)));
     if (p.viewMode) this.viewMode.set(p.viewMode);
     if (p.rotation) this.rotation.set(p.rotation);
+    if (p.viewOrder) this.viewOrder.set(p.viewOrder);
+    if (p.viewSeconds) this.viewSeconds.set(p.viewSeconds);
     if (p.brightness) this.brightness.set(p.brightness);
     if (p.flowControl !== undefined) this.flowControl.set(p.flowControl);
     if (p.themePin) this.themePin.set(p.themePin);
@@ -473,6 +719,7 @@ export class ScreenOutputService implements OnDestroy {
     if (p.demo !== undefined) this.demoEnabled.set(p.demo);
     if (p.alwaysFullFrame !== undefined) this.alwaysFullFrame.set(p.alwaysFullFrame);
     if (p.slowSend !== undefined) this.slowSend.set(p.slowSend);
+    if (p.bandPauseMs !== undefined) this.bandPauseMs.set(p.bandPauseMs);
     if (p.autoConnect !== undefined) this.autoConnect = p.autoConnect;
   }
 
@@ -480,6 +727,8 @@ export class ScreenOutputService implements OnDestroy {
     const prefs: ScreenPrefs = {
       viewMode: this.viewMode(),
       rotation: this.rotation(),
+      viewOrder: this.viewOrder(),
+      viewSeconds: this.viewSeconds(),
       brightness: this.brightness(),
       flowControl: this.flowControl(),
       themePin: this.themePin(),
@@ -487,6 +736,7 @@ export class ScreenOutputService implements OnDestroy {
       demo: this.demoEnabled(),
       alwaysFullFrame: this.alwaysFullFrame(),
       slowSend: this.slowSend(),
+      bandPauseMs: this.bandPauseMs(),
       autoConnect: this.autoConnect
     };
     writeStorage(STORAGE_KEY, JSON.stringify(prefs));

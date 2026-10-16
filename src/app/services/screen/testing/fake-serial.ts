@@ -48,6 +48,7 @@ export class FakeWriter implements SerialWriterLike {
       if (this.aborted) return; // the stream was aborted while this write was waiting
       this.port.writes.push(chunk.slice());
       this.port.deliver(chunk);
+      this.port.log.push(chunk.length === 6 && chunk[5] === 197 ? 'header' : 'data');
     } finally {
       this.pendingWrites--;
     }
@@ -86,6 +87,8 @@ export class FakePort implements SerialPortLike {
   gate: Promise<void> | null = null;
   /** Writes accepted so far, and the count after which every further write hangs (null = never). */
   writeCount = 0;
+  /** Order of writes ('header' for a DISPLAY_BITMAP header, 'data' for any other write); tests may add markers. */
+  log: string[] = [];
   stallAfterWrites: number | null = null;
   /** Every write takes this long to be accepted (a slow display behind flow control). */
   writeDelayMs = 0;

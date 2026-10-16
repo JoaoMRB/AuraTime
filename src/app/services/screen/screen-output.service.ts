@@ -12,6 +12,7 @@ import { ALL_SCREEN_VIEWS, ScreenView, ScreenViewMode } from './display-snapshot
 import {
   BrightnessConfig, DEFAULT_BRIGHTNESS_CONFIG, effectiveBrightness, pickView, pixelShift, viewHasContent
 } from './screen-logic';
+import { DEFAULT_BAND_PAUSE_MS, MAX_BAND_PAUSE_MS } from './serial-link.service';
 import { LOCKS_API, LOCK_DESK_DISPLAY } from '../web-locks';
 import { SCREEN_HEIGHT, SCREEN_WIDTH, diffRect, extractRect, rgbaToRgb565 } from './turing-protocol';
 
@@ -32,6 +33,8 @@ export interface ScreenPrefs {
   alwaysFullFrame: boolean;
   /** Diagnostic: pause 3 ms after every chunk (what the prototype called "slow send"). */
   slowSend: boolean;
+  /** Pause after each band of a tall frame, 0..20 ms. */
+  bandPauseMs: number;
   /** The display was connected last time: try to reconnect on startup. */
   autoConnect: boolean;
 }
@@ -69,6 +72,9 @@ export function sanitizeScreenPrefs(raw: unknown): Partial<ScreenPrefs> {
     out.brightness = { ...DEFAULT_BRIGHTNESS_CONFIG, ...brightness };
   }
 
+  const pause = clampInt(raw['bandPauseMs'], 0, MAX_BAND_PAUSE_MS);
+  if (pause !== undefined) out.bandPauseMs = pause;
+
   for (const key of ['flowControl', 'demo', 'alwaysFullFrame', 'slowSend', 'autoConnect'] as const) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
   }
@@ -98,6 +104,7 @@ const DEFAULT_PREFS: ScreenPrefs = {
   demo: true,
   alwaysFullFrame: false,
   slowSend: false,
+  bandPauseMs: DEFAULT_BAND_PAUSE_MS,
   autoConnect: false
 };
 
@@ -148,6 +155,7 @@ export class ScreenOutputService implements OnDestroy {
   );
   readonly alwaysFullFrame = signal<boolean>(DEFAULT_PREFS.alwaysFullFrame);
   readonly slowSend = signal<boolean>(DEFAULT_PREFS.slowSend);
+  readonly bandPauseMs = signal<number>(DEFAULT_PREFS.bandPauseMs);
   /** The view currently on screen (useful for the preview UI). */
   readonly activeView = signal<ScreenView>('clock');
   /** Diagnostic: full redraws forced because a transfer failed (the display's state was then unknown). */
@@ -190,6 +198,10 @@ export class ScreenOutputService implements OnDestroy {
       this.loadPrefs();
 
       effect(() => this.persistPrefs());
+      effect(() => {
+        const pause = this.bandPauseMs();
+        untracked(() => this.link.bandPauseMs.set(pause));
+      });
       effect(() => {
         const delay = this.slowSend() ? SLOW_SEND_CHUNK_DELAY_MS : 0;
         untracked(() => this.link.chunkDelayMs.set(delay));
@@ -473,6 +485,7 @@ export class ScreenOutputService implements OnDestroy {
     if (p.demo !== undefined) this.demoEnabled.set(p.demo);
     if (p.alwaysFullFrame !== undefined) this.alwaysFullFrame.set(p.alwaysFullFrame);
     if (p.slowSend !== undefined) this.slowSend.set(p.slowSend);
+    if (p.bandPauseMs !== undefined) this.bandPauseMs.set(p.bandPauseMs);
     if (p.autoConnect !== undefined) this.autoConnect = p.autoConnect;
   }
 
@@ -487,6 +500,7 @@ export class ScreenOutputService implements OnDestroy {
       demo: this.demoEnabled(),
       alwaysFullFrame: this.alwaysFullFrame(),
       slowSend: this.slowSend(),
+      bandPauseMs: this.bandPauseMs(),
       autoConnect: this.autoConnect
     };
     writeStorage(STORAGE_KEY, JSON.stringify(prefs));

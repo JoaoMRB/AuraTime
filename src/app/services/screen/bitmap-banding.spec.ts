@@ -153,6 +153,49 @@ describe('SerialLinkService: tall bitmaps go out as bands', () => {
     expect(stream[8 * (6 + 38400) + 5]).toBe(110);
   });
 
+  describe('pause between bands', () => {
+    const PAUSE = 17; // a value nothing else in the link waits for, so the spy below sees only band pauses
+
+    function recordPauses(): void {
+      const real = window.setTimeout.bind(window);
+      spyOn(window, 'setTimeout').and.callFake(((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+        if (ms === PAUSE) port.log.push('pause');
+        return real(fn, ms, ...args);
+      }) as typeof window.setTimeout);
+    }
+
+    it('is 3 ms by default', () => {
+      expect(link.bandPauseMs()).toBe(3);
+    });
+
+    it('happens after each band, never between a header and its pixels', async () => {
+      link.bandPauseMs.set(PAUSE);
+      recordPauses();
+      port.log.length = 0;
+      await link.sendBitmap({ x0: 0, y0: 0, x1: 479, y1: 319 }, ramp(480 * 320));
+
+      const text = port.log.join(' ');
+      const oneBand = 'header (data )+pause';
+      expect(text).toMatch(new RegExp('^(' + oneBand + '(?: |$)){8}$'));
+      expect(text).not.toContain('header pause'); // nothing between a header and its pixels
+      expect(text).not.toMatch(/pause data/); // nothing but a header follows a pause
+      expect(port.log.filter(e => e === 'pause').length).toBe(8);
+    });
+
+    it('is skipped entirely at 0 ms, and a short frame still gets one pause after its only band', async () => {
+      link.bandPauseMs.set(0);
+      recordPauses();
+      port.log.length = 0;
+      await link.sendBitmap({ x0: 0, y0: 0, x1: 479, y1: 319 }, ramp(480 * 320));
+      expect(port.log).not.toContain('pause');
+
+      link.bandPauseMs.set(PAUSE);
+      port.log.length = 0;
+      await link.sendBitmap({ x0: 0, y0: 0, x1: 9, y1: 9 }, ramp(100));
+      expect(port.log).toEqual(['header', 'data', 'pause']);
+    });
+  });
+
   describe('a port that is slow or loses bytes', () => {
     it('a slow display is not a timeout: a frame far longer than the write timeout succeeds while chunks keep being accepted', async () => {
       link.writeTimeoutMs = 60;

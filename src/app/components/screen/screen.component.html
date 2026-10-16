@@ -319,13 +319,18 @@
                          (change)="output.slowSend.set($any($event.target).checked)">
                   {{ ts.t('SCREEN.PAGE.ADV.SLOW') }}
                 </label>
+                <label class="block">
+                  <span class="flex justify-between"><span>{{ ts.t('SCREEN.PAGE.ADV.BAND_PAUSE') }}</span><span class="font-mono">{{ output.bandPauseMs() }} ms</span></span>
+                  <input type="range" min="0" max="20" step="1" class="w-full accent-[#D4AF37]"
+                         [value]="output.bandPauseMs()" (input)="output.bandPauseMs.set(+$any($event.target).value)">
+                </label>
                 <button type="button" (click)="output.refreshAll()"
                         class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] hover:border-luxury-gold hover:text-luxury-gold transition-colors cursor-pointer">
                   {{ ts.t('SCREEN.PAGE.ADV.REDRAW') }}
                 </button>
                 <p class="text-xs text-gray-500">{{ ts.t('SCREEN.PAGE.ADV.HINT') }}</p>
                 <p class="font-mono text-xs text-gray-300">
-                  {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws() }) }}
+                  {{ ts.format('SCREEN.PAGE.ADV.COUNTERS', { frames: link.framesSent(), bands: link.bandsSent(), timeouts: link.writeTimeouts(), redraws: output.forcedFullRedraws(), pause: output.bandPauseMs() }) }}
                 </p>
                 @if (link.lastSend(); as s) {
                   <p class="font-mono text-xs text-gray-300">

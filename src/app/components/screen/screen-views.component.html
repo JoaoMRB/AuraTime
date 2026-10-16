@@ -7,7 +7,7 @@
   </header>
   <p class="mb-4 text-sm text-gray-300">{{ ts.t('SCREEN.UI.VIEWS.HINT') }}</p>
 
-  <ul class="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2" role="list">
+  <ul class="grid grid-cols-2 gap-3 sm:gap-4" role="list">
     @for (card of cards(); track card.id; let i = $index; let first = $first; let last = $last) {
       <li #cardEl class="group relative flex flex-col overflow-hidden rounded-2xl border bg-black/30 transition-colors"
           [class]="dropTarget() === card.id && dragging() !== card.id ? 'border-luxury-gold' : 'border-white/10'"
@@ -28,7 +28,7 @@
           }
         </div>
 
-        <div class="flex flex-1 flex-col gap-3 p-3">
+        <div class="flex flex-1 flex-col gap-2.5 p-2.5 sm:gap-3 sm:p-3">
           <div class="flex items-center justify-between gap-2">
             <h3 class="min-w-0 truncate text-sm font-semibold text-white">{{ viewLabel(card.id) }}</h3>
             <button type="button" role="switch" class="aura-switch" data-testid="toggle"

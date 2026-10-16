@@ -43,7 +43,7 @@
             } @else {
               <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-gray-100" role="status" data-testid="status-pill">
                 <span class="h-2 w-2 rounded-full" [class]="dotClass()" aria-hidden="true"></span>
-                <span>{{ statusText() }}</span>
+                <span class="inline-block first-letter:uppercase">{{ statusText() }}</span>
               </span>
             }
           </div>
@@ -99,7 +99,7 @@
     <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
 
       <!-- The preview: one instance, in both modes -->
-      <div class="lg:sticky lg:top-24" [class]="controlCentre() ? 'lg:col-span-5' : 'lg:col-span-7'">
+      <div class="lg:sticky lg:top-24" [class]="controlCentre() ? 'lg:col-span-6' : 'lg:col-span-7'">
         @if (ready() && !supported) {
           <p class="mb-3 text-sm text-gray-300">{{ ts.t('SCREEN.PAGE.UNSUPPORTED.PREVIEW') }}</p>
         }
@@ -109,7 +109,7 @@
         }
       </div>
 
-      <div [class]="controlCentre() ? 'space-y-6 lg:col-span-7' : 'space-y-4 lg:col-span-5'">
+      <div [class]="controlCentre() ? 'space-y-6 lg:col-span-6' : 'space-y-4 lg:col-span-5'">
         @if (!ready()) {
           <div class="h-40 animate-pulse rounded-3xl border border-white/10 bg-white/[0.03]" aria-hidden="true"></div>
         } @else if (controlCentre()) {
@@ -125,8 +125,7 @@
           <!-- Setup: step 1, the browser -->
           @if (supported) {
             <article class="aura-panel flex items-center gap-3 px-4 py-3" data-testid="step-browser">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/20 text-emerald-300"
-                    [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 1'"><span class="h-4 w-4"><app-screen-icon name="check" /></span></span>
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/20 text-emerald-300"><span class="sr-only">{{ ts.t('SCREEN.PAGE.STEP') }} 1</span><span class="h-4 w-4" aria-hidden="true"><app-screen-icon name="check" /></span></span>
               <div class="min-w-0">
                 <h2 class="font-playfair text-base text-white">{{ ts.t('SCREEN.PAGE.S1.TITLE') }}</h2>
                 <p class="text-sm text-emerald-200">{{ ts.t('SCREEN.PAGE.S1.OK') }}</p>
@@ -135,8 +134,8 @@
           } @else {
             <article class="aura-panel border-amber-300/40 p-5 sm:p-6" data-testid="step-browser">
               <header class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/20 text-sm font-bold text-amber-300"
-                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 1'">1</span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/20 text-sm font-bold text-amber-300">
+                  <span class="sr-only">{{ ts.t('SCREEN.PAGE.STEP') }} 1</span><span aria-hidden="true">1</span></span>
                 <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S1.TITLE') }}</h2>
               </header>
               @if (link.isInsecureContext()) {
@@ -159,8 +158,8 @@
             <!-- Step 2: connect -->
             <article class="aura-panel border-luxury-gold/50 p-5 shadow-[0_0_30px_rgba(212,175,55,0.08)] sm:p-6">
               <header class="flex items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold"
-                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 2'">2</span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold">
+                  <span class="sr-only">{{ ts.t('SCREEN.PAGE.STEP') }} 2</span><span aria-hidden="true">2</span></span>
                 <h2 class="font-playfair text-lg text-white">{{ ts.t('SCREEN.PAGE.S2.TITLE') }}</h2>
               </header>
 
@@ -189,8 +188,8 @@
             <!-- Step 3: customise (works on the demo preview too) -->
             <article class="aura-panel flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
               <div class="flex min-w-0 items-center gap-3">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold"
-                      [attr.aria-label]="ts.t('SCREEN.PAGE.STEP') + ' 3'">3</span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/40 bg-luxury-gold/15 text-sm font-bold text-luxury-gold">
+                  <span class="sr-only">{{ ts.t('SCREEN.PAGE.STEP') }} 3</span><span aria-hidden="true">3</span></span>
                 <div class="min-w-0">
                   <h2 class="font-playfair text-base text-white">{{ ts.t('SCREEN.PAGE.S3.TITLE') }}</h2>
                   <p class="text-sm text-gray-200">{{ ts.t('SCREEN.UI.SETUP.STEP3_TEXT') }}</p>

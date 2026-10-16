@@ -35,9 +35,11 @@ export class ScreenScheduleComponent {
     return from > to ? [[from, 24], [0, to]] : [[from, to]];
   });
   readonly dayColor = computed(() => `rgba(212, 175, 55, ${0.18 + 0.6 * (this.b().base / 100)})`);
-  readonly nightColor = computed(() =>
-    this.b().nightBlack ? 'rgb(0, 0, 0)' : `rgba(96, 120, 190, ${0.12 + 0.5 * (this.b().nightLevel / 100)})`
-  );
+  /** Opaque (a dark base under the tint), so the night segment does not mix with the day colour. */
+  readonly nightColor = computed(() => {
+    const tint = this.b().nightBlack ? 'rgb(0, 0, 0)' : `rgba(96, 120, 190, ${0.12 + 0.5 * (this.b().nightLevel / 100)})`;
+    return `linear-gradient(${tint}, ${tint}), #0C0F0D`;
+  });
   /** Position of "now" on the timeline, in percent. */
   readonly nowPercent = computed(() => {
     const d = this.tick.now();

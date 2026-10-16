@@ -48,7 +48,8 @@ export class FakeWriter implements SerialWriterLike {
       if (this.aborted) return; // the stream was aborted while this write was waiting
       this.port.writes.push(chunk.slice());
       this.port.deliver(chunk);
-      this.port.log.push(chunk.length === 6 && chunk[5] === 197 ? 'header' : 'data');
+      this.port.log.push(chunk.length === 6 && chunk[5] === 197 ? 'header' : chunk.length === 6 && chunk[5] === 101 ? 'reset' : 'data');
+      if (chunk.length === 6 && chunk[5] === 101) this.port.onReset();
     } finally {
       this.pendingWrites--;
     }
@@ -87,6 +88,14 @@ export class FakePort implements SerialPortLike {
   gate: Promise<void> | null = null;
   /** Writes accepted so far, and the count after which every further write hangs (null = never). */
   writeCount = 0;
+  /** After a RESET the display drops off the bus for this long: getPorts() does not list it meanwhile. */
+  vanishAfterResetMs = 0;
+  hiddenUntil = 0;
+  resetCount = 0;
+  onReset(): void {
+    this.resetCount++;
+    this.hiddenUntil = Date.now() + this.vanishAfterResetMs;
+  }
   /** Order of writes ('header' for a DISPLAY_BITMAP header, 'data' for any other write); tests may add markers. */
   log: string[] = [];
   stallAfterWrites: number | null = null;
@@ -175,10 +184,12 @@ export class FakeSerial extends EventTarget implements SerialApiLike {
   requestPort(options?: { filters?: { usbVendorId: number; usbProductId: number }[] }): Promise<SerialPortLike> {
     this.requestedFilters = options?.filters;
     if (this.cancelPicker) return Promise.reject(Object.assign(new Error('No port selected'), { name: 'NotFoundError' }));
+    // like the real thing: a port the user picked is granted, so getPorts() lists it from then on
+    if (this.picked && !this.ports.includes(this.picked)) this.ports.push(this.picked);
     return Promise.resolve(this.picked!);
   }
   getPorts(): Promise<SerialPortLike[]> {
-    return Promise.resolve(this.ports);
+    return Promise.resolve(this.ports.filter(p => Date.now() >= p.hiddenUntil));
   }
   unplug(port: FakePort): void {
     this.dispatchEvent(Object.assign(new Event('disconnect'), { port }));

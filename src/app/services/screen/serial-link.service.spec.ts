@@ -3,7 +3,8 @@ import { SERIAL_API, SerialApiLike, SerialLinkService } from './serial-link.serv
 import { FakePort, FakeSerial } from './testing/fake-serial';
 
 describe('SerialLinkService', () => {
-  const OPTIONS = { flowControl: true, brightness: 60, helloTimeoutMs: 20 };
+  // These tests are about opening and closing the port: the RESET that normally starts a connection has its own tests.
+  const OPTIONS = { flowControl: true, brightness: 60, helloTimeoutMs: 20, skipReset: true };
   let serial: FakeSerial;
   let port: FakePort;
 

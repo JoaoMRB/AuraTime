@@ -1,45 +1,42 @@
-using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using AuraTime.Desktop.Display;
 using AuraTime.Desktop.Render;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 using SkiaSharp;
 
 namespace AuraTime.Desktop;
 
 /// <summary>
-/// The app's window. Left: a live preview of the screen, the link status and how the screen looks. Right: which
-/// views take turns, and what the weather and world clock views show.
+/// The app's window: a page (Ui/index.html) shown in WebView2. The page only displays; this class owns the
+/// settings, checks every value the page sends, and pushes the live preview, the link status and the settings
+/// back. The WebView2 browser processes exist only while the window is open.
 /// </summary>
 public sealed class MainForm : Form
 {
+    private const string Host = "app.auratime";
+    private static readonly string Origin = $"https://{Host}/";
     private static readonly Color Back = Color.FromArgb(10, 10, 10);
-    private static readonly Color Panel = Color.FromArgb(23, 23, 23);
-    private static readonly Color Fore = Color.FromArgb(237, 237, 237);
-    private static readonly Color Muted = Color.FromArgb(136, 136, 136);
+    private static readonly int[] SecondsChoices = [10, 15, 20, 30, 60];
 
-    private const int LeftX = 24;
-    private const int RightX = 536;
-    private const int RightWidth = 320;
+    private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    private static readonly (string Id, string Name)[] ViewNames =
+    private static readonly (string Id, string Name, string Short, string Description)[] Views =
     [
-        ("clock", "Clock"),
-        ("system", "System (CPU, GPU, memory)"),
-        ("weather", "Weather and quote"),
-        ("world", "World clocks")
+        ("clock", "Clock", "Clock", "Time and date."),
+        ("system", "System", "System", "CPU and GPU temperature and load, memory in use."),
+        ("weather", "Weather and quote", "Weather", "Current weather for your city and the quote of the day."),
+        ("world", "World clocks", "World", "The time in up to three other cities.")
     ];
 
     private readonly Settings _settings;
     private readonly DisplayService _display;
+    private readonly WebView2 _web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Back };
     private readonly ScreenRenderer _renderer = new();
-    private readonly Bitmap _previewBitmap = new(TuringProtocol.ScreenWidth, TuringProtocol.ScreenHeight, PixelFormat.Format32bppPArgb);
-    private readonly PictureBox _preview;
-    private readonly Label _status;
-    private readonly Label _cityLabel;
-    private readonly TextBox _citySearch;
-    private readonly Button _citySearchButton;
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1000 };
-    private bool _revertingAdmin;
+    private readonly TaskCompletionSource _firstFrame = new();
+    private bool _ready;
 
     public MainForm(Settings settings, DisplayService display, Icon icon)
     {
@@ -49,130 +46,29 @@ public sealed class MainForm : Form
         Text = "AuraTime";
         Icon = icon;
         BackColor = Back;
-        ForeColor = Fore;
-        Font = new Font("Segoe UI", 9.5f);
-        FormBorderStyle = FormBorderStyle.FixedSingle;
-        MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(RightX + RightWidth + 24, 620);
-
-        /* ---------- left: preview, status, appearance ---------- */
-
-        _preview = new PictureBox
-        {
-            Location = new Point(LeftX, 24),
-            Size = new Size(TuringProtocol.ScreenWidth, TuringProtocol.ScreenHeight),
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Image = _previewBitmap
-        };
-        _status = new Label { Location = new Point(LeftX, 356), Size = new Size(480, 22), ForeColor = Muted, AutoEllipsis = true };
-        Controls.Add(_preview);
-        Controls.Add(_status);
-
-        int y = 396;
-        ComboBox theme = AddCombo(LeftX, "Theme", ref y, Themes.All.Select(t => t.Name), Array.FindIndex(Themes.All, t => t.Id == Themes.Resolve(settings.Theme).Id));
-        theme.SelectedIndexChanged += (_, _) => Change(() => _settings.Theme = Themes.All[theme.SelectedIndex].Id);
-
-        ComboBox font = AddCombo(LeftX, "Clock font", ref y, ClockFonts.All.Select(f => f.Name), Array.FindIndex(ClockFonts.All, f => f.Id == ClockFonts.Resolve(settings.Font).Id));
-        font.SelectedIndexChanged += (_, _) => Change(() => _settings.Font = ClockFonts.All[font.SelectedIndex].Id);
-
-        AddLabel(LeftX, "Brightness", y);
-        var brightness = new TrackBar
-        {
-            Location = new Point(LeftX + 128, y - 4), Size = new Size(352, 32), Minimum = 0, Maximum = 100,
-            TickStyle = TickStyle.None, Value = settings.Brightness, BackColor = Back
-        };
-        brightness.ValueChanged += (_, _) => Change(() => _settings.Brightness = brightness.Value);
-        Controls.Add(brightness);
-        y += 40;
-
-        CheckBox use24h = AddCheck(LeftX, "24-hour clock", ref y, settings.Use24h);
-        use24h.CheckedChanged += (_, _) => Change(() => _settings.Use24h = use24h.Checked);
-
-        CheckBox autostart = AddCheck(LeftX, "Start with Windows", ref y, Autostart.IsEnabled);
-        autostart.CheckedChanged += (_, _) => Autostart.Set(autostart.Checked, _settings);
-
-        CheckBox admin = AddCheck(LeftX, "CPU temperature (runs AuraTime as administrator)", ref y, settings.RunAsAdmin);
-        admin.CheckedChanged += (_, _) => OnAdminChanged(admin);
-
-        /* ---------- right: views, weather, world clocks ---------- */
-
-        y = 24;
-        AddHeader("Screen views", ref y);
-        foreach ((string id, string name) in ViewNames)
-        {
-            CheckBox box = AddCheck(RightX, name, ref y, settings.Views.Contains(id));
-            box.CheckedChanged += (_, _) => Change(() =>
-            {
-                List<string> views = Settings.AllViews.Where(v => v == id ? box.Checked : _settings.Views.Contains(v)).ToList();
-                _settings.Views = views.Count > 0 ? views : ["clock"];
-            });
-        }
-        AddLabel(RightX, "Seconds per view", y);
-        var seconds = new NumericUpDown
-        {
-            Location = new Point(RightX + 160, y), Size = new Size(80, 26), Minimum = Settings.MinViewSeconds,
-            Maximum = Settings.MaxViewSeconds, Value = settings.ViewSeconds, BackColor = Panel, ForeColor = Fore,
-            BorderStyle = BorderStyle.FixedSingle
-        };
-        seconds.ValueChanged += (_, _) => Change(() => _settings.ViewSeconds = (int)seconds.Value);
-        Controls.Add(seconds);
-        y += 48;
-
-        AddHeader("Weather", ref y);
-        _citySearch = new TextBox
-        {
-            Location = new Point(RightX, y), Size = new Size(RightWidth - 96, 26), BackColor = Panel, ForeColor = Fore,
-            BorderStyle = BorderStyle.FixedSingle, PlaceholderText = "City"
-        };
-        _citySearchButton = new Button
-        {
-            Text = "Search", Location = new Point(RightX + RightWidth - 88, y - 1), Size = new Size(88, 28),
-            FlatStyle = FlatStyle.Flat, BackColor = Panel, ForeColor = Fore
-        };
-        _citySearchButton.FlatAppearance.BorderColor = Color.FromArgb(51, 51, 51);
-        _citySearchButton.Click += async (_, _) => await SearchCityAsync();
-        _citySearch.KeyDown += async (_, e) =>
-        {
-            if (e.KeyCode != Keys.Enter) return;
-            e.SuppressKeyPress = true;
-            await SearchCityAsync();
-        };
-        Controls.Add(_citySearch);
-        Controls.Add(_citySearchButton);
-        y += 34;
-        _cityLabel = new Label { Location = new Point(RightX, y), Size = new Size(RightWidth, 22), ForeColor = Muted, AutoEllipsis = true };
-        Controls.Add(_cityLabel);
-        ShowCity();
-        y += 40;
-
-        AddHeader("World clocks", ref y);
-        string[] cityNames = ["(none)", .. WorldClocks.Cities.Select(c => c.Label)];
-        for (int i = 0; i < WorldClocks.Max; i++)
-        {
-            int slot = i;
-            int selected = slot < settings.WorldClocks.Count
-                ? Array.FindIndex(WorldClocks.Cities, c => c.TimeZoneId == settings.WorldClocks[slot]) + 1
-                : 0;
-            var combo = new ComboBox
-            {
-                Location = new Point(RightX, y), Size = new Size(RightWidth, 26), DropDownStyle = ComboBoxStyle.DropDownList,
-                FlatStyle = FlatStyle.Flat, BackColor = Panel, ForeColor = Fore
-            };
-            combo.Items.AddRange(cityNames);
-            combo.SelectedIndex = Math.Max(0, selected);
-            combo.Tag = slot;
-            combo.SelectedIndexChanged += (_, _) => Change(() => _settings.WorldClocks = WorldClockChoices());
-            Controls.Add(combo);
-            y += 36;
-        }
+        ClientSize = new Size(1080, 720);
+        MinimumSize = new Size(640, 560);
+        Controls.Add(_web);
 
         _display.StatusChanged += OnStatusChanged;
-        _timer.Tick += (_, _) => DrawPreview();
-        _timer.Start();
-        DrawPreview();
-        ShowStatus();
+        _timer.Tick += (_, _) => SendFrame();
+        _ = InitialiseAsync();
+    }
+
+    /// <summary>Completes once the page has drawn its first preview (used by the --window-png check).</summary>
+    public Task FirstFrameShown => _firstFrame.Task;
+
+    /// <summary>Scrolls the settings column to its end (layout checks of the lower cards).</summary>
+    public Task ScrollSettingsToEndAsync() =>
+        _web.CoreWebView2.ExecuteScriptAsync("document.querySelector('.panel').scrollTop = 1e6");
+
+    /// <summary>Saves what the page currently shows as a PNG.</summary>
+    public async Task CapturePngAsync(string path)
+    {
+        await using FileStream file = File.Create(path);
+        await _web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, file);
     }
 
     protected override void Dispose(bool disposing)
@@ -181,73 +77,144 @@ public sealed class MainForm : Form
         {
             _display.StatusChanged -= OnStatusChanged;
             _timer.Dispose();
+            _web.Dispose(); // the browser processes end with the last WebView2 that uses them
             _renderer.Dispose();
-            _previewBitmap.Dispose();
         }
         base.Dispose(disposing);
     }
 
-    /// <summary>The three world clock boxes, top to bottom, without the empty ones.</summary>
-    private List<string> WorldClockChoices() =>
-        Controls.OfType<ComboBox>()
-            .Where(c => c.Tag is int)
-            .OrderBy(c => (int)c.Tag!)
-            .Where(c => c.SelectedIndex > 0)
-            .Select(c => WorldClocks.Cities[c.SelectedIndex - 1].TimeZoneId)
-            .ToList();
-
-    /// <summary>Looks the typed name up and offers the matches in a menu under the search box.</summary>
-    private async Task SearchCityAsync()
+    private async Task InitialiseAsync()
     {
-        string name = _citySearch.Text.Trim();
-        if (name.Length < 2) return;
-        _citySearchButton.Enabled = false;
         try
         {
-            IReadOnlyList<WeatherCity> cities = await WeatherService.SearchAsync(name, _display.Language);
-            if (IsDisposed) return;
-            if (cities.Count == 0)
-            {
-                _cityLabel.Text = $"No place called \"{name}\".";
-                return;
-            }
-            var menu = new ContextMenuStrip();
-            foreach (WeatherCity city in cities)
-            {
-                menu.Items.Add(city.Display, null, (_, _) =>
-                {
-                    Change(() => _settings.WeatherCity = city);
-                    _citySearch.Text = "";
-                    ShowCity();
-                });
-            }
-            menu.Closed += (_, _) => BeginInvoke(menu.Dispose);
-            menu.Show(_citySearch, new Point(0, _citySearch.Height));
+            string dataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AuraTime", "WebView2");
+            CoreWebView2Environment environment = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+            await _web.EnsureCoreWebView2Async(environment);
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        catch (WebView2RuntimeNotFoundException)
         {
-            if (!IsDisposed) _cityLabel.Text = "Could not search: check the internet connection.";
+            ShowMissingRuntime();
+            return;
         }
-        finally
+        if (IsDisposed) return;
+
+        CoreWebView2 core = _web.CoreWebView2;
+        CoreWebView2Settings s = core.Settings;
+#if !DEBUG
+        s.AreDevToolsEnabled = false;
+        s.AreBrowserAcceleratorKeysEnabled = false; // no reload, find, print...
+#endif
+        s.AreDefaultContextMenusEnabled = false;
+        s.IsStatusBarEnabled = false;
+        s.IsZoomControlEnabled = false;
+        s.IsPasswordAutosaveEnabled = false;
+        s.IsGeneralAutofillEnabled = false;
+
+        core.SetVirtualHostNameToFolderMapping(Host, Path.Combine(AppContext.BaseDirectory, "Ui"), CoreWebView2HostResourceAccessKind.DenyCors);
+        // The page never goes anywhere else, and never opens windows.
+        core.NavigationStarting += (_, e) => e.Cancel = !e.Uri.StartsWith(Origin, StringComparison.Ordinal);
+        core.NewWindowRequested += (_, e) => e.Handled = true;
+        core.WebMessageReceived += OnMessage;
+        core.Navigate($"{Origin}index.html");
+    }
+
+    /* ------------------------------ page -> app ------------------------------ */
+
+    private void OnMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (!e.Source.StartsWith(Origin, StringComparison.Ordinal)) return;
+        try
         {
-            if (!IsDisposed) _citySearchButton.Enabled = true;
+            using JsonDocument document = JsonDocument.Parse(e.WebMessageAsJson);
+            JsonElement message = document.RootElement;
+            switch (message.GetProperty("type").GetString())
+            {
+                case "ready":
+                    _ready = true;
+                    Post(InitMessage());
+                    ShowStatus();
+                    SendFrame();
+                    _timer.Start();
+                    break;
+                case "set":
+                    ApplySetting(message.GetProperty("key").GetString() ?? "", message.GetProperty("value"));
+                    break;
+                case "autostart":
+                    SetAutostart(message.GetProperty("value").GetBoolean());
+                    break;
+                case "admin":
+                    SetAdmin(message.GetProperty("value").GetBoolean());
+                    break;
+                case "searchCity":
+                    _ = SearchCityAsync(message.GetProperty("id").GetInt32(), message.GetProperty("name").GetString() ?? "");
+                    break;
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            // A malformed message is ignored; the page gets the real settings back so it cannot drift.
+            PostSettings();
         }
     }
 
-    private void ShowCity() =>
-        _cityLabel.Text = _settings.WeatherCity is { } city ? $"Showing the weather for {city.Display}" : "No city chosen yet.";
+    /// <summary>Applies one value from the page, then repairs anything out of range and echoes the result.</summary>
+    private void ApplySetting(string key, JsonElement value)
+    {
+        Settings s = _settings;
+        switch (key)
+        {
+            case "theme": s.Theme = Themes.Resolve(value.GetString()).Id; break;
+            case "font": s.Font = ClockFonts.Resolve(value.GetString()).Id; break;
+            case "brightness": s.Brightness = value.GetInt32(); break;
+            case "use24h": s.Use24h = value.GetBoolean(); break;
+            case "viewSeconds": s.ViewSeconds = value.GetInt32(); break;
+            case "views": s.Views = Strings(value); break;
+            case "worldClocks": s.WorldClocks = Strings(value); break;
+            case "weatherCity":
+                s.WeatherCity = value.ValueKind == JsonValueKind.Null
+                    ? null
+                    : new WeatherCity(
+                        value.GetProperty("name").GetString() ?? "",
+                        value.TryGetProperty("region", out JsonElement region) ? region.GetString() ?? "" : "",
+                        Math.Round(value.GetProperty("latitude").GetDouble(), 2),
+                        Math.Round(value.GetProperty("longitude").GetDouble(), 2));
+                break;
+            default:
+                return;
+        }
+        s.Normalise();
+        s.Save();
+        _display.ApplySettings();
+        PostSettings();
+        SendFrame();
+    }
+
+    private static List<string> Strings(JsonElement array) =>
+        array.EnumerateArray().Select(e => e.GetString()).OfType<string>().ToList();
+
+    private void SetAutostart(bool enabled)
+    {
+        try
+        {
+            Autostart.Set(enabled, _settings);
+        }
+        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or IOException)
+        {
+            MessageBox.Show(this, $"Could not change the start-up entry: {e.Message}", "AuraTime", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        PostSystem();
+    }
 
     /// <summary>
     /// Turning administrator mode on restarts the app with administrator rights (Windows asks first); if the user
-    /// says no, the box unticks itself. Turning it off takes effect the next time the app starts.
+    /// says no, it switches itself off again. Turning it off takes effect the next time the app starts.
     /// </summary>
-    private void OnAdminChanged(CheckBox box)
+    private void SetAdmin(bool enabled)
     {
-        if (_revertingAdmin) return;
-        _settings.RunAsAdmin = box.Checked;
+        _settings.RunAsAdmin = enabled;
         _settings.Save();
 
-        if (box.Checked && !Elevation.IsElevated)
+        if (enabled && !Elevation.IsElevated)
         {
             if (Elevation.Relaunch($"{Program.WaitForArgument} {Environment.ProcessId}"))
             {
@@ -256,55 +223,99 @@ public sealed class MainForm : Form
             }
             _settings.RunAsAdmin = false;
             _settings.Save();
-            _revertingAdmin = true;
-            box.Checked = false;
-            _revertingAdmin = false;
-            return;
         }
+        else
+        {
+            try
+            {
+                Autostart.Sync(_settings);
+            }
+            catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or IOException)
+            {
+                MessageBox.Show(this, $"Could not update the start-up entry: {e.Message}", "AuraTime", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        PostSystem();
+    }
 
+    private async Task SearchCityAsync(int id, string name)
+    {
+        object reply;
         try
         {
-            Autostart.Sync(_settings);
+            IReadOnlyList<WeatherCity> cities = name.Trim().Length < 2 ? [] : await WeatherService.SearchAsync(name, _display.Language);
+            reply = new { type = "cityResults", id, cities };
         }
-        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or IOException)
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
         {
-            MessageBox.Show(this, $"Could not update the start-up entry: {e.Message}", "AuraTime", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            reply = new { type = "cityResults", id, cities = Array.Empty<WeatherCity>(), error = "Could not search. Check the internet connection." };
         }
-        if (!box.Checked && Elevation.IsElevated)
-        {
-            MessageBox.Show(this, "AuraTime will run without administrator rights the next time it starts.", "AuraTime",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
+        if (!IsDisposed) Post(reply);
     }
 
-    private void Change(Action apply)
-    {
-        apply();
-        _settings.Save();
-        _display.ApplySettings();
-        DrawPreview();
-    }
+    /* ------------------------------ app -> page ------------------------------ */
 
-    /// <summary>Draws the same frame the display gets and copies it into the picture box.</summary>
-    private void DrawPreview()
+    private object InitMessage() => new
     {
+        type = "init",
+        settings = SettingsDto(),
+        system = SystemDto(),
+        views = Views.Select(v => new { id = v.Id, name = v.Name, @short = v.Short, description = v.Description }),
+        secondsChoices = SecondsChoices,
+        themes = Themes.All.Select(t => new
+        {
+            id = t.Id,
+            name = t.Name,
+            angle = t.AngleDeg,
+            stops = t.BackgroundStops.Select(Hex),
+            accent = Hex(t.Accent)
+        }),
+        fonts = ClockFonts.All.Select(f => new
+        {
+            id = f.Id,
+            name = f.Name,
+            family = f.Name,
+            italic = f.Italic,
+            weight = f.Id switch { "orbitron" => 700, "inter" => 300, "outfit" => 500, _ => 400 }
+        }),
+        worldCities = WorldClocks.Cities,
+        worldMax = WorldClocks.Max
+    };
+
+    private object SettingsDto() => new
+    {
+        views = _settings.Views,
+        viewSeconds = _settings.ViewSeconds,
+        theme = _settings.Theme,
+        font = _settings.Font,
+        brightness = _settings.Brightness,
+        use24h = _settings.Use24h,
+        worldClocks = _settings.WorldClocks,
+        weatherCity = _settings.WeatherCity
+    };
+
+    private object SystemDto() => new
+    {
+        type = "system",
+        autostart = Autostart.IsEnabled,
+        admin = _settings.RunAsAdmin,
+        elevated = Elevation.IsElevated
+    };
+
+    private void PostSettings() => Post(new { type = "settings", settings = SettingsDto() });
+
+    private void PostSystem() => Post(SystemDto());
+
+    /// <summary>Draws the frame the display gets and hands it to the page as a PNG.</summary>
+    private void SendFrame()
+    {
+        if (!_ready || IsDisposed) return;
         DateTime now = DateTime.Now;
         (ScreenView view, RenderOptions options, ScreenData data) = _display.Frame(now);
         _renderer.Draw(now, options, view, data);
-        var area = new Rectangle(0, 0, _previewBitmap.Width, _previewBitmap.Height);
-        BitmapData bits = _previewBitmap.LockBits(area, ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
-        try
-        {
-            // GDI+ wants BGRA; the renderer's bitmap is RGBA (the order the display conversion expects).
-            var info = new SKImageInfo(area.Width, area.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using SKPixmap pixels = _renderer.Bitmap.PeekPixels();
-            pixels.ReadPixels(info, bits.Scan0, bits.Stride);
-        }
-        finally
-        {
-            _previewBitmap.UnlockBits(bits);
-        }
-        _preview.Invalidate();
+        using SKData png = _renderer.Bitmap.Encode(SKEncodedImageFormat.Png, 100);
+        Post(new { type = "frame", png = "data:image/png;base64," + Convert.ToBase64String(png.AsSpan()), view = view.ToString().ToLowerInvariant() });
+        _firstFrame.TrySetResult();
     }
 
     private void OnStatusChanged()
@@ -314,52 +325,37 @@ public sealed class MainForm : Form
 
     private void ShowStatus()
     {
-        (string text, Color color) = _display.Status switch
+        if (!_ready) return;
+        (string state, string text) = _display.Status switch
         {
-            DisplayStatus.Connected => ($"●  Connected: {_display.Detail}", Color.FromArgb(80, 200, 120)),
-            DisplayStatus.Connecting => ("●  Connecting to the display...", Muted),
-            DisplayStatus.Busy => ("●  Display in use by another program. Close it and AuraTime connects.", Color.FromArgb(240, 180, 60)),
-            DisplayStatus.Error => ($"●  {_display.Detail} Trying again...", Color.FromArgb(240, 100, 100)),
-            _ => ("●  Display not found. Plug it in and AuraTime connects.", Muted)
+            DisplayStatus.Connected => ("connected", $"Connected · {_display.Detail}"),
+            DisplayStatus.Connecting => ("connecting", "Connecting to the display…"),
+            DisplayStatus.Busy => ("busy", "Display in use by another program"),
+            DisplayStatus.Error => ("error", "Display error · trying again"),
+            _ => ("idle", "Display not found")
         };
-        _status.Text = text;
-        _status.ForeColor = color;
+        Post(new { type = "status", state, text });
     }
 
-    private void AddHeader(string text, ref int y)
+    private void Post(object message)
     {
+        if (_web.CoreWebView2 is null || IsDisposed) return;
+        _web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message, Json));
+    }
+
+    private static string Hex(SKColor c) => $"#{c.Red:X2}{c.Green:X2}{c.Blue:X2}";
+
+    private void ShowMissingRuntime()
+    {
+        Controls.Remove(_web);
         Controls.Add(new Label
         {
-            Text = text.ToUpperInvariant(), Location = new Point(RightX, y), Size = new Size(RightWidth, 20),
-            ForeColor = Muted, Font = new Font("Segoe UI Semibold", 8.5f)
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            ForeColor = Color.FromArgb(237, 237, 237),
+            Text = "AuraTime's window needs the Microsoft Edge WebView2 Runtime, which is missing on this PC.\n" +
+                   "Install it from microsoft.com/edge/webview2. The display keeps working meanwhile."
         });
-        y += 28;
-    }
-
-    private void AddLabel(int x, string text, int y) =>
-        Controls.Add(new Label { Text = text, Location = new Point(x, y + 3), Size = new Size(124, 22), ForeColor = Muted });
-
-    private ComboBox AddCombo(int x, string label, ref int y, IEnumerable<string> items, int selected)
-    {
-        AddLabel(x, label, y);
-        var combo = new ComboBox
-        {
-            Location = new Point(x + 128, y), Size = new Size(352, 26), DropDownStyle = ComboBoxStyle.DropDownList,
-            FlatStyle = FlatStyle.Flat, BackColor = Panel, ForeColor = Fore
-        };
-        combo.Items.AddRange([.. items]);
-        combo.SelectedIndex = Math.Max(0, selected);
-        Controls.Add(combo);
-        y += 40;
-        return combo;
-    }
-
-    private CheckBox AddCheck(int x, string text, ref int y, bool value)
-    {
-        var check = new CheckBox { Text = text, Location = new Point(x, y), Size = new Size(x == RightX ? RightWidth : 480, 26), Checked = value, ForeColor = Fore };
-        Controls.Add(check);
-        y += 30;
-        return check;
     }
 
     /* Dark title bar, so the window does not open with a white strip on top of a dark page. */

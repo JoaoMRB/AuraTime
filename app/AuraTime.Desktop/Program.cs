@@ -92,13 +92,37 @@ internal static class Program
         Settings settings = Settings.Load();
         using var display = new DisplayService(settings); // never started: no link to the screen
         using var icon = (Icon)SystemIcons.Application.Clone();
+        // Off screen, so the check does not flash a window at the user.
         using var form = new MainForm(settings, display, icon) { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000) };
-        form.Show();
-        Application.DoEvents();
-        using var bitmap = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
-        form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.ClientSize));
-        bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
-        return 0;
+        // --tall : a window high enough to show every settings card at once.
+        if (Environment.GetCommandLineArgs().Contains("--tall")) form.ClientSize = new Size(form.ClientSize.Width, 1500);
+        form.Shown += async (_, _) =>
+        {
+            Task done = await Task.WhenAny(form.FirstFrameShown, Task.Delay(15000));
+            if (done == form.FirstFrameShown)
+            {
+                // --bottom : capture the lower settings cards instead of the top ones.
+                if (Environment.GetCommandLineArgs().Contains("--bottom")) await form.ScrollSettingsToEndAsync();
+                await Task.Delay(600); // let the page paint the frame and the fonts
+                await form.CapturePngAsync(path);
+            }
+            form.Close();
+        };
+        Application.Run(form);
+
+        // --linger : stay alive a few seconds with the window gone, as the tray app does, to check that the
+        // WebView2 processes end with the window.
+        if (Environment.GetCommandLineArgs().Contains("--linger"))
+        {
+            form.Dispose();
+            long until = Environment.TickCount64 + 6000;
+            while (Environment.TickCount64 < until)
+            {
+                Application.DoEvents();
+                Thread.Sleep(50);
+            }
+        }
+        return File.Exists(path) ? 0 : 1;
     }
 
     private static string? Option(string[] args, string name)

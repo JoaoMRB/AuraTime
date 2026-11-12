@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self'">
+  <title>AuraTime</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+        <path d="M12 2.75a9.25 9.25 0 0 1 9.25 9.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>AuraTime</span>
+    </div>
+    <div class="status" id="status" data-state="starting" role="status" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="status-text">Starting…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="Screen preview">
+      <div class="preview">
+        <img id="preview" width="480" height="320" alt="Live preview of the desk display">
+      </div>
+      <div class="trail-row">
+        <span class="eyebrow">On screen</span>
+        <ol id="trail" class="trail" aria-label="Views taking turns"></ol>
+      </div>
+      <p class="footnote">The preview is the exact image sent to the display, refreshed every second.</p>
+    </section>
+
+    <div class="panel">
+      <section class="card" aria-labelledby="views-title">
+        <header class="card-head">
+          <h2 id="views-title">Views</h2>
+          <p>What takes turns on the screen.</p>
+        </header>
+        <div id="views"></div>
+        <div class="row">
+          <span class="row-title" id="seconds-label">Time per view</span>
+          <div class="segmented" id="seconds" role="radiogroup" aria-labelledby="seconds-label"></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="look-title">
+        <header class="card-head">
+          <h2 id="look-title">Appearance</h2>
+          <p>How the screen looks.</p>
+        </header>
+        <div class="field">
+          <span class="field-label" id="theme-label">Theme</span>
+          <div class="swatches" id="themes" role="radiogroup" aria-labelledby="theme-label"></div>
+        </div>
+        <div class="field">
+          <span class="field-label" id="font-label">Clock font</span>
+          <div class="segmented fill" id="fonts" role="radiogroup" aria-labelledby="font-label"></div>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label class="field-label" for="brightness">Brightness</label>
+            <output id="brightness-value" for="brightness"></output>
+          </div>
+          <input type="range" id="brightness" min="0" max="100" step="1">
+        </div>
+        <div class="row">
+          <span class="row-text">
+            <span class="row-title" id="use24h-label">24-hour clock</span>
+          </span>
+          <button class="switch" id="use24h" role="switch" aria-labelledby="use24h-label"></button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="weather-title">
+        <header class="card-head">
+          <h2 id="weather-title">Weather</h2>
+          <p>For the weather view. Updated every 30 minutes from Open-Meteo.</p>
+        </header>
+        <div class="field">
+          <div class="search">
+            <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input id="city" type="text" placeholder="Search for a city" autocomplete="off" spellcheck="false"
+                   role="combobox" aria-label="Search for a city" aria-expanded="false" aria-controls="city-results"
+                   aria-autocomplete="list">
+            <ul id="city-results" class="results" role="listbox" aria-label="Matching cities" hidden></ul>
+          </div>
+          <p class="hint" id="city-current"></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="world-title">
+        <header class="card-head">
+          <h2 id="world-title">World clocks</h2>
+          <p>Up to three cities, top to bottom.</p>
+        </header>
+        <div class="field stack" id="world"></div>
+      </section>
+
+      <section class="card" aria-labelledby="system-title">
+        <header class="card-head">
+          <h2 id="system-title">System</h2>
+          <p>How AuraTime runs on this PC.</p>
+        </header>
+        <div class="row">
+          <span class="row-text">
+            <span class="row-title" id="autostart-label">Start with Windows</span>
+            <span class="row-desc">Opens in the notification area when you sign in.</span>
+          </span>
+          <button class="switch" id="autostart" role="switch" aria-labelledby="autostart-label"></button>
+        </div>
+        <div class="row">
+          <span class="row-text">
+            <span class="row-title" id="admin-label">CPU temperature</span>
+            <span class="row-desc" id="admin-desc">Needs administrator rights. Windows asks once, then AuraTime restarts.</span>
+          </span>
+          <button class="switch" id="admin" role="switch" aria-labelledby="admin-label" aria-describedby="admin-desc"></button>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

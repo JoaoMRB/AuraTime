@@ -77,7 +77,7 @@ public sealed class Settings
     public static readonly string[] AllViews = ["clock", "system", "weather", "world"];
 
     /// <summary>Repairs whatever a hand-edited or older file got wrong.</summary>
-    private void Normalise()
+    public void Normalise()
     {
         // The old single choice becomes the list of views.
         if (View is not null)

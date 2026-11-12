@@ -12,6 +12,10 @@ export const routes: Routes = [
     path: 'screen',
     loadComponent: () => import('./components/screen/screen.component').then(m => m.ScreenComponent)
   },
+  {
+    path: 'desktop',
+    loadComponent: () => import('./components/desktop-page/desktop-page.component').then(m => m.DesktopPageComponent)
+  },
   { path: '**', redirectTo: '' }
 ];
 

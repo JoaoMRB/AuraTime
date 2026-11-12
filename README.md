@@ -14,6 +14,7 @@ A minimalist focus clock for your browser: Pomodoro, ambient sound and an option
 ## Contents
 
 - [Features](#features)
+- [Windows app (beta)](#windows-app-beta)
 - [Desk Display (USB screen)](#desk-display-usb-screen)
 - [Quick start](#quick-start)
 - [Browser extension](#browser-extension)
@@ -70,6 +71,37 @@ A minimalist focus clock for your browser: Pomodoro, ambient sound and an option
 - A timer with quick presets (5, 10 and 25 minutes), and a stopwatch with laps.
 - World clocks for New York, London and Tokyo.
 - A dock of quick links.
+
+## Windows app (beta)
+
+**AuraTime for Windows** drives the same USB screen without a browser. It starts with Windows, waits in the
+notification area and adds your PC's own sensors: CPU and GPU temperature and load, memory, disk, network
+speed and volume, in six designs with their own colours.
+
+**[Download for Windows](https://github.com/JoaoMRB/AuraTime/releases/latest/download/AuraTime-Setup.exe)** ·
+Windows 10 and 11, 64-bit · no administrator rights needed to install ·
+[more on the website](https://aura-time-iota.vercel.app/desktop)
+
+![The Dashboard design, drawn by the app with sample numbers](public/assets/desktop/system-dashboard.webp)
+
+- **Views:** clock, system (six designs: Dashboard, Full panel, Gauges, Bars, Graphs, Minimal), weather with
+  the quote of the day, and world clocks. Any of them can take turns on the screen.
+- **CPU temperature:** Windows only gives it to programs with administrator rights and a driver. Turn on
+  *CPU temperature* in the app's System settings and install the free [PawnIO](https://pawnio.eu/) driver.
+  Without them the CPU shows its load instead.
+- **Online:** only the weather, from Open-Meteo, for the city you pick (position rounded to about 1 km).
+- **Update:** run the new installer over the old one; the settings are kept.
+
+The app lives in [`app/`](app/): C# on .NET 9, with SkiaSharp for drawing, LibreHardwareMonitorLib for the
+sensors and WebView2 for the settings window. Building the installer needs the .NET 9 SDK and Inno Setup 6
+(`winget install JRSoftware.InnoSetup`):
+
+```powershell
+.\app\build-installer.ps1   # writes app\dist\AuraTime-Setup-<version>.exe and AuraTime-Setup.exe
+```
+
+To publish a version, attach `AuraTime-Setup.exe` to a GitHub release that is **not** marked as a
+pre-release: the download links point at the latest release, which skips pre-releases.
 
 ## Desk Display (USB screen)
 

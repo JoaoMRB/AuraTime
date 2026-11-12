@@ -1,5 +1,5 @@
 /**
- * English texts of the Desk Display feature (the USB screen page, the screen's own labels, the landing
+ * English texts of the Desk Display feature and of the Windows app page (the USB screen page, the screen's own labels, the landing
  * section and the settings entry). Merged into the fallback dictionary of TranslationService; the same
  * keys exist in public/assets/i18n/*.json for every language (checked by a unit test).
  */
@@ -244,30 +244,38 @@ export const DESK_DISPLAY_EN: any = {
         "TITLE": "Web Serial needs HTTPS or localhost",
         "TEXT": "This page is open over plain http from a network address, where browsers turn Web Serial off. Open it with https:// or from localhost (for example http://localhost:4200)."
       }
+    },
+    "APP_BANNER": {
+      "TITLE": "New: AuraTime for Windows (beta)",
+      "TEXT": "Drives this screen without a browser, starts with Windows and also shows your PC's sensors. Close this page while the app uses the screen.",
+      "DOWNLOAD": "Download",
+      "MORE": "Learn more"
     }
   },
   "LANDING": {
     "DESK": {
       "NAV": "Desk Display",
-      "EYEBROW": "NEW · USB SCREEN",
+      "EYEBROW": "NEW · WINDOWS APP",
       "TITLE": "Your clock, on a screen of its own",
-      "SUBTITLE": "AuraTime Desk Display turns a small USB screen next to your keyboard into a live dashboard: time, focus session, tasks, alarms, world clocks and weather.",
+      "SUBTITLE": "AuraTime Desk Display turns a small USB screen next to your keyboard into a live dashboard: time, weather, world clocks, your focus session and, with the Windows app, your PC's own sensors.",
       "P1": "Follows your AuraTime theme and font",
-      "P2": "Runs in Chrome or Edge: no drivers, no extra software",
+      "P2": "Free Windows app that starts with your PC, or straight from Chrome and Edge",
       "P3": "Sends only what changes, so it stays smooth",
       "P4": "Night dimming and anti burn-in built in",
       "MOCK_CAPTION": "Live preview with sample data, drawn by the same engine that drives the screen.",
       "STEPS_TITLE": "Set it up in three steps",
-      "S1_T": "Open Desk Display",
-      "S1_D": "Use Chrome or Edge on your computer and press the Desk Display button.",
+      "S1_T": "Get the app",
+      "S1_D": "Download AuraTime for Windows, or open Desk Display in Chrome or Edge.",
       "S2_T": "Connect the screen",
-      "S2_D": "Plug in the USB display, press Connect and pick it from the list. It reconnects by itself next time.",
+      "S2_D": "Plug in the USB display. The app finds it by itself; in the browser, press Connect and pick it once.",
       "S3_T": "Choose your views",
       "S3_D": "Pick what rotates, set the night schedule and let it run all day.",
       "COMPAT": "Compatible with Turing Smart Screen 3.5\" class displays (USB 1A86:5722, rev. A).",
       "DISCLAIMER": "AuraTime is an independent project, not affiliated with any display manufacturer. Product names belong to their owners.",
-      "BROWSER_NOTE": "Needs Google Chrome or Microsoft Edge on a computer.",
-      "CTA": "Open Desk Display"
+      "BROWSER_NOTE": "The browser version needs Google Chrome or Microsoft Edge on a computer.",
+      "CTA": "Try it in the browser",
+      "DOWNLOAD": "Download for Windows",
+      "APP_LINK": "About the Windows app"
     }
   },
   "WEATHER": {
@@ -282,5 +290,100 @@ export const DESK_DISPLAY_EN: any = {
     "CITY_ERROR": "The search is not available right now",
     "CITY_USE_LOCATION": "Use my location",
     "CITY_DEFAULT_HINT": "Your location is not available, so the weather shows Lisbon. Search for your city to change it."
+  },
+  "DESKTOP": {
+    "NAV": "Windows app",
+    "SEO": {
+      "TITLE": "AuraTime for Windows (beta) | Desk screen app",
+      "DESCRIPTION": "Free Windows app that drives a 3.5\" USB desk screen: clock, weather, world clocks and your PC's CPU, GPU, memory, disk and network. Starts with Windows, no browser needed."
+    },
+    "HERO": {
+      "EYEBROW": "BETA · WINDOWS APP",
+      "TITLE": "AuraTime for Windows",
+      "SUBTITLE": "Your USB desk screen, always on. The app starts with Windows, waits quietly in the notification area and keeps the screen running: the time, the weather, other cities, and your PC's own numbers.",
+      "DOWNLOAD": "Download for Windows",
+      "TRY_WEB": "Try it in the browser",
+      "META": "Version {version} beta · Windows 10 and 11, 64-bit · {size} MB · Free and open source",
+      "IMAGE_ALT": "The AuraTime window: a live preview of the screen and its settings"
+    },
+    "FEATURES": {
+      "TITLE": "Why the app",
+      "F1_T": "Starts with Windows",
+      "F1_D": "Turn it on once. From then on the screen comes to life when you sign in.",
+      "F2_T": "No browser needed",
+      "F2_D": "It talks to the screen directly. No tab to keep open, nothing slowed down when the window is hidden.",
+      "F3_T": "Your PC at a glance",
+      "F3_D": "CPU and GPU temperature and load, memory, disk, network speed and volume.",
+      "F4_T": "Six system designs",
+      "F4_D": "From three big numbers to a full dashboard, each with its own colours.",
+      "F5_T": "Weather and world clocks",
+      "F5_D": "The weather for your city, the quote of the day and the time in up to three cities.",
+      "F6_T": "Light on your PC",
+      "F6_D": "It waits in the notification area using little memory and processor. The sensors are only read while a system view is on."
+    },
+    "DESIGNS": {
+      "TITLE": "What it shows",
+      "SUBTITLE": "Every picture here was drawn by the app itself, with sample numbers.",
+      "SYSTEM": "Six designs for your PC's sensors",
+      "VIEWS": "And the views it shares with the browser version",
+      "DASHBOARD": "Dashboard",
+      "PANEL": "Full panel",
+      "GAUGES": "Gauges",
+      "BARS": "Bars",
+      "GRAPHS": "Graphs",
+      "MINIMAL": "Minimal",
+      "CLOCK": "Clock",
+      "WEATHER": "Weather and quote",
+      "WORLD": "World clocks"
+    },
+    "COMPARE": {
+      "TITLE": "App or browser?",
+      "SUBTITLE": "Both drive the same screen. Use one at a time: only one program can talk to the display.",
+      "APP": "Windows app",
+      "WEB": "Browser",
+      "R1": "Runs without a browser window",
+      "R1_APP": "Yes",
+      "R1_WEB": "No, the page must stay open",
+      "R2": "Starts by itself",
+      "R2_APP": "Yes, with Windows",
+      "R2_WEB": "With a launcher script",
+      "R3": "CPU, GPU, memory, disk, network",
+      "R3_APP": "Yes",
+      "R3_WEB": "No",
+      "R4": "Focus session, tasks and alarms",
+      "R4_APP": "Not yet",
+      "R4_WEB": "Yes",
+      "R5": "Install",
+      "R5_APP": "{size} MB installer",
+      "R5_WEB": "Nothing to install",
+      "R6": "Works on",
+      "R6_APP": "Windows 10 and 11",
+      "R6_WEB": "Chrome or Edge on a computer"
+    },
+    "STEPS": {
+      "TITLE": "Up and running in three steps",
+      "S1_T": "Download and install",
+      "S1_D": "Run the installer. It needs no administrator rights and adds AuraTime to the Start menu.",
+      "S2_T": "Plug in the screen",
+      "S2_D": "Close the screen's own software first, then connect it by USB. AuraTime finds it by itself.",
+      "S3_T": "Pick what it shows",
+      "S3_D": "Choose the views, the design and the colours. The preview shows exactly what the screen gets."
+    },
+    "FAQ": {
+      "TITLE": "Questions",
+      "Q1": "Why does the CPU show “–” instead of a temperature?",
+      "A1": "Windows only lets programs read the CPU's own sensors with administrator rights and a small driver. Turn on “CPU temperature” in the app's System settings and install the free PawnIO driver:",
+      "Q2": "How do I update?",
+      "A2": "Download the new version and run it over the old one. Your settings are kept.",
+      "Q3": "How do I uninstall it?",
+      "A3": "Like any app: Settings → Apps → AuraTime → Uninstall. Your settings stay, in case you come back.",
+      "Q4": "Does it send anything over the internet?",
+      "A4": "Only to get the weather: the city you choose goes to Open-Meteo, with the position rounded to about 1 km. Nothing else leaves your PC.",
+      "Q5": "Which screens work?",
+      "A5": "3.5\" USB screens of the Turing Smart Screen class (USB 1A86:5722, rev. A), at 480×320.",
+      "Q6": "Is it really free?",
+      "A6": "Yes. AuraTime is open source under the MIT licence; the code of the app is on GitHub."
+    },
+    "SOURCE": "Source code on GitHub"
   }
 };

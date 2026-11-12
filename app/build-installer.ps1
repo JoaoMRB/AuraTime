@@ -41,5 +41,14 @@ Write-Host 'Building the installer...'
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed.' }
 
 $setup = Join-Path $PSScriptRoot "dist\AuraTime-Setup-$version.exe"
+# The same file under a name without the version: the website links to
+# https://github.com/JoaoMRB/AuraTime/releases/latest/download/AuraTime-Setup.exe, which only works when every
+# release has an asset with exactly this name.
+$stable = Join-Path $PSScriptRoot 'dist\AuraTime-Setup.exe'
+Copy-Item -LiteralPath $setup -Destination $stable -Force
+
 $size = [math]::Round((Get-Item -LiteralPath $setup).Length / 1MB, 1)
+$hash = (Get-FileHash -LiteralPath $stable -Algorithm SHA256).Hash
 Write-Host "Done: $setup ($size MB)"
+Write-Host "      $stable (attach this one to the release)"
+Write-Host "SHA-256: $hash"

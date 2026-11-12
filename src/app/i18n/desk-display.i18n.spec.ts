@@ -47,7 +47,7 @@ describe('Desk Display translations', () => {
     const english = await (await fetch('/assets/i18n/en.json')).json();
     for (const lang of LANGUAGES.filter(l => l !== 'en')) {
       const tree = await (await fetch(`/assets/i18n/${lang}.json`)).json();
-      const sameAsEnglish = ['SCREEN.PAGE.S2.HINT', 'SCREEN.PAGE.UNSUPPORTED.TEXT', 'LANDING.DESK.SUBTITLE', 'SCREEN.SEO.DESCRIPTION']
+      const sameAsEnglish = ['SCREEN.PAGE.S2.HINT', 'SCREEN.PAGE.UNSUPPORTED.TEXT', 'LANDING.DESK.SUBTITLE', 'SCREEN.SEO.DESCRIPTION', 'DESKTOP.HERO.SUBTITLE', 'DESKTOP.FAQ.A1', 'SCREEN.APP_BANNER.TEXT']
         .filter(k => lookup(tree, k) === lookup(english, k));
       expect(sameAsEnglish).withContext(lang).toEqual([]);
     }

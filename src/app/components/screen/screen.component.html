@@ -63,6 +63,26 @@
   </header>
 
   <main class="mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-6 lg:px-10">
+    <!-- The Windows app drives the same screen without this page: say so, once, at the top -->
+    <aside class="mb-6 flex flex-col gap-4 rounded-2xl border border-luxury-gold/30 bg-luxury-gold/[0.05] px-5 py-4 md:flex-row md:items-center md:justify-between"
+           data-testid="app-banner" [attr.aria-label]="ts.t('SCREEN.APP_BANNER.TITLE')">
+      <div class="flex items-start gap-3">
+        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-luxury-gold/50 text-luxury-gold" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
+          </svg>
+        </span>
+        <p class="text-sm leading-relaxed text-gray-200">
+          <strong class="font-semibold text-white">{{ ts.t('SCREEN.APP_BANNER.TITLE') }}.</strong>
+          {{ ts.t('SCREEN.APP_BANNER.TEXT') }}
+        </p>
+      </div>
+      <div class="flex shrink-0 items-center gap-2">
+        <a [href]="desktopApp.downloadUrl" rel="noopener" class="aura-gold-btn whitespace-nowrap">{{ ts.t('SCREEN.APP_BANNER.DOWNLOAD') }}</a>
+        <a routerLink="/desktop" class="aura-pill-btn whitespace-nowrap">{{ ts.t('SCREEN.APP_BANNER.MORE') }}</a>
+      </div>
+    </aside>
+
     <div class="mb-6 max-w-2xl space-y-2" [class.lg:mb-8]="!controlCentre()">
       <h1 class="font-playfair font-light leading-tight text-white" [class]="controlCentre() ? 'text-2xl md:text-3xl' : 'text-3xl md:text-5xl'">{{ ts.t('SCREEN.NAME') }}</h1>
       @if (!controlCentre()) {

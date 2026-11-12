@@ -52,25 +52,27 @@
     },
     "DESK": {
       "NAV": "Desk Display",
-      "EYEBROW": "NUEVO · PANTALLA USB",
+      "EYEBROW": "NOVEDAD · APP PARA WINDOWS",
       "TITLE": "Tu reloj, en una pantalla solo para él",
-      "SUBTITLE": "AuraTime Desk Display convierte una pequeña pantalla USB junto a tu teclado en un panel en vivo: hora, sesión de enfoque, tareas, alarmas, relojes mundiales y tiempo.",
+      "SUBTITLE": "AuraTime Desk Display convierte una pequeña pantalla USB junto al teclado en un panel en directo: hora, tiempo, relojes mundiales, tu sesión de concentración y, con la app para Windows, los sensores de tu PC.",
       "P1": "Sigue el tema y la fuente de tu AuraTime",
-      "P2": "Funciona en Chrome o Edge: sin controladores ni software extra",
+      "P2": "App gratuita para Windows que se inicia con el PC, o directamente desde Chrome y Edge",
       "P3": "Solo envía lo que cambia, así que va fluido",
       "P4": "Atenuación nocturna y protección anti burn-in incluidas",
       "MOCK_CAPTION": "Vista previa en vivo con datos de ejemplo, dibujada por el mismo motor que controla la pantalla.",
       "STEPS_TITLE": "Configúralo en tres pasos",
-      "S1_T": "Abre Desk Display",
-      "S1_D": "Usa Chrome o Edge en tu ordenador y pulsa el botón Desk Display.",
+      "S1_T": "Consigue la app",
+      "S1_D": "Descarga AuraTime para Windows o abre Desk Display en Chrome o Edge.",
       "S2_T": "Conecta la pantalla",
-      "S2_D": "Conecta la pantalla USB, pulsa Conectar y elígela en la lista. La próxima vez se reconecta sola.",
+      "S2_D": "Conecta la pantalla USB. La app la encuentra sola; en el navegador, pulsa Conectar y elígela una vez.",
       "S3_T": "Elige tus vistas",
       "S3_D": "Elige qué rota, define el horario nocturno y déjalo funcionando todo el día.",
       "COMPAT": "Compatible con pantallas de la clase Turing Smart Screen 3,5\" (USB 1A86:5722, rev. A).",
       "DISCLAIMER": "AuraTime es un proyecto independiente, sin relación con ningún fabricante de pantallas. Los nombres de productos pertenecen a sus propietarios.",
-      "BROWSER_NOTE": "Requiere Google Chrome o Microsoft Edge en un ordenador.",
-      "CTA": "Abrir Desk Display"
+      "BROWSER_NOTE": "La versión de navegador necesita Google Chrome o Microsoft Edge en un ordenador.",
+      "CTA": "Probar en el navegador",
+      "DOWNLOAD": "Descargar para Windows",
+      "APP_LINK": "Sobre la app para Windows"
     }
   },
   "CLOCK": {
@@ -402,6 +404,12 @@
         "RESYNCS": "Resincronizaciones",
         "RESETS": "Reinicios de la pantalla"
       }
+    },
+    "APP_BANNER": {
+      "TITLE": "Novedad: AuraTime para Windows (beta)",
+      "TEXT": "Controla esta pantalla sin navegador, se inicia con Windows y también muestra los sensores de tu PC. Cierra esta página mientras la app usa la pantalla.",
+      "DOWNLOAD": "Descargar",
+      "MORE": "Más información"
     }
   },
   "WEATHER": {
@@ -416,5 +424,100 @@
     "CITY_ERROR": "La búsqueda no está disponible ahora",
     "CITY_USE_LOCATION": "Usar mi ubicación",
     "CITY_DEFAULT_HINT": "Tu ubicación no está disponible, así que el tiempo muestra Lisboa. Busca tu ciudad para cambiarla."
+  },
+  "DESKTOP": {
+    "NAV": "App para Windows",
+    "SEO": {
+      "TITLE": "AuraTime para Windows (beta) | App para la pantalla de escritorio",
+      "DESCRIPTION": "App gratuita para Windows que controla una pantalla USB de 3,5\": reloj, tiempo, relojes mundiales y la CPU, GPU, memoria, disco y red de tu PC. Se inicia con Windows, sin navegador."
+    },
+    "HERO": {
+      "EYEBROW": "BETA · APP PARA WINDOWS",
+      "TITLE": "AuraTime para Windows",
+      "SUBTITLE": "Tu pantalla USB de escritorio, siempre encendida. La app se inicia con Windows, espera discreta en el área de notificación y mantiene la pantalla en marcha: la hora, el tiempo, otras ciudades y los datos de tu propio PC.",
+      "DOWNLOAD": "Descargar para Windows",
+      "TRY_WEB": "Probar en el navegador",
+      "META": "Versión {version} beta · Windows 10 y 11, 64 bits · {size} MB · Gratis y de código abierto",
+      "IMAGE_ALT": "La ventana de AuraTime: vista previa en directo de la pantalla y sus ajustes"
+    },
+    "FEATURES": {
+      "TITLE": "Por qué la app",
+      "F1_T": "Se inicia con Windows",
+      "F1_D": "Actívalo una vez. Desde entonces la pantalla se enciende al iniciar sesión.",
+      "F2_T": "Sin navegador",
+      "F2_D": "Habla directamente con la pantalla. Ninguna pestaña que mantener abierta, nada se ralentiza con la ventana oculta.",
+      "F3_T": "Tu PC de un vistazo",
+      "F3_D": "Temperatura y carga de la CPU y la GPU, memoria, disco, velocidad de red y volumen.",
+      "F4_T": "Seis diseños de sistema",
+      "F4_D": "De tres números grandes a un panel completo, cada uno con sus propios colores.",
+      "F5_T": "Tiempo y relojes mundiales",
+      "F5_D": "El tiempo en tu ciudad, la cita del día y la hora en hasta tres ciudades.",
+      "F6_T": "Ligera para tu PC",
+      "F6_D": "Espera en el área de notificación usando poca memoria y procesador. Los sensores solo se leen mientras hay una vista de sistema activa."
+    },
+    "DESIGNS": {
+      "TITLE": "Qué muestra",
+      "SUBTITLE": "Todas las imágenes de aquí las ha dibujado la propia app, con números de ejemplo.",
+      "SYSTEM": "Seis diseños para los sensores de tu PC",
+      "VIEWS": "Y las vistas que comparte con la versión de navegador",
+      "DASHBOARD": "Dashboard",
+      "PANEL": "Panel completo",
+      "GAUGES": "Indicadores",
+      "BARS": "Barras",
+      "GRAPHS": "Gráficos",
+      "MINIMAL": "Minimalista",
+      "CLOCK": "Reloj",
+      "WEATHER": "Tiempo y cita",
+      "WORLD": "Relojes mundiales"
+    },
+    "COMPARE": {
+      "TITLE": "¿App o navegador?",
+      "SUBTITLE": "Ambos controlan la misma pantalla. Usa uno a la vez: solo un programa puede hablar con la pantalla.",
+      "APP": "App para Windows",
+      "WEB": "Navegador",
+      "R1": "Funciona sin una ventana del navegador",
+      "R1_APP": "Sí",
+      "R1_WEB": "No, la página debe seguir abierta",
+      "R2": "Se inicia sola",
+      "R2_APP": "Sí, con Windows",
+      "R2_WEB": "Con un script de inicio",
+      "R3": "CPU, GPU, memoria, disco, red",
+      "R3_APP": "Sí",
+      "R3_WEB": "No",
+      "R4": "Sesión de concentración, tareas y alarmas",
+      "R4_APP": "Aún no",
+      "R4_WEB": "Sí",
+      "R5": "Instalación",
+      "R5_APP": "Instalador de {size} MB",
+      "R5_WEB": "Nada que instalar",
+      "R6": "Funciona en",
+      "R6_APP": "Windows 10 y 11",
+      "R6_WEB": "Chrome o Edge en un ordenador"
+    },
+    "STEPS": {
+      "TITLE": "En marcha en tres pasos",
+      "S1_T": "Descarga e instala",
+      "S1_D": "Ejecuta el instalador. No necesita permisos de administrador y añade AuraTime al menú Inicio.",
+      "S2_T": "Conecta la pantalla",
+      "S2_D": "Cierra antes el software original de la pantalla y conéctala por USB. AuraTime la encuentra solo.",
+      "S3_T": "Elige qué muestra",
+      "S3_D": "Elige las vistas, el diseño y los colores. La vista previa muestra exactamente lo que recibe la pantalla."
+    },
+    "FAQ": {
+      "TITLE": "Preguntas",
+      "Q1": "¿Por qué la CPU muestra «–» en lugar de la temperatura?",
+      "A1": "Windows solo deja leer los sensores de la propia CPU con permisos de administrador y un pequeño controlador. Activa «CPU temperature» en los ajustes System de la app e instala el controlador gratuito PawnIO:",
+      "Q2": "¿Cómo la actualizo?",
+      "A2": "Descarga la nueva versión y ejecútala sobre la anterior. Tus ajustes se mantienen.",
+      "Q3": "¿Cómo la desinstalo?",
+      "A3": "Como cualquier app: Configuración → Aplicaciones → AuraTime → Desinstalar. Tus ajustes se guardan por si vuelves.",
+      "Q4": "¿Envía algo por internet?",
+      "A4": "Solo para obtener el tiempo: la ciudad que eliges va a Open-Meteo, con la posición redondeada a 1 km aproximadamente. Nada más sale de tu PC.",
+      "Q5": "¿Qué pantallas funcionan?",
+      "A5": "Pantallas USB de 3,5\" de la clase Turing Smart Screen (USB 1A86:5722, rev. A), a 480×320.",
+      "Q6": "¿Es gratis de verdad?",
+      "A6": "Sí. AuraTime es de código abierto con licencia MIT; el código de la app está en GitHub."
+    },
+    "SOURCE": "Código en GitHub"
   }
 }

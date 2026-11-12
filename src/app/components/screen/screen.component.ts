@@ -15,6 +15,7 @@ import { ScreenAppearanceComponent } from './screen-appearance.component';
 import { ScreenScheduleComponent } from './screen-schedule.component';
 import { ScreenHealthComponent } from './screen-health.component';
 import { ScreenIconComponent } from './screen-icon.component';
+import { DESKTOP_APP } from '../../desktop-app';
 
 /**
  * Desk Display: the page that drives the USB screen. Two modes around one large preview:
@@ -36,6 +37,8 @@ import { ScreenIconComponent } from './screen-icon.component';
 })
 export class ScreenComponent implements AfterViewInit, OnDestroy {
   readonly ts = inject(TranslationService);
+  /** The Windows app, offered at the top of the page: it drives the same screen without a browser. */
+  readonly desktopApp = DESKTOP_APP;
   readonly output = inject(ScreenOutputService);
   readonly link = inject(SerialLinkService);
   private title = inject(Title);

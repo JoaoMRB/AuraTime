@@ -48,6 +48,14 @@ describe('ScreenComponent (Desk Display page)', () => {
   });
   afterEach(() => localStorage.clear());
 
+  it('offers the Windows app at the top: download and the app page', async () => {
+    const { el } = await render();
+    const banner = el.querySelector('[data-testid="app-banner"]')!;
+    expect(text(banner as HTMLElement)).toContain('AuraTime for Windows (beta)');
+    expect(banner.querySelector('a[href$="/releases/latest/download/AuraTime-Setup.exe"]')).toBeTruthy();
+    expect(banner.querySelector('a[href="/desktop"]')).toBeTruthy();
+  });
+
   describe('in a browser with Web Serial', () => {
     it('shows the 3-step wizard in order, with the browser step already done', async () => {
       const { el } = await render();

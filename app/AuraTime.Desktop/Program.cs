@@ -13,6 +13,16 @@ internal static class Program
         // --settings-file path : use another settings file instead of the real one (the checks below never touch it).
         Settings.FilePathOverride = Option(args, "--settings-file");
 
+        // --culture en-US : draw in another language than Windows' (pictures for the website).
+        if (Option(args, "--culture") is { } culture)
+        {
+            var info = System.Globalization.CultureInfo.GetCultureInfo(culture);
+            System.Globalization.CultureInfo.CurrentCulture = info;
+            System.Globalization.CultureInfo.CurrentUICulture = info;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = info;
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = info;
+        }
+
         // AuraTime.exe --png out.png [--view clock|system|weather|world] [--theme id] [--design id] [--sample]
         //   [--condition kind] : draw one frame to a file and exit (to check the renderer without a display).
         int png = Array.IndexOf(args, "--png");

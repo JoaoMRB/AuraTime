@@ -277,9 +277,11 @@ public sealed partial class ScreenRenderer
     /* ------------------------------ 6. dashboard ------------------------------ */
 
     /// <summary>
-    /// The whole screen in cards. Top: CPU and GPU with a load ring. Middle: network, volume, time and date.
-    /// Bottom: memory, the logo, the system drive. The cards stay 14 px inside the screen so the anti burn-in shift
-    /// never pushes one off it.
+    /// The whole screen in cards. Top: CPU and GPU with a load ring. Middle: network, volume, date and time.
+    /// Bottom: memory, the logo, the system drive. Everything stays 12 px inside the screen so the anti burn-in
+    /// shift (up to 6 px) never pushes a card off it.
+    /// Rows: cards 12..140, strip 148..184, cards 192..308. The bottom cards are wider than the logo between them:
+    /// "17.8 GB" and "78%" need the room on a 3.5" screen.
     /// </summary>
     private void DrawDashboard(SystemSnapshot s, RenderOptions o, DateTime now)
     {
@@ -287,74 +289,85 @@ public sealed partial class ScreenRenderer
         Theme theme = o.Theme;
 
         string vram = s.VramUsedGb is { } gb ? Inv($"{gb:0.0} GB") : "–";
-        Card(o, new SKRect(14, 14, 236, 150), "CPU", s.CpuName, s.CpuLoad, st.Accent, 38, 24,
+        Card(o, new SKRect(12, 12, 236, 140), "CPU", s.CpuName, s.CpuLoad, st.Accent, compact: false,
             ("TEMP", TempText(s.CpuTemp), s.CpuTemp >= st.AlertTemp), ("SPEED", GhzText(s.CpuClockMhz), false));
-        Card(o, new SKRect(244, 14, 466, 150), "GPU", s.GpuName, s.GpuLoad, st.Secondary, 38, 24,
+        Card(o, new SKRect(244, 12, 468, 140), "GPU", s.GpuName, s.GpuLoad, st.Secondary, compact: false,
             ("TEMP", TempText(s.GpuTemp), s.GpuTemp >= st.AlertTemp), ("VRAM", vram, false));
 
-        // Network, volume, time and date on one strip
-        var strip = new SKRect(14, 158, 466, 198);
+        // Network, volume, date and time on one strip
+        var strip = new SKRect(12, 148, 468, 184);
         Panel(strip, theme.Muted, theme);
         using (SKFont rate = Font(Semibold, 13))
-        using (SKFont small = Font(Medium, 11))
+        using (SKFont small = Font(Medium, 12))
         {
             SKColor strong = StrongText(theme);
-            float y = strip.Top + 25;
+            float y = strip.Top + 23;
             string down = RateText(s.NetDownBps);
-            Arrow(32, y - 4, 8, false, st.Accent);
-            Text(down, 42, y, rate, strong);
-            float upArrow = 42 + rate.MeasureText(down) + 22;
+            Arrow(28, y - 4, 8, false, st.Accent);
+            Text(down, 38, y, rate, strong);
+            float upArrow = 38 + rate.MeasureText(down) + 20;
             Arrow(upArrow, y - 4, 8, true, st.Secondary);
             Text(RateText(s.NetUpBps), upArrow + 10, y, rate, strong);
 
-            Speaker(240, strip.MidY, st.Accent, s.Muted);
-            Text(s.VolumePct is null || s.Muted ? "–" : PercentText(s.VolumePct), 262, y, rate, strong);
+            Speaker(228, strip.MidY, st.Accent, s.Muted);
+            Text(s.VolumePct is null || s.Muted ? "–" : PercentText(s.VolumePct), 250, y, rate, strong);
 
             string suffix = o.Use24h ? "" : now.ToString("tt", CultureInfo.InvariantCulture);
-            DrawTimeWithSuffix(theme, o.Font, now.ToString(o.Use24h ? "HH:mm" : "hh:mm", CultureInfo.InvariantCulture), suffix, 454, strip.Top + 29, 96, 26, 11, alignRight: true);
-            Text(now.ToString("d", o.Culture), 356, y - 1, small, theme.Muted, SKTextAlign.Right);
+            DrawTimeWithSuffix(theme, o.Font, now.ToString(o.Use24h ? "HH:mm" : "hh:mm", CultureInfo.InvariantCulture), suffix, 456, strip.Top + 27, 92, 24, 11, alignRight: true);
+            Text(now.ToString("d", o.Culture), 360, y - 1, small, theme.Muted, SKTextAlign.Right);
         }
 
         // Memory, logo, system drive
         float ram = Fraction(s.RamUsedGb, s.RamTotalGb);
-        Card(o, new SKRect(14, 206, 170, 306), "RAM", "", ram * 100, st.Accent, 28, 18,
-            ("USED", s.RamUsedGb is { } used ? Inv($"{used:0.0} GB") : "–", false), ("TOTAL", s.RamTotalGb is { } total ? Inv($"{MathF.Round(total)} GB") : "–", false), compact: true);
-        Logo(240, 246, 26, o);
-        Card(o, new SKRect(310, 206, 466, 306), "DISK", s.DiskName, s.DiskUsedPct, st.Secondary, 28, 18,
-            ("TEMP", TempText(s.DiskTemp), s.DiskTemp >= st.AlertTemp), ("FREE", s.DiskUsedPct is { } du ? PercentText(100 - du) : "–", false), compact: true);
+        Card(o, new SKRect(12, 192, 188, 308), "RAM", "", ram * 100, st.Accent, compact: true,
+            ("USED", s.RamUsedGb is { } used ? Inv($"{used:0.0} GB") : "–", false),
+            ("TOTAL", s.RamTotalGb is { } total ? Inv($"{MathF.Round(total)} GB") : "–", false));
+        Logo(240, 240, 22, o);
+        Card(o, new SKRect(292, 192, 468, 308), "DISK", s.DiskName, s.DiskUsedPct, st.Secondary, compact: true,
+            ("TEMP", TempText(s.DiskTemp), s.DiskTemp >= st.AlertTemp),
+            ("FREE", s.DiskUsedPct is { } du ? PercentText(100 - du) : "–", false));
     }
 
     /// <summary>
-    /// One component's card: its name, a load ring with the percentage in the middle, and two labelled values beside it.
-    /// <paramref name="compact"/> is the shorter card of the bottom row.
+    /// One component's card: its name, a load ring with the percentage in the middle, and two labelled values beside
+    /// it. Everything is placed from the ring's centre, which sits in the middle of the space under the title, so the
+    /// values keep their distance from the card's edges whatever its height. <paramref name="compact"/> is the
+    /// smaller ring and text of the bottom row.
     /// </summary>
-    private void Card(RenderOptions o, SKRect r, string title, string name, float? load, SKColor color, float ringRadius, float ringTextSize,
-        (string Label, string Value, bool Hot) first, (string Label, string Value, bool Hot) second, bool compact = false)
+    private void Card(RenderOptions o, SKRect r, string title, string name, float? load, SKColor color, bool compact,
+        (string Label, string Value, bool Hot) first, (string Label, string Value, bool Hot) second)
     {
         Theme theme = o.Theme;
         Panel(r, color, theme);
+        float radius = compact ? 28 : 36;
+        float stroke = compact ? 7 : 9;
         using SKFont titleFont = Font(Semibold, 13);
-        using SKFont small = Font(Medium, 11);
-        using SKFont tiny = Font(Semibold, 10);
-        using SKFont value = Font(Semibold, compact ? 14 : 17);
+        using SKFont small = Font(Medium, 12);
+        using SKFont tiny = Font(Semibold, 11);
+        using SKFont value = Font(Semibold, compact ? 16 : 18);
 
-        Text(title, r.Left + 14, r.Top + 24, titleFont, color, SKTextAlign.Left, 2);
-        if (name.Length > 0) Text(Ellipsize(name, small, compact ? 60 : 104), r.Right - 14, r.Top + 24, small, theme.Muted, SKTextAlign.Right);
+        Text(title, r.Left + 14, r.Top + 22, titleFont, color, SKTextAlign.Left, 2);
+        float titleWidth = titleFont.MeasureText(title) + 2 * title.Length;
+        if (name.Length > 0) Text(Ellipsize(name, small, r.Width - 28 - titleWidth - 12), r.Right - 14, r.Top + 22, small, theme.Muted, SKTextAlign.Right);
 
-        float cx = r.Left + 14 + ringRadius + 4;
-        float cy = r.Top + (compact ? 60 : 84);
-        Ring(cx, cy, ringRadius, compact ? 8 : 9, (load ?? 0) / 100, color, theme);
-        BigValue(o, new Big(load is null ? "–" : RoundText(load.Value), load is null ? "" : "%", false), cx, cy + (compact ? 6 : 7), ringRadius * 1.4f, ringTextSize, color);
-        if (!compact) Text("LOAD", cx, cy + 22, tiny, theme.Muted, SKTextAlign.Center, 1);
+        float cx = r.Left + 14 + radius + 2;
+        float cy = r.Top + 30 + (r.Height - 30) / 2;
+        Ring(cx, cy, radius, stroke, (load ?? 0) / 100, color, theme);
+        // The number fits inside the ring, the "%" smaller beside it, so neither touches the ring.
+        var big = new Big(load is null ? "–" : RoundText(load.Value), load is null ? "" : "%", false);
+        BigValue(o, big, cx, cy + (compact ? 7 : 5), 2 * (radius - stroke) - 6, compact ? 20 : 26, color, SKTextAlign.Center, 0.5f);
+        if (!compact) Text("LOAD", cx, cy + 21, tiny, theme.Muted, SKTextAlign.Center, 1);
 
-        float x = cx + ringRadius + 18;
-        float step = compact ? 36 : 40;
-        float top = r.Top + (compact ? 44 : 58);
+        float x = cx + radius + (compact ? 14 : 18);
+        float width = r.Right - 12 - x;
+        float labelY = cy - (compact ? 22 : 26);
+        float valueStep = compact ? 17 : 20;
+        float rowStep = compact ? 34 : 40;
         foreach ((string Label, string Value, bool Hot) item in new[] { first, second })
         {
-            Text(item.Label, x, top, tiny, theme.Muted, SKTextAlign.Left, 1);
-            Text(item.Value, x, top + (compact ? 17 : 20), value, item.Hot ? o.System.Alert : StrongText(theme));
-            top += step;
+            Text(item.Label, x, labelY, tiny, theme.Muted, SKTextAlign.Left, 1);
+            Text(Ellipsize(item.Value, value, width), x, labelY + valueStep, value, item.Hot ? o.System.Alert : StrongText(theme));
+            labelY += rowStep;
         }
     }
 
@@ -463,7 +476,8 @@ public sealed partial class ScreenRenderer
         SKTextAlign align = SKTextAlign.Center, float unitScale = 1)
     {
         bool small = unitScale < 1;
-        float gap = small ? 4 : 0;
+        // A word ("MB/s") keeps a space from the number; a small "%" sits right against it.
+        float gap = small ? (big.Unit == "%" ? 1.5f : 4) : 0;
         using SKFont font = Font(o.Font.File, size);
         using SKFont smallFont = Font(Semibold, size * unitScale);
         SKFont unitFont = small ? smallFont : font;

@@ -21,6 +21,7 @@ public enum DisplayStatus
 public sealed class DisplayService : IDisposable
 {
     private const int RetryMs = 5000;
+    private const int AutoRotateSeconds = 15;
 
     private readonly Settings _settings;
     private readonly CancellationTokenSource _stop = new();
@@ -30,8 +31,12 @@ public sealed class DisplayService : IDisposable
     public DisplayService(Settings settings)
     {
         _settings = settings;
+        Sensors.SetEnabled(settings.View != "clock");
         _thread = new Thread(Run) { IsBackground = true, Name = "Display" };
     }
+
+    /// <summary>The PC's sensors. They are only polled while a view that shows them is selected.</summary>
+    public SystemSensors Sensors { get; } = new();
 
     public DisplayStatus Status { get; private set; } = DisplayStatus.NotFound;
     /// <summary>Detail for the status: the model and port when connected, the error text otherwise.</summary>
@@ -43,12 +48,17 @@ public sealed class DisplayService : IDisposable
     public void Start() => _thread.Start();
 
     /// <summary>Call after changing the settings: the next frame uses them.</summary>
-    public void ApplySettings() => _settingsChanged = true;
+    public void ApplySettings()
+    {
+        Sensors.SetEnabled(_settings.View != "clock");
+        _settingsChanged = true;
+    }
 
     public void Dispose()
     {
         _stop.Cancel();
         if (_thread.IsAlive) _thread.Join(3000);
+        Sensors.Dispose();
         _stop.Dispose();
     }
 
@@ -110,7 +120,8 @@ public sealed class DisplayService : IDisposable
                 }
             }
 
-            renderer.Draw(DateTime.Now, OptionsFrom(_settings));
+            DateTime now = DateTime.Now;
+            renderer.Draw(now, OptionsFrom(_settings), ViewFor(_settings, now), Sensors.Latest);
             renderer.CopyRgb565(current);
             if (TuringProtocol.DiffRect(previous, current, TuringProtocol.ScreenWidth, TuringProtocol.ScreenHeight) is { } rect)
             {
@@ -122,6 +133,14 @@ public sealed class DisplayService : IDisposable
             cancel.WaitHandle.WaitOne(1000 - DateTime.Now.Millisecond);
         }
     }
+
+    /// <summary>The view to show now: the chosen one, or clock and system taking turns in "auto".</summary>
+    public static ScreenView ViewFor(Settings settings, DateTime now) => settings.View switch
+    {
+        "system" => ScreenView.System,
+        "auto" => (long)(now - DateTime.UnixEpoch).TotalSeconds / AutoRotateSeconds % 2 == 0 ? ScreenView.Clock : ScreenView.System,
+        _ => ScreenView.Clock
+    };
 
     public static RenderOptions OptionsFrom(Settings settings) =>
         new(Themes.Resolve(settings.Theme), ClockFonts.Resolve(settings.Font), settings.Use24h, CultureInfo.CurrentCulture);

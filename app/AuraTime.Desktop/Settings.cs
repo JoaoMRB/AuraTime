@@ -6,6 +6,8 @@ namespace AuraTime.Desktop;
 /// <summary>What the user chose, kept in %AppData%\AuraTime\settings.json.</summary>
 public sealed class Settings
 {
+    /// <summary>"clock", "system" or "auto" (the two take turns).</summary>
+    public string View { get; set; } = "clock";
     public string Theme { get; set; } = Render.Themes.DefaultId;
     public string Font { get; set; } = Render.ClockFonts.DefaultId;
     public int Brightness { get; set; } = 60;

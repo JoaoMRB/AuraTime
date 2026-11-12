@@ -36,7 +36,7 @@ public sealed class MainForm : Form
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(528, 610);
+        ClientSize = new Size(528, 650);
 
         _preview = new PictureBox
         {
@@ -50,6 +50,10 @@ public sealed class MainForm : Form
         Controls.Add(_status);
 
         int y = 396;
+        string[] viewIds = ["clock", "system", "auto"];
+        ComboBox view = AddCombo("View", ref y, ["Clock", "System (CPU, GPU, memory)", "Both, taking turns"], Array.IndexOf(viewIds, settings.View));
+        view.SelectedIndexChanged += (_, _) => Change(() => _settings.View = viewIds[view.SelectedIndex]);
+
         ComboBox theme = AddCombo("Theme", ref y, Themes.All.Select(t => t.Name), Array.FindIndex(Themes.All, t => t.Id == Themes.Resolve(settings.Theme).Id));
         theme.SelectedIndexChanged += (_, _) => Change(() => _settings.Theme = Themes.All[theme.SelectedIndex].Id);
 
@@ -102,7 +106,8 @@ public sealed class MainForm : Form
     /// <summary>Draws the same frame the display gets and copies it into the picture box.</summary>
     private void DrawPreview()
     {
-        _renderer.Draw(DateTime.Now, DisplayService.OptionsFrom(_settings));
+        DateTime now = DateTime.Now;
+        _renderer.Draw(now, DisplayService.OptionsFrom(_settings), DisplayService.ViewFor(_settings, now), _display.Sensors.Latest);
         var area = new Rectangle(0, 0, _previewBitmap.Width, _previewBitmap.Height);
         BitmapData data = _previewBitmap.LockBits(area, ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
         try

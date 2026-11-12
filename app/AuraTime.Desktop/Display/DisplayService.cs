@@ -21,22 +21,28 @@ public enum DisplayStatus
 public sealed class DisplayService : IDisposable
 {
     private const int RetryMs = 5000;
-    private const int AutoRotateSeconds = 15;
 
     private readonly Settings _settings;
     private readonly CancellationTokenSource _stop = new();
     private readonly Thread _thread;
+    private readonly ScreenText _text = ScreenText.ForCurrentCulture();
     private volatile bool _settingsChanged;
 
     public DisplayService(Settings settings)
     {
         _settings = settings;
-        Sensors.SetEnabled(settings.View != "clock");
+        ConfigureSources();
         _thread = new Thread(Run) { IsBackground = true, Name = "Display" };
     }
 
-    /// <summary>The PC's sensors. They are only polled while a view that shows them is selected.</summary>
+    /// <summary>The PC's sensors. They are only polled while the system view is on.</summary>
     public SystemSensors Sensors { get; } = new();
+
+    /// <summary>The weather. Only fetched while the weather view is on and a city is chosen.</summary>
+    public WeatherService Weather { get; } = new();
+
+    /// <summary>Language of the texts drawn on the screen.</summary>
+    public string Language => _text.Language;
 
     public DisplayStatus Status { get; private set; } = DisplayStatus.NotFound;
     /// <summary>Detail for the status: the model and port when connected, the error text otherwise.</summary>
@@ -50,7 +56,7 @@ public sealed class DisplayService : IDisposable
     /// <summary>Call after changing the settings: the next frame uses them.</summary>
     public void ApplySettings()
     {
-        Sensors.SetEnabled(_settings.View != "clock");
+        ConfigureSources();
         _settingsChanged = true;
     }
 
@@ -59,7 +65,48 @@ public sealed class DisplayService : IDisposable
         _stop.Cancel();
         if (_thread.IsAlive) _thread.Join(3000);
         Sensors.Dispose();
+        Weather.Dispose();
         _stop.Dispose();
+    }
+
+    /// <summary>What to draw now: the view whose turn it is, its options and its data.</summary>
+    public (ScreenView View, RenderOptions Options, ScreenData Data) Frame(DateTime now)
+    {
+        Settings s = _settings;
+        var data = new ScreenData(
+            Sensors.Latest,
+            Weather.Latest,
+            s.Views.Contains("world") ? WorldClocks.Rows(s.WorldClocks, now, s.Use24h) : []);
+        var options = new RenderOptions(Themes.Resolve(s.Theme), ClockFonts.Resolve(s.Font), s.Use24h, CultureInfo.CurrentCulture, _text);
+        return (ViewFor(s, now, data), options, data);
+    }
+
+    /// <summary>
+    /// The views take turns, each for <see cref="Settings.ViewSeconds"/>. A view with nothing to show yet (no
+    /// weather reading, no world clock) is skipped.
+    /// </summary>
+    public static ScreenView ViewFor(Settings settings, DateTime now, ScreenData data)
+    {
+        var ready = new List<ScreenView>();
+        foreach (string id in settings.Views)
+        {
+            switch (id)
+            {
+                case "clock": ready.Add(ScreenView.Clock); break;
+                case "system": ready.Add(ScreenView.System); break;
+                case "weather" when data.Weather is not null: ready.Add(ScreenView.Weather); break;
+                case "world" when data.WorldClocks.Count > 0: ready.Add(ScreenView.World); break;
+            }
+        }
+        if (ready.Count == 0) return ScreenView.Clock;
+        long slot = (long)(now - DateTime.UnixEpoch).TotalSeconds / Math.Max(1, settings.ViewSeconds);
+        return ready[(int)(slot % ready.Count)];
+    }
+
+    private void ConfigureSources()
+    {
+        Sensors.SetEnabled(_settings.Views.Contains("system"));
+        Weather.Configure(_settings.Views.Contains("weather"), _settings.WeatherCity);
     }
 
     private void Run()
@@ -121,7 +168,8 @@ public sealed class DisplayService : IDisposable
             }
 
             DateTime now = DateTime.Now;
-            renderer.Draw(now, OptionsFrom(_settings), ViewFor(_settings, now), Sensors.Latest);
+            (ScreenView view, RenderOptions options, ScreenData data) = Frame(now);
+            renderer.Draw(now, options, view, data);
             renderer.CopyRgb565(current);
             if (TuringProtocol.DiffRect(previous, current, TuringProtocol.ScreenWidth, TuringProtocol.ScreenHeight) is { } rect)
             {
@@ -133,17 +181,6 @@ public sealed class DisplayService : IDisposable
             cancel.WaitHandle.WaitOne(1000 - DateTime.Now.Millisecond);
         }
     }
-
-    /// <summary>The view to show now: the chosen one, or clock and system taking turns in "auto".</summary>
-    public static ScreenView ViewFor(Settings settings, DateTime now) => settings.View switch
-    {
-        "system" => ScreenView.System,
-        "auto" => (long)(now - DateTime.UnixEpoch).TotalSeconds / AutoRotateSeconds % 2 == 0 ? ScreenView.Clock : ScreenView.System,
-        _ => ScreenView.Clock
-    };
-
-    public static RenderOptions OptionsFrom(Settings settings) =>
-        new(Themes.Resolve(settings.Theme), ClockFonts.Resolve(settings.Font), settings.Use24h, CultureInfo.CurrentCulture);
 
     private void SetStatus(DisplayStatus status, string detail)
     {

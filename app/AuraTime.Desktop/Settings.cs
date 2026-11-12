@@ -8,11 +8,27 @@ using Microsoft.Win32;
 
 namespace AuraTime.Desktop;
 
-/// <summary>What the user chose, kept in %AppData%\AuraTime\settings.json.</summary>
+/// <summary>
+/// What the user chose, kept in %AppData%\AuraTime\settings.json. The display thread reads it while the window
+/// changes it: lists are always replaced, never changed in place.
+/// </summary>
 public sealed class Settings
 {
-    /// <summary>"clock", "system" or "auto" (the two take turns).</summary>
-    public string View { get; set; } = "clock";
+    public const int MinViewSeconds = 10;
+    public const int MaxViewSeconds = 60;
+
+    /// <summary>Views shown on the screen, taking turns: "clock", "system", "weather", "world".</summary>
+    public List<string> Views { get; set; } = ["clock"];
+    /// <summary>How long each view stays before the next one.</summary>
+    public int ViewSeconds { get; set; } = 20;
+    /// <summary>Where the weather view looks; null until the user picks a city.</summary>
+    public WeatherCity? WeatherCity { get; set; }
+    /// <summary>IANA time zones of the world clocks view (up to three).</summary>
+    public List<string> WorldClocks { get; set; } = [.. Desktop.WorldClocks.Defaults];
+
+    /// <summary>Before several views: "clock", "system" or "auto". Only read, to carry an old choice over.</summary>
+    public string? View { get; set; }
+
     public string Theme { get; set; } = Render.Themes.DefaultId;
     public string Font { get; set; } = Render.ClockFonts.DefaultId;
     public int Brightness { get; set; } = 60;
@@ -22,7 +38,11 @@ public sealed class Settings
     /// <summary>Run with administrator rights, so the CPU's temperature can be read. Off by default.</summary>
     public bool RunAsAdmin { get; set; }
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
 
     private static string FilePath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraTime", "settings.json");
@@ -36,7 +56,7 @@ public sealed class Settings
                 Settings? loaded = JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath));
                 if (loaded is not null)
                 {
-                    loaded.Brightness = Math.Clamp(loaded.Brightness, 0, 100);
+                    loaded.Normalise();
                     return loaded;
                 }
             }
@@ -52,6 +72,33 @@ public sealed class Settings
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(this, JsonOptions));
+    }
+
+    public static readonly string[] AllViews = ["clock", "system", "weather", "world"];
+
+    /// <summary>Repairs whatever a hand-edited or older file got wrong.</summary>
+    private void Normalise()
+    {
+        // The old single choice becomes the list of views.
+        if (View is not null)
+        {
+            Views = View switch
+            {
+                "system" => ["system"],
+                "auto" => ["clock", "system"],
+                _ => ["clock"]
+            };
+            View = null;
+        }
+        Views = (Views ?? []).Where(AllViews.Contains).Distinct().ToList();
+        if (Views.Count == 0) Views = ["clock"];
+        WorldClocks = (WorldClocks ?? []).Where(id => Desktop.WorldClocks.Cities.Any(c => c.TimeZoneId == id)).Take(Desktop.WorldClocks.Max).ToList();
+        ViewSeconds = Math.Clamp(ViewSeconds, MinViewSeconds, MaxViewSeconds);
+        Brightness = Math.Clamp(Brightness, 0, 100);
+        if (WeatherCity is { } city && (string.IsNullOrWhiteSpace(city.Name) || Math.Abs(city.Latitude) > 90 || Math.Abs(city.Longitude) > 180))
+        {
+            WeatherCity = null;
+        }
     }
 }
 

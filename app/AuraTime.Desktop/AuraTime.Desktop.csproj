@@ -24,6 +24,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+    <!-- The web app's translations: one source for the texts on the screen. -->
+    <EmbeddedResource Include="..\..\public\assets\i18n\*.json" LogicalName="i18n.%(Filename).json" Link="i18n\%(Filename).json" />
   </ItemGroup>
 
 </Project>

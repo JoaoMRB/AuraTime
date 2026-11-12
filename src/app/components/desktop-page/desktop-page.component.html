@@ -17,13 +17,34 @@
       </a>
 
       <div class="flex items-center gap-3">
-        <label class="sr-only" for="desktop-language">{{ ts.t('SCREEN.PAGE.LANGUAGE') }}</label>
-        <select id="desktop-language" (change)="changeLanguage($event)"
-          class="aura-focus cursor-pointer appearance-none rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:border-luxury-gold">
-          @for (language of ts.getAvailableLanguages(); track language.code) {
-            <option [value]="language.code" [selected]="language.code === ts.currentLang()" class="bg-luxury-charcoal normal-case">{{ language.name }}</option>
+        <!-- Language: the same menu as the landing page (a native select is as wide as its longest language) -->
+        <div class="relative">
+          <button type="button" data-testid="language" (click)="toggleLanguages($event)"
+            [attr.aria-label]="ts.t('SCREEN.PAGE.LANGUAGE')" aria-haspopup="true" [attr.aria-expanded]="languagesOpen()"
+            class="aura-focus inline-flex items-center gap-2 whitespace-nowrap rounded-full border bg-black/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-300 hover:border-luxury-gold hover:text-luxury-gold sm:px-4"
+            [class]="languagesOpen() ? 'border-luxury-gold text-luxury-gold' : 'border-white/20 text-white'">
+            <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 3-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 4.658 9.928 4.5 8.716 4.5 7.504 4.5 6.246 4.658 5.25 5.25V21"/>
+            </svg>
+            <span>{{ currentLanguageName() }}</span>
+            <svg viewBox="0 0 24 24" class="h-3 w-3 opacity-60 transition-transform duration-300" [class.rotate-180]="languagesOpen()" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </button>
+          @if (languagesOpen()) {
+            <div (click)="$event.stopPropagation()" data-testid="language-menu"
+              class="absolute right-0 top-full z-50 mt-2 min-w-[11rem] overflow-hidden rounded-2xl border border-white/10 bg-[#070c08]/95 py-1.5 shadow-[0_8px_40px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              @for (language of ts.getAvailableLanguages(); track language.code) {
+                <button type="button" (click)="setLanguage(language.code)"
+                  class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-xs tracking-wide transition-all duration-200"
+                  [class]="ts.currentLang() === language.code ? 'bg-luxury-gold/10 font-bold text-luxury-gold' : 'font-medium text-gray-400 hover:bg-white/5 hover:text-white'">
+                  <span>{{ language.name }}</span>
+                  <span class="text-[10px] uppercase tracking-widest opacity-60">{{ language.code }}</span>
+                </button>
+              }
+            </div>
           }
-        </select>
+        </div>
         <a routerLink="/screen" class="aura-pill-btn hidden sm:inline-flex">{{ ts.t('DESKTOP.HERO.TRY_WEB') }}</a>
       </div>
     </nav>

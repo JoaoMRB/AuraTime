@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, HostListener, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { TranslationService } from '../../services/translation.service';
@@ -64,7 +64,27 @@ export class DesktopPageComponent {
     return this.ts.format(key, { version: this.app.version, size: this.app.sizeMb });
   }
 
-  changeLanguage(event: Event): void {
-    this.ts.setLanguage((event.target as HTMLSelectElement).value);
+  /** The language menu in the top bar. */
+  readonly languagesOpen = signal(false);
+
+  currentLanguageName(): string {
+    return this.ts.getAvailableLanguages().find(l => l.code === this.ts.currentLang())?.name ?? 'English';
+  }
+
+  toggleLanguages(event: Event): void {
+    event.stopPropagation();
+    this.languagesOpen.update(open => !open);
+  }
+
+  setLanguage(code: string): void {
+    this.ts.setLanguage(code);
+    this.languagesOpen.set(false);
+  }
+
+  /** A click anywhere else, or Escape, closes the language menu. */
+  @HostListener('document:click')
+  @HostListener('document:keydown.escape')
+  closeLanguages(): void {
+    this.languagesOpen.set(false);
   }
 }

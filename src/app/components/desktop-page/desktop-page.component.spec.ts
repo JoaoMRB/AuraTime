@@ -57,6 +57,31 @@ describe('DesktopPageComponent', () => {
     expect(link!.rel).toContain('noopener');
   });
 
+  it('has a language menu sized to the current language, that opens, switches and closes', () => {
+    const { fixture, el } = render();
+    const button = el.querySelector<HTMLButtonElement>('[data-testid="language"]')!;
+    expect(el.querySelector('select')).toBeNull(); // a native select is as wide as its longest language
+    expect(button.textContent).toContain('English');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    button.click();
+    fixture.detectChanges();
+    const options = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-testid="language-menu"] button'));
+    expect(options.map(o => o.textContent!.trim().slice(0, 3))).toEqual(['Eng', 'Por', 'Esp', 'Fra', 'Deu', 'Ita']);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+
+    options[1].click();
+    fixture.detectChanges();
+    expect(button.textContent).toContain('Português');
+    expect(el.querySelector('[data-testid="language-menu"]')).toBeNull();
+
+    button.click();
+    fixture.detectChanges();
+    document.dispatchEvent(new MouseEvent('click'));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="language-menu"]')).toBeNull(); // a click elsewhere closes it
+  });
+
   it('links to the browser version and sets its own title', () => {
     const { el } = render();
     expect(el.querySelector('a[href="/screen"]')).toBeTruthy();

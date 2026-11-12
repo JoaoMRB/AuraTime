@@ -36,7 +36,7 @@ public sealed class MainForm : Form
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(528, 650);
+        ClientSize = new Size(528, 682);
 
         _preview = new PictureBox
         {
@@ -74,7 +74,10 @@ public sealed class MainForm : Form
         use24h.CheckedChanged += (_, _) => Change(() => _settings.Use24h = use24h.Checked);
 
         CheckBox autostart = AddCheck("Start with Windows", ref y, Autostart.IsEnabled);
-        autostart.CheckedChanged += (_, _) => Autostart.Set(autostart.Checked);
+        autostart.CheckedChanged += (_, _) => Autostart.Set(autostart.Checked, _settings);
+
+        CheckBox admin = AddCheck("CPU temperature (runs AuraTime as administrator)", ref y, settings.RunAsAdmin);
+        admin.CheckedChanged += (_, _) => OnAdminChanged(admin);
 
         _display.StatusChanged += OnStatusChanged;
         _timer.Tick += (_, _) => DrawPreview();
@@ -93,6 +96,48 @@ public sealed class MainForm : Form
             _previewBitmap.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    private bool _revertingAdmin;
+
+    /// <summary>
+    /// Turning administrator mode on restarts the app with administrator rights (Windows asks first); if the user
+    /// says no, the box unticks itself. Turning it off takes effect the next time the app starts.
+    /// </summary>
+    private void OnAdminChanged(CheckBox box)
+    {
+        if (_revertingAdmin) return;
+        _settings.RunAsAdmin = box.Checked;
+        _settings.Save();
+
+        if (box.Checked && !Elevation.IsElevated)
+        {
+            if (Elevation.Relaunch($"{Program.WaitForArgument} {Environment.ProcessId}"))
+            {
+                Application.Exit(); // the elevated copy waits for this one to quit, then takes over
+                return;
+            }
+            _settings.RunAsAdmin = false;
+            _settings.Save();
+            _revertingAdmin = true;
+            box.Checked = false;
+            _revertingAdmin = false;
+            return;
+        }
+
+        try
+        {
+            Autostart.Sync(_settings);
+        }
+        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or IOException)
+        {
+            MessageBox.Show(this, $"Could not update the start-up entry: {e.Message}", "AuraTime", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        if (!box.Checked && Elevation.IsElevated)
+        {
+            MessageBox.Show(this, "AuraTime will run without administrator rights the next time it starts.", "AuraTime",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
     }
 
     private void Change(Action apply)

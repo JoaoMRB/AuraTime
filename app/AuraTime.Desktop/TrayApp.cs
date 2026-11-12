@@ -10,7 +10,7 @@ public sealed class TrayApp : ApplicationContext
 {
     private const string ShowEventName = @"Local\AuraTime.Desktop.Show";
 
-    private readonly Settings _settings = Settings.Load();
+    private readonly Settings _settings;
     private readonly DisplayService _display;
     private readonly NotifyIcon _tray;
     private readonly Icon _icon;
@@ -20,9 +20,13 @@ public sealed class TrayApp : ApplicationContext
     private readonly Control _ui = new();
     private MainForm? _window;
 
-    public TrayApp(bool openWindow)
+    public TrayApp(Settings settings, bool openWindow)
     {
+        _settings = settings;
         _ = _ui.Handle; // creates the handle on the UI thread, so other threads can call back into it
+
+        // Administrator mode may have changed since the last run: put "start with Windows" where it now belongs.
+        TrySyncAutostart(settings);
 
         using (Stream stream = typeof(TrayApp).Assembly.GetManifestResourceStream("app.ico")!)
         {
@@ -33,7 +37,7 @@ public sealed class TrayApp : ApplicationContext
         _display.StatusChanged += () => _ui.BeginInvoke(UpdateTooltip);
 
         _autostartItem = new ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
-        _autostartItem.Click += (_, _) => Autostart.Set(_autostartItem.Checked);
+        _autostartItem.Click += (_, _) => Autostart.Set(_autostartItem.Checked, _settings);
 
         var menu = new ContextMenuStrip();
         menu.Items.Add("Open AuraTime", null, (_, _) => ShowWindow());
@@ -56,12 +60,31 @@ public sealed class TrayApp : ApplicationContext
         if (openWindow) ShowWindow();
     }
 
+    private static void TrySyncAutostart(Settings settings)
+    {
+        try
+        {
+            Autostart.Sync(settings);
+        }
+        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or IOException)
+        {
+            // Not worth stopping the app for: the old start-up entry keeps working.
+        }
+    }
+
     /// <summary>Called by a second instance: tells the running one to show its window.</summary>
     public static void SignalShowWindow()
     {
-        if (EventWaitHandle.TryOpenExisting(ShowEventName, out EventWaitHandle? handle))
+        try
         {
-            using (handle) handle.Set();
+            if (EventWaitHandle.TryOpenExisting(ShowEventName, out EventWaitHandle? handle))
+            {
+                using (handle) handle.Set();
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // The running instance has administrator rights: this one cannot reach it.
         }
     }
 

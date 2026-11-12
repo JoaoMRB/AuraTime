@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AuraTime.Desktop.Display;
 using AuraTime.Desktop.Render;
 using SkiaSharp;
@@ -22,18 +23,62 @@ internal static class Program
             return 0;
         }
 
-        using var single = new Mutex(true, @"Local\AuraTime.Desktop", out bool first);
-        if (!first)
+        // Restarted by an instance that is switching to administrator mode: let it finish quitting first.
+        int waitFor = Array.IndexOf(args, WaitForArgument);
+        if (waitFor >= 0 && waitFor + 1 < args.Length && int.TryParse(args[waitFor + 1], out int pid)) WaitForExit(pid);
+
+        bool tray = args.Contains(Autostart.TrayArgument);
+        Settings settings = Settings.Load();
+        if (settings.RunAsAdmin && !Elevation.IsElevated && Elevation.Relaunch(tray ? Autostart.TrayArgument : ""))
         {
-            // Already running: ask that instance to show its window instead of starting a second one.
-            TrayApp.SignalShowWindow();
             return 0;
         }
+        // (When the user says no to the Windows prompt, the app carries on without the CPU temperature.)
 
-        ApplicationConfiguration.Initialize();
-        using var app = new TrayApp(openWindow: !args.Contains(Autostart.TrayArgument));
-        Application.Run(app);
+        Mutex single;
+        bool first;
+        try
+        {
+            single = new Mutex(true, @"Local\AuraTime.Desktop", out first);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // The running instance has administrator rights, so this one cannot even look at it.
+            ApplicationConfiguration.Initialize();
+            MessageBox.Show("AuraTime is already running. Open it from its icon in the taskbar's notification area.", "AuraTime",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return 0;
+        }
+        using (single)
+        {
+            if (!first)
+            {
+                // Already running: ask that instance to show its window instead of starting a second one.
+                TrayApp.SignalShowWindow();
+                return 0;
+            }
+
+            ApplicationConfiguration.Initialize();
+            using var app = new TrayApp(settings, openWindow: !tray);
+            Application.Run(app);
+        }
         return 0;
+    }
+
+    /// <summary>Followed by a process id: wait for that process to quit before starting.</summary>
+    public const string WaitForArgument = "--wait-for";
+
+    private static void WaitForExit(int pid)
+    {
+        try
+        {
+            using Process process = Process.GetProcessById(pid);
+            process.WaitForExit(10000);
+        }
+        catch (ArgumentException)
+        {
+            // Already gone.
+        }
     }
 
     private static int WritePng(string path, bool systemView)

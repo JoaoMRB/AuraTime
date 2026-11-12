@@ -9,6 +9,12 @@
     <AssemblyName>AuraTime</AssemblyName>
     <RootNamespace>AuraTime.Desktop</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- The installer (app/installer) reads this version. -->
+    <Version>0.1.0</Version>
+    <Product>AuraTime</Product>
+    <Company>AuraTime</Company>
+    <Description>AuraTime for the USB desk display</Description>
+    <Copyright>MIT License</Copyright>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- The app sits in the tray all day: favour a small footprint over throughput. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>

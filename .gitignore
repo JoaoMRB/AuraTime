@@ -43,3 +43,6 @@ Thumbs.db
 
 # Browser extension build output
 /dist-extension
+
+# Leftovers of the removed Node prototype (the desktop app is in /app now)
+/desktop/

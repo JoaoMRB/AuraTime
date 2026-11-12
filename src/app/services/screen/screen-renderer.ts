@@ -20,7 +20,9 @@ export const DEFAULT_DRAW_OPTIONS: DrawOptions = {
   black: false
 };
 
-const BODY_FONT = "'Inter', sans-serif";
+// 'Segoe UI Symbol' supplies the task marker (U+25B8), which Inter's latin subset lacks: the browser falls back to a
+// system font by itself, the desktop service's Skia canvas only looks in the families named here.
+const BODY_FONT = "'Inter', 'Segoe UI Symbol', sans-serif";
 const EMOJI_FONT = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
 const CARD_INSET = 20;
 const CARD_RADIUS = 28;

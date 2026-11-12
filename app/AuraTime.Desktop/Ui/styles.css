@@ -324,6 +324,61 @@ input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgb(237 
   .swatches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* ------------------------------ system designs ------------------------------ */
+
+.designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.design { display: flex; flex-direction: column; gap: 8px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 12px; text-align: left; }
+.design-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #000;
+  transition: box-shadow .15s var(--ease);
+}
+.design-thumb:not([src]) { visibility: hidden; }
+.design:hover .design-thumb { box-shadow: 0 0 0 1px var(--border-strong); }
+.design[aria-checked="true"] { color: var(--text); }
+.design[aria-checked="true"] .design-thumb { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--primary); }
+.design-name { font-weight: 500; }
+
+.colors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.color {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  transition: border-color .15s var(--ease);
+}
+.color:hover { border-color: var(--border-strong); }
+.color:focus-within { border-color: var(--subtle); box-shadow: 0 0 0 3px rgb(82 168 255 / .25); }
+.color span { display: flex; flex-direction: column; min-width: 0; font-size: 13px; line-height: 16px; }
+.color small { color: var(--subtle); font-size: 11px; line-height: 14px; }
+.color input[type="color"] {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.color input[type="color"]:focus-visible { outline: none; }
+.color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.color input[type="color"]::-webkit-color-swatch { border: 1px solid rgb(255 255 255 / .12); border-radius: 6px; }
+
+.link { padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--text); }
+.link:disabled { color: var(--subtle); text-decoration: none; }
+
 /* ------------------------------ scrollbars ------------------------------ */
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }

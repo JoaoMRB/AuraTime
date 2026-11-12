@@ -78,6 +78,35 @@
         </div>
       </section>
 
+      <section class="card" aria-labelledby="design-title">
+        <header class="card-head">
+          <h2 id="design-title">System screen</h2>
+          <p>How the system view looks. The previews use sample numbers.</p>
+        </header>
+        <div class="field">
+          <div class="designs" id="designs" role="radiogroup" aria-label="System design"></div>
+          <p class="hint" id="design-desc"></p>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <span class="field-label" id="colors-label">Colors for this design</span>
+            <button class="link" id="reset-colors" type="button">Reset</button>
+          </div>
+          <div class="colors" role="group" aria-labelledby="colors-label">
+            <label class="color"><input type="color" id="color-accent"><span>Main<small>CPU</small></span></label>
+            <label class="color"><input type="color" id="color-secondary"><span>Second<small>GPU</small></span></label>
+            <label class="color"><input type="color" id="color-alert"><span>Hot<small>too warm</small></span></label>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label class="field-label" for="alert-temp">Temperature counts as hot from</label>
+            <output id="alert-temp-value" for="alert-temp"></output>
+          </div>
+          <input type="range" id="alert-temp" min="50" max="100" step="1">
+        </div>
+      </section>
+
       <section class="card" aria-labelledby="weather-title">
         <header class="card-head">
           <h2 id="weather-title">Weather</h2>

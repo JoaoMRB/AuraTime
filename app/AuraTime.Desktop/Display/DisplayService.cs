@@ -44,6 +44,9 @@ public sealed class DisplayService : IDisposable
     /// <summary>Language of the texts drawn on the screen.</summary>
     public string Language => _text.Language;
 
+    /// <summary>The texts drawn on the screen, in the Windows language.</summary>
+    public ScreenText Text => _text;
+
     public DisplayStatus Status { get; private set; } = DisplayStatus.NotFound;
     /// <summary>Detail for the status: the model and port when connected, the error text otherwise.</summary>
     public string Detail { get; private set; } = "";
@@ -77,7 +80,9 @@ public sealed class DisplayService : IDisposable
             Sensors.Latest,
             Weather.Latest,
             s.Views.Contains("world") ? WorldClocks.Rows(s.WorldClocks, now, s.Use24h) : []);
-        var options = new RenderOptions(Themes.Resolve(s.Theme), ClockFonts.Resolve(s.Font), s.Use24h, CultureInfo.CurrentCulture, _text);
+        Theme theme = Themes.Resolve(s.Theme);
+        SystemStyle style = SystemDesigns.Resolve(theme, s.SystemDesign, s.Designs.GetValueOrDefault(s.SystemDesign));
+        var options = new RenderOptions(theme, ClockFonts.Resolve(s.Font), s.Use24h, CultureInfo.CurrentCulture, _text, style);
         return (ViewFor(s, now, data), options, data);
     }
 

@@ -12,7 +12,7 @@ public enum ScreenView
     World
 }
 
-public sealed record RenderOptions(Theme Theme, ClockFont Font, bool Use24h, CultureInfo Culture, ScreenText Text);
+public sealed record RenderOptions(Theme Theme, ClockFont Font, bool Use24h, CultureInfo Culture, ScreenText Text, SystemStyle System);
 
 /// <summary>Everything the views show besides the time.</summary>
 public sealed record ScreenData(SystemSnapshot System, WeatherNow? Weather, IReadOnlyList<WorldClockRow> WorldClocks)
@@ -22,9 +22,9 @@ public sealed record ScreenData(SystemSnapshot System, WeatherNow? Weather, IRea
 
 /// <summary>
 /// Draws the 480x320 screen. Ported from the web app's canvas renderer (src/app/services/screen/screen-renderer.ts):
-/// the clock, weather and world clock views come from there, the system view (PC sensors) exists only here.
+/// the clock, weather and world clock views come from there, the system view (PC sensors, five designs in SystemDesigns.cs) exists only here.
 /// </summary>
-public sealed class ScreenRenderer : IDisposable
+public sealed partial class ScreenRenderer : IDisposable
 {
     private const int W = TuringProtocol.ScreenWidth;
     private const int H = TuringProtocol.ScreenHeight;
@@ -190,100 +190,6 @@ public sealed class ScreenRenderer : IDisposable
 
             DrawTimeWithSuffix(theme, options.Font, clock.Time, clock.AmPm, right, top + 48, 190, 46, 15, alignRight: true);
         }
-    }
-
-    /// <summary>CPU on the left, GPU on the right (temperature and load), memory bars underneath.</summary>
-    private void DrawSystem(SystemSnapshot system, RenderOptions options)
-    {
-        Theme theme = options.Theme;
-        using var paint = new SKPaint { IsAntialias = true };
-
-        DrawGauge(theme, options.Font, 130, "CPU", system.CpuName, system.CpuTemp, system.CpuLoad);
-        DrawGauge(theme, options.Font, 350, "GPU", system.GpuName, system.GpuTemp, system.GpuLoad);
-
-        paint.Color = theme.Muted.WithAlpha(40);
-        _canvas.DrawRect(W / 2f, 52, 1, 150, paint);
-
-        DrawMemoryBar(theme, 48, 232, "RAM", system.RamUsedGb, system.RamTotalGb);
-        DrawMemoryBar(theme, 48, 266, "VRAM", system.VramUsedGb, system.VramTotalGb);
-    }
-
-    /// <summary>
-    /// One component: its name, a big temperature and a load bar. A machine that does not expose the temperature
-    /// (CPU sensors need administrator rights) gets the load as the big number instead.
-    /// </summary>
-    private void DrawGauge(Theme theme, ClockFont clockFont, float cx, string label, string name, float? temp, float? load)
-    {
-        using var paint = new SKPaint { IsAntialias = true };
-        using var labelFont = new SKFont(Typeface("inter-latin-600-normal.ttf"), 14);
-        using var nameFont = new SKFont(Typeface("inter-latin-500-normal.ttf"), 12);
-
-        paint.Color = theme.Accent;
-        DrawCentredText(label, cx, 68, labelFont, paint, 2);
-        paint.Color = theme.Muted;
-        _canvas.DrawText(Ellipsize(name, nameFont, 180), cx, 87, SKTextAlign.Center, nameFont, paint);
-
-        float? big = temp ?? load;
-        string value = big is null ? "–" : MathF.Round(big.Value).ToString(CultureInfo.InvariantCulture);
-        string unit = big is null ? "" : temp is not null ? "°" : "%";
-        using var valueFont = new SKFont(Typeface(clockFont.File), 66);
-        while (valueFont.Size > 12 && valueFont.MeasureText(value + unit) > 170) valueFont.Size -= 2;
-        float width = valueFont.MeasureText(value);
-        float startX = cx - valueFont.MeasureText(value + unit) / 2;
-        if (theme.Primary.Length > 1)
-        {
-            using SKShader gradient = SKShader.CreateLinearGradient(
-                new SKPoint(startX, 0), new SKPoint(startX + width, 0), theme.Primary, SKShaderTileMode.Clamp);
-            paint.Shader = gradient;
-            _canvas.DrawText(value, startX, 158, SKTextAlign.Left, valueFont, paint);
-            paint.Shader = null;
-        }
-        else
-        {
-            paint.Color = theme.Primary[0];
-            _canvas.DrawText(value, startX, 158, SKTextAlign.Left, valueFont, paint);
-        }
-        paint.Color = theme.Accent;
-        _canvas.DrawText(unit, startX + width, 158, SKTextAlign.Left, valueFont, paint);
-
-        // Load bar with its percentage; hidden when the load is already the big number
-        if (temp is null || load is null) return;
-        const float barW = 120;
-        float bx = cx - barW / 2 - 18;
-        DrawBar(theme, bx, 182, barW, load.Value / 100);
-        paint.Color = theme.Muted;
-        _canvas.DrawText($"{MathF.Round(load.Value)}%", bx + barW + 8, 189, SKTextAlign.Left, nameFont, paint);
-    }
-
-    private void DrawMemoryBar(Theme theme, float x, float y, string label, float? usedGb, float? totalGb)
-    {
-        using var paint = new SKPaint { IsAntialias = true };
-        using var labelFont = new SKFont(Typeface("inter-latin-600-normal.ttf"), 12);
-        using var valueFont = new SKFont(Typeface("inter-latin-500-normal.ttf"), 12);
-        const float barX = 104;
-        const float barW = 220;
-
-        paint.Color = theme.Muted;
-        _canvas.DrawText(label, x, y + 8, SKTextAlign.Left, labelFont, paint);
-        bool known = usedGb is not null && totalGb is > 0;
-        DrawBar(theme, barX, y + 1, barW, known ? usedGb!.Value / totalGb!.Value : 0);
-        string text = known
-            ? string.Create(CultureInfo.InvariantCulture, $"{usedGb:0.0} / {totalGb:0} GB")
-            : "–";
-        paint.Color = theme.IsLight ? theme.Primary[0] : SKColors.White;
-        _canvas.DrawText(text, W - 48, y + 8, SKTextAlign.Right, valueFont, paint);
-    }
-
-    /// <summary>Rounded track with an accent-coloured fill for the given fraction (0..1).</summary>
-    private void DrawBar(Theme theme, float x, float y, float width, float fraction)
-    {
-        const float height = 6;
-        using var paint = new SKPaint { IsAntialias = true, Color = theme.Muted.WithAlpha(56) };
-        _canvas.DrawRoundRect(new SKRect(x, y, x + width, y + height), height / 2, height / 2, paint);
-        float fill = width * Math.Clamp(fraction, 0, 1);
-        if (fill < height) return;
-        paint.Color = theme.Accent;
-        _canvas.DrawRoundRect(new SKRect(x, y, x + fill, y + height), height / 2, height / 2, paint);
     }
 
     /// <summary>

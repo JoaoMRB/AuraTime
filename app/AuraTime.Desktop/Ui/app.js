@@ -44,6 +44,12 @@ function receive(message) {
     case 'system':
       syncSystem(message);
       break;
+    case 'designThumbs':
+      for (const thumb of message.thumbs) {
+        const img = document.querySelector('img[data-design="' + thumb.id + '"]');
+        if (img) img.src = thumb.image;
+      }
+      break;
   }
 }
 
@@ -197,6 +203,7 @@ function build() {
     world.append(select);
   }
 
+  buildDesigns();
   buildCitySearch();
 }
 
@@ -215,9 +222,11 @@ function sync() {
   markSeconds(settings.viewSeconds);
   markTheme(settings.theme);
   markFont(settings.font);
-  $('brightness').value = settings.brightness;
-  showBrightness(settings.brightness);
+  // never move a control the user is dragging: the app's answer can be a step behind the pointer
+  if (document.activeElement !== $('brightness')) $('brightness').value = settings.brightness;
+  showBrightness(+$('brightness').value);
   setSwitch($('use24h'), settings.use24h);
+  syncDesign();
 
   worldSelects.forEach((select, slot) => {
     select.value = settings.worldClocks[slot] || '';
@@ -248,6 +257,80 @@ function syncSystem(system) {
     : system.admin
       ? 'On, but Windows did not grant administrator rights this time.'
       : 'Needs administrator rights. Windows asks once, then AuraTime restarts.';
+}
+
+/* ------------------------------ system design ------------------------------ */
+
+let markDesign;
+const colorInputs = { accent: 'color-accent', secondary: 'color-secondary', alert: 'color-alert' };
+
+function buildDesigns() {
+  markDesign = radioGroup($('designs'), model.designs.map(d => ({ ...d, value: d.id })),
+    value => { set('systemDesign', value); syncDesign(); },
+    (button, design) => {
+      button.className = 'design';
+      button.setAttribute('aria-label', design.name + '. ' + design.description);
+      button.append(
+        el('img', { class: 'design-thumb', alt: '', width: '480', height: '320', 'data-design': design.id }),
+        el('span', { class: 'design-name', text: design.name }));
+    });
+
+  for (const [key, id] of Object.entries(colorInputs)) {
+    $(id).addEventListener('input', () => queueStyle({ [key]: $(id).value.toUpperCase() }));
+  }
+  const alertTemp = $('alert-temp');
+  alertTemp.min = model.alertTempRange.min;
+  alertTemp.max = model.alertTempRange.max;
+  alertTemp.addEventListener('input', () => queueStyle({ alertTemp: +alertTemp.value }));
+  $('reset-colors').addEventListener('click', resetStyle);
+}
+
+const styleOf = design => (settings.designs && settings.designs[design]) || {};
+
+/** The colours the user changed for the design on show, sent once they stop (a colour picker fires on every drag). */
+let styleTimer = null;
+function queueStyle(patch) {
+  const design = settings.systemDesign;
+  const merged = { ...styleOf(design), ...patch };
+  settings.designs = { ...settings.designs, [design]: merged };
+  showAlertTemp(+$('alert-temp').value);
+  $('reset-colors').disabled = false;
+  clearTimeout(styleTimer);
+  styleTimer = setTimeout(() => send({ type: 'set', key: 'designStyle', value: { design, ...merged } }), 150);
+}
+
+function resetStyle() {
+  clearTimeout(styleTimer);
+  const design = settings.systemDesign;
+  const designs = { ...settings.designs };
+  delete designs[design];
+  settings.designs = designs;
+  send({ type: 'set', key: 'designStyle', value: { design, accent: null, secondary: null, alert: null, alertTemp: null } });
+  syncDesign();
+}
+
+function showAlertTemp(value) {
+  const range = $('alert-temp');
+  $('alert-temp-value').textContent = value + ' °C';
+  range.style.setProperty('--fill', ((value - range.min) / (range.max - range.min)) * 100 + '%');
+}
+
+function syncDesign() {
+  if (!model || !settings) return;
+  markDesign(settings.systemDesign);
+  const info = model.designs.find(d => d.id === settings.systemDesign);
+  $('design-desc').textContent = info ? info.description : '';
+
+  const own = styleOf(settings.systemDesign);
+  const defaults = settings.styleDefaults;
+  for (const [key, id] of Object.entries(colorInputs)) {
+    const input = $(id);
+    if (document.activeElement !== input) input.value = (own[key] || defaults[key]).toLowerCase();
+  }
+  const range = $('alert-temp');
+  if (document.activeElement !== range) range.value = own.alertTemp != null ? own.alertTemp : defaults.alertTemp;
+  showAlertTemp(+range.value);
+  $('reset-colors').disabled = !Object.values(own).some(v => v != null);
 }
 
 /* ------------------------------ status and preview ------------------------------ */

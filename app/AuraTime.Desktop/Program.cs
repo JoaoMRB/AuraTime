@@ -10,14 +10,18 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        // AuraTime.exe --png out.png [--view clock|system|weather|world] [--theme id] : draw one frame to a file and
-        // exit (to check the renderer without a display). Reads the settings, never writes them.
-        int png = Array.IndexOf(args, "--png");
-        if (png >= 0 && png + 1 < args.Length) return WritePng(args[png + 1], Option(args, "--view") ?? "clock", Option(args, "--theme"), Option(args, "--condition"));
+        // --settings-file path : use another settings file instead of the real one (the checks below never touch it).
+        Settings.FilePathOverride = Option(args, "--settings-file");
 
-        // AuraTime.exe --window-png out.png : draw the settings window to a file and exit (layout checks).
+        // AuraTime.exe --png out.png [--view clock|system|weather|world] [--theme id] [--design id] [--sample]
+        //   [--condition kind] : draw one frame to a file and exit (to check the renderer without a display).
+        int png = Array.IndexOf(args, "--png");
+        if (png >= 0 && png + 1 < args.Length) return WritePng(args[png + 1], args);
+
+        // AuraTime.exe --window-png out.png [--tall] [--bottom] [--script "js"] : draw the settings window to a file and
+        // exit (layout and behaviour checks). --script runs after the first frame, before the capture.
         int windowPng = Array.IndexOf(args, "--window-png");
-        if (windowPng >= 0 && windowPng + 1 < args.Length) return WriteWindowPng(args[windowPng + 1]);
+        if (windowPng >= 0 && windowPng + 1 < args.Length) return WriteWindowPng(args[windowPng + 1], Option(args, "--script"));
 
         // AuraTime.exe --sensors out.txt : list every sensor the app can read on this PC and exit.
         int sensors = Array.IndexOf(args, "--sensors");
@@ -86,7 +90,7 @@ internal static class Program
         }
     }
 
-    private static int WriteWindowPng(string path)
+    private static int WriteWindowPng(string path, string? script)
     {
         ApplicationConfiguration.Initialize();
         Settings settings = Settings.Load();
@@ -102,6 +106,11 @@ internal static class Program
             if (done == form.FirstFrameShown)
             {
                 // --bottom : capture the lower settings cards instead of the top ones.
+                if (script is not null)
+                {
+                    await form.RunScriptAsync(script);
+                    await Task.Delay(1500); // the app answers the page's messages, then the page redraws
+                }
                 if (Environment.GetCommandLineArgs().Contains("--bottom")) await form.ScrollSettingsToEndAsync();
                 await Task.Delay(600); // let the page paint the frame and the fonts
                 await form.CapturePngAsync(path);
@@ -131,11 +140,11 @@ internal static class Program
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    private static int WritePng(string path, string viewName, string? themeId, string? condition)
+    private static int WritePng(string path, string[] args)
     {
         Settings settings = Settings.Load();
         DateTime now = DateTime.Now;
-        ScreenView view = viewName switch
+        ScreenView view = (Option(args, "--view") ?? "clock") switch
         {
             "system" => ScreenView.System,
             "weather" => ScreenView.Weather,
@@ -143,19 +152,36 @@ internal static class Program
             _ => ScreenView.Clock
         };
 
+        // --sample : made-up sensor readings (the same ones the window's previews use), so a design can be checked
+        // without the sensors. Without it the real sensors are read twice, a moment apart, for the network rates.
         using var sensors = new SystemSensors();
-        SystemSnapshot system = view == ScreenView.System ? sensors.ReadOnce() : SystemSnapshot.Empty;
+        SystemSnapshot system = SystemSnapshot.Empty;
+        if (view == ScreenView.System)
+        {
+            if (args.Contains("--sample"))
+            {
+                system = SystemSnapshot.Sample;
+            }
+            else
+            {
+                sensors.ReadOnce();
+                Thread.Sleep(1500);
+                system = sensors.ReadOnce();
+            }
+        }
         // Without a chosen city, a sample one, so the view can still be checked.
         WeatherNow? weather = view == ScreenView.Weather
             ? WeatherService.FetchAsync(settings.WeatherCity ?? new WeatherCity("Lisboa", "Portugal", 38.72, -9.14)).GetAwaiter().GetResult()
             : null;
         // --condition sunny|clear-night|cloudy|rainy|snowy|stormy : force the weather icon, to check each one.
-        if (weather is not null && condition is not null) weather = weather with { Condition = condition };
+        if (weather is not null && Option(args, "--condition") is { } condition) weather = weather with { Condition = condition };
         IReadOnlyList<WorldClockRow> world = view == ScreenView.World ? WorldClocks.Rows(settings.WorldClocks, now, settings.Use24h) : [];
 
+        Theme theme = Themes.Resolve(Option(args, "--theme") ?? settings.Theme);
+        string design = Option(args, "--design") ?? settings.SystemDesign;
         var options = new RenderOptions(
-            Themes.Resolve(themeId ?? settings.Theme), ClockFonts.Resolve(settings.Font), settings.Use24h,
-            System.Globalization.CultureInfo.CurrentCulture, ScreenText.ForCurrentCulture());
+            theme, ClockFonts.Resolve(settings.Font), settings.Use24h, System.Globalization.CultureInfo.CurrentCulture,
+            ScreenText.ForCurrentCulture(), SystemDesigns.Resolve(theme, design, settings.Designs.GetValueOrDefault(design)));
         using var renderer = new ScreenRenderer();
         renderer.Draw(now, options, view, new ScreenData(system, weather, world));
         using SKData data = renderer.Bitmap.Encode(SKEncodedImageFormat.Png, 100);

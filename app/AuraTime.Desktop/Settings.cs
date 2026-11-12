@@ -29,6 +29,11 @@ public sealed class Settings
     /// <summary>Before several views: "clock", "system" or "auto". Only read, to carry an old choice over.</summary>
     public string? View { get; set; }
 
+    /// <summary>How the system view looks: one of <see cref="Render.SystemDesigns.Catalog"/>.</summary>
+    public string SystemDesign { get; set; } = Render.SystemDesigns.DefaultId;
+    /// <summary>The user's colour choices per design (design id to colours). A design without an entry uses the theme's.</summary>
+    public Dictionary<string, DesignColors> Designs { get; set; } = [];
+
     public string Theme { get; set; } = Render.Themes.DefaultId;
     public string Font { get; set; } = Render.ClockFonts.DefaultId;
     public int Brightness { get; set; } = 60;
@@ -44,8 +49,11 @@ public sealed class Settings
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    private static string FilePath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraTime", "settings.json");
+    /// <summary>Another settings file to use instead of the real one (the --settings-file checks never touch the user's).</summary>
+    public static string? FilePathOverride { get; set; }
+
+    private static string FilePath => FilePathOverride
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraTime", "settings.json");
 
     public static Settings Load()
     {
@@ -99,7 +107,42 @@ public sealed class Settings
         {
             WeatherCity = null;
         }
+        if (!Render.SystemDesigns.IsKnown(SystemDesign)) SystemDesign = Render.SystemDesigns.DefaultId;
+        // A new dictionary, never changed in place: the display thread may be reading the old one.
+        Designs = (Designs ?? [])
+            .Where(pair => Render.SystemDesigns.IsKnown(pair.Key) && pair.Value is not null)
+            .Select(pair => (pair.Key, Colors: pair.Value.Cleaned()))
+            .Where(pair => !pair.Colors.IsEmpty)
+            .ToDictionary(pair => pair.Key, pair => pair.Colors);
     }
+}
+
+/// <summary>The user's colour choices for one system design. Null means "use the theme's colour".</summary>
+public sealed class DesignColors
+{
+    /// <summary>"#RRGGBB". The main colour: CPU and most highlights.</summary>
+    public string? Accent { get; set; }
+    /// <summary>"#RRGGBB". The second colour: GPU.</summary>
+    public string? Secondary { get; set; }
+    /// <summary>"#RRGGBB". What a temperature turns into when it gets too high.</summary>
+    public string? Alert { get; set; }
+    /// <summary>Degrees Celsius from which a temperature counts as too high.</summary>
+    public int? AlertTemp { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsEmpty => Accent is null && Secondary is null && Alert is null && AlertTemp is null;
+
+    /// <summary>A copy with everything that is not a valid colour or a sensible temperature dropped.</summary>
+    public DesignColors Cleaned() => new()
+    {
+        Accent = ValidHex(Accent),
+        Secondary = ValidHex(Secondary),
+        Alert = ValidHex(Alert),
+        AlertTemp = AlertTemp is { } t ? Math.Clamp(t, Render.SystemDesigns.MinAlertTemp, Render.SystemDesigns.MaxAlertTemp) : null
+    };
+
+    private static string? ValidHex(string? value) =>
+        value is not null && System.Text.RegularExpressions.Regex.IsMatch(value, "^#[0-9a-fA-F]{6}$") ? value.ToUpperInvariant() : null;
 }
 
 /// <summary>Administrator rights, which the CPU's temperature sensor needs.</summary>

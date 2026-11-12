@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using AuraTime.Desktop.Display;
@@ -34,6 +35,7 @@ public sealed class MainForm : Form
     private readonly DisplayService _display;
     private readonly WebView2 _web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Back };
     private readonly ScreenRenderer _renderer = new();
+    private readonly ScreenRenderer _thumbRenderer = new(); // draws the design previews: the frame above must not be disturbed
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1000 };
     private readonly TaskCompletionSource _firstFrame = new();
     private bool _ready;
@@ -60,6 +62,9 @@ public sealed class MainForm : Form
     /// <summary>Completes once the page has drawn its first preview (used by the --window-png check).</summary>
     public Task FirstFrameShown => _firstFrame.Task;
 
+    /// <summary>Runs a script in the page (behaviour checks).</summary>
+    public Task RunScriptAsync(string script) => _web.CoreWebView2.ExecuteScriptAsync(script);
+
     /// <summary>Scrolls the settings column to its end (layout checks of the lower cards).</summary>
     public Task ScrollSettingsToEndAsync() =>
         _web.CoreWebView2.ExecuteScriptAsync("document.querySelector('.panel').scrollTop = 1e6");
@@ -79,6 +84,7 @@ public sealed class MainForm : Form
             _timer.Dispose();
             _web.Dispose(); // the browser processes end with the last WebView2 that uses them
             _renderer.Dispose();
+            _thumbRenderer.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -134,6 +140,7 @@ public sealed class MainForm : Form
                     Post(InitMessage());
                     ShowStatus();
                     SendFrame();
+                    SendThumbs();
                     _timer.Start();
                     break;
                 case "set":
@@ -170,6 +177,21 @@ public sealed class MainForm : Form
             case "viewSeconds": s.ViewSeconds = value.GetInt32(); break;
             case "views": s.Views = Strings(value); break;
             case "worldClocks": s.WorldClocks = Strings(value); break;
+            case "systemDesign": s.SystemDesign = value.GetString() ?? ""; break;
+            case "designStyle":
+            {
+                string design = value.GetProperty("design").GetString() ?? "";
+                var colors = new DesignColors
+                {
+                    Accent = OptionalString(value, "accent"),
+                    Secondary = OptionalString(value, "secondary"),
+                    Alert = OptionalString(value, "alert"),
+                    AlertTemp = value.TryGetProperty("alertTemp", out JsonElement temp) && temp.ValueKind == JsonValueKind.Number ? temp.GetInt32() : null
+                };
+                // A new dictionary, never changed in place: the display thread may be reading the old one.
+                s.Designs = new Dictionary<string, DesignColors>(s.Designs) { [design] = colors };
+                break;
+            }
             case "weatherCity":
                 s.WeatherCity = value.ValueKind == JsonValueKind.Null
                     ? null
@@ -187,7 +209,12 @@ public sealed class MainForm : Form
         _display.ApplySettings();
         PostSettings();
         SendFrame();
+        // The previews follow the theme, the clock font and the design's own colours.
+        if (key is "theme" or "font" or "systemDesign" or "designStyle") SendThumbs();
     }
+
+    private static string? OptionalString(JsonElement parent, string name) =>
+        parent.TryGetProperty(name, out JsonElement e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
 
     private static List<string> Strings(JsonElement array) =>
         array.EnumerateArray().Select(e => e.GetString()).OfType<string>().ToList();
@@ -279,7 +306,9 @@ public sealed class MainForm : Form
             weight = f.Id switch { "orbitron" => 700, "inter" => 300, "outfit" => 500, _ => 400 }
         }),
         worldCities = WorldClocks.Cities,
-        worldMax = WorldClocks.Max
+        worldMax = WorldClocks.Max,
+        designs = SystemDesigns.Catalog.Select(d => new { id = d.Id, name = d.Name, description = d.Description }),
+        alertTempRange = new { min = SystemDesigns.MinAlertTemp, max = SystemDesigns.MaxAlertTemp }
     };
 
     private object SettingsDto() => new
@@ -291,8 +320,18 @@ public sealed class MainForm : Form
         brightness = _settings.Brightness,
         use24h = _settings.Use24h,
         worldClocks = _settings.WorldClocks,
-        weatherCity = _settings.WeatherCity
+        weatherCity = _settings.WeatherCity,
+        systemDesign = _settings.SystemDesign,
+        designs = _settings.Designs,
+        styleDefaults = StyleDefaults()
     };
+
+    /// <summary>The colours a design starts with on the current theme: what the page shows until the user picks others.</summary>
+    private object StyleDefaults()
+    {
+        (string accent, string secondary, string alert) = SystemDesigns.DefaultColors(Themes.Resolve(_settings.Theme));
+        return new { accent, secondary, alert, alertTemp = SystemDesigns.DefaultAlertTemp };
+    }
 
     private object SystemDto() => new
     {
@@ -305,6 +344,28 @@ public sealed class MainForm : Form
     private void PostSettings() => Post(new { type = "settings", settings = SettingsDto() });
 
     private void PostSystem() => Post(SystemDto());
+
+    /// <summary>
+    /// A preview of every system design, drawn with sample numbers on the current theme and the design's own colours,
+    /// so choosing a design shows what it looks like without waiting for its turn on the screen.
+    /// </summary>
+    private void SendThumbs()
+    {
+        if (!_ready || IsDisposed) return;
+        Settings s = _settings;
+        Theme theme = Themes.Resolve(s.Theme);
+        DateTime now = DateTime.Now;
+        var thumbs = new List<object>();
+        foreach (DesignInfo design in SystemDesigns.Catalog)
+        {
+            SystemStyle style = SystemDesigns.Resolve(theme, design.Id, s.Designs.GetValueOrDefault(design.Id));
+            var options = new RenderOptions(theme, ClockFonts.Resolve(s.Font), s.Use24h, CultureInfo.CurrentCulture, _display.Text, style);
+            _thumbRenderer.Draw(now, options, ScreenView.System, new ScreenData(SystemSnapshot.Sample, null, []));
+            using SKData image = _thumbRenderer.Bitmap.Encode(SKEncodedImageFormat.Webp, 88);
+            thumbs.Add(new { id = design.Id, image = "data:image/webp;base64," + Convert.ToBase64String(image.AsSpan()) });
+        }
+        Post(new { type = "designThumbs", thumbs });
+    }
 
     /// <summary>Draws the frame the display gets and hands it to the page as a PNG.</summary>
     private void SendFrame()
@@ -343,7 +404,7 @@ public sealed class MainForm : Form
         _web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message, Json));
     }
 
-    private static string Hex(SKColor c) => $"#{c.Red:X2}{c.Green:X2}{c.Blue:X2}";
+    private static string Hex(SKColor c) => SystemDesigns.Hex(c);
 
     private void ShowMissingRuntime()
     {

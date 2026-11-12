@@ -73,6 +73,12 @@
         </div>
       </div>
 
+      <!-- The Windows app -->
+      <a routerLink="/desktop" data-testid="nav-desktop"
+        class="hidden md:inline-flex items-center px-4 lg:px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] lg:tracking-[0.2em] text-white border border-white/20 hover:border-luxury-gold hover:text-luxury-gold rounded-full transition-all duration-300 whitespace-nowrap">
+        {{ ts.t('DESKTOP.NAV') }}
+      </a>
+
       <!-- Desk Display (USB screen) -->
       <a routerLink="/screen"
         class="inline-flex items-center gap-2 px-4 lg:px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] lg:tracking-[0.2em] text-luxury-gold border border-luxury-gold/40 bg-luxury-gold/[0.06] hover:bg-luxury-gold hover:text-luxury-charcoal rounded-full transition-all duration-300 whitespace-nowrap">
@@ -366,13 +372,20 @@
           }
         </ul>
 
-        <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
-          <a routerLink="/screen"
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-4 pt-2">
+          <a [href]="desktopApp.downloadUrl" rel="noopener" data-testid="desk-download"
             class="inline-flex shrink-0 items-center justify-center whitespace-nowrap px-8 py-4 font-playfair text-xs tracking-[0.25em] font-bold uppercase text-luxury-charcoal bg-luxury-gold hover:bg-white transition-all duration-300 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.15)]">
+            {{ ts.t('LANDING.DESK.DOWNLOAD') }}
+          </a>
+          <a routerLink="/screen"
+            class="inline-flex shrink-0 items-center justify-center whitespace-nowrap px-8 py-4 font-playfair text-xs tracking-[0.2em] font-semibold uppercase text-white border border-white/20 hover:border-luxury-gold hover:text-luxury-gold transition-all duration-300 rounded-full">
             {{ ts.t('LANDING.DESK.CTA') }}
           </a>
-          <span class="text-xs text-gray-500 font-outfit">{{ ts.t('LANDING.DESK.BROWSER_NOTE') }}</span>
         </div>
+        <p class="text-xs text-gray-500 font-outfit">
+          <a routerLink="/desktop" class="text-luxury-gold underline underline-offset-4 hover:text-white transition-colors">{{ ts.t('LANDING.DESK.APP_LINK') }}</a>
+          <span aria-hidden="true"> · </span>{{ ts.t('LANDING.DESK.BROWSER_NOTE') }}
+        </p>
       </div>
 
       <div class="lg:col-span-6">

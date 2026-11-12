@@ -1,0 +1,194 @@
+<div class="min-h-screen text-luxury-platinum font-outfit">
+  <!-- Ambient glows, the same atmosphere as the rest of the site -->
+  <div class="fixed inset-0 -z-50 overflow-hidden bg-luxury-charcoal" aria-hidden="true">
+    <div class="absolute -top-40 -left-40 w-[700px] h-[700px] rounded-full bg-luxury-emerald/25 blur-[140px] animate-liquid-slow mix-blend-screen"></div>
+    <div class="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-luxury-gold/10 blur-[130px] animate-liquid-fast mix-blend-screen"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:5rem_5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+  </div>
+
+  <header class="w-full px-4 py-5 sm:px-6 md:px-16">
+    <nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <a routerLink="/" class="aura-focus group flex shrink-0 items-center gap-3 rounded-full" aria-label="AuraTime">
+        <span class="relative flex h-8 w-8 items-center justify-center rounded-full border border-luxury-gold shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-colors duration-300 group-hover:border-white">
+          <span class="absolute bottom-1/2 left-[15px] h-3 w-[1px] origin-bottom rotate-[30deg] bg-luxury-gold group-hover:bg-white"></span>
+          <span class="absolute bottom-1/2 left-[15px] h-2 w-[1px] origin-bottom rotate-[135deg] bg-luxury-gold group-hover:bg-white"></span>
+        </span>
+        <span class="font-playfair font-light text-base sm:text-lg tracking-[0.28em] sm:tracking-[0.5em] uppercase text-white group-hover:text-luxury-gold transition-colors duration-300">AURA</span>
+      </a>
+
+      <div class="flex items-center gap-3">
+        <label class="sr-only" for="desktop-language">{{ ts.t('SCREEN.PAGE.LANGUAGE') }}</label>
+        <select id="desktop-language" (change)="changeLanguage($event)"
+          class="aura-focus cursor-pointer appearance-none rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:border-luxury-gold">
+          @for (language of ts.getAvailableLanguages(); track language.code) {
+            <option [value]="language.code" [selected]="language.code === ts.currentLang()" class="bg-luxury-charcoal normal-case">{{ language.name }}</option>
+          }
+        </select>
+        <a routerLink="/screen" class="aura-pill-btn hidden sm:inline-flex">{{ ts.t('DESKTOP.HERO.TRY_WEB') }}</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 md:px-16 pb-24 pt-10 space-y-32">
+
+    <!-- Hero: what it is and the download -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-14 items-center" aria-labelledby="desktop-title">
+      <div class="lg:col-span-5 space-y-7">
+        <span class="inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-luxury-gold">
+          {{ ts.t('DESKTOP.HERO.EYEBROW') }}
+        </span>
+        <h1 id="desktop-title" class="text-4xl md:text-6xl font-playfair font-light text-white leading-tight">
+          {{ ts.t('DESKTOP.HERO.TITLE') }}
+        </h1>
+        <p class="text-gray-300 font-light leading-relaxed text-lg">{{ ts.t('DESKTOP.HERO.SUBTITLE') }}</p>
+
+        <div class="flex flex-wrap items-center gap-4 pt-2">
+          <a [href]="app.downloadUrl" data-testid="download" rel="noopener"
+            class="aura-focus inline-flex items-center justify-center gap-3 whitespace-nowrap rounded-full bg-luxury-gold px-8 py-4 font-playfair text-xs font-bold uppercase tracking-[0.25em] text-luxury-charcoal shadow-[0_0_30px_rgba(212,175,55,0.15)] transition-all duration-300 hover:bg-white">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4.5 19.5h15"/>
+            </svg>
+            {{ ts.t('DESKTOP.HERO.DOWNLOAD') }}
+          </a>
+          <a routerLink="/screen"
+            class="aura-focus inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/20 px-8 py-4 font-playfair text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all duration-300 hover:border-luxury-gold hover:text-luxury-gold">
+            {{ ts.t('DESKTOP.HERO.TRY_WEB') }}
+          </a>
+        </div>
+        <p class="text-xs text-gray-500" data-testid="meta">{{ text('DESKTOP.HERO.META') }}</p>
+      </div>
+
+      <div class="lg:col-span-7">
+        <figure class="relative">
+          <div class="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-luxury-gold/[0.06] blur-3xl" aria-hidden="true"></div>
+          <img src="/assets/desktop/app-window.webp" width="1080" height="720" [alt]="ts.t('DESKTOP.HERO.IMAGE_ALT')"
+            class="relative w-full h-auto rounded-2xl border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.65)]">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Why the app -->
+    <section class="space-y-12" aria-labelledby="features-title">
+      <h2 id="features-title" class="text-center text-3xl md:text-5xl font-playfair font-light text-white">{{ ts.t('DESKTOP.FEATURES.TITLE') }}</h2>
+      <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0 m-0">
+        @for (feature of features; track feature.title) {
+          <li class="rounded-3xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-300 hover:border-luxury-gold/20 space-y-3">
+            <span class="block h-1.5 w-8 rounded-full bg-luxury-gold" aria-hidden="true"></span>
+            <h3 class="text-lg font-playfair text-white">{{ ts.t(feature.title) }}</h3>
+            <p class="text-sm text-gray-400 font-light leading-relaxed">{{ ts.t(feature.text) }}</p>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <!-- What it shows: pictures drawn by the app -->
+    <section class="space-y-12" aria-labelledby="designs-title">
+      <div class="text-center space-y-4">
+        <h2 id="designs-title" class="text-3xl md:text-5xl font-playfair font-light text-white">{{ ts.t('DESKTOP.DESIGNS.TITLE') }}</h2>
+        <p class="text-gray-400 font-light">{{ ts.t('DESKTOP.DESIGNS.SUBTITLE') }}</p>
+      </div>
+
+      <h3 class="text-xl font-playfair text-white">{{ ts.t('DESKTOP.DESIGNS.SYSTEM') }}</h3>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0 m-0">
+        @for (design of systemDesigns; track design.file) {
+          <li>
+            <figure class="space-y-3">
+              <img [src]="'/assets/desktop/' + design.file + '.webp'" width="480" height="320" loading="lazy" alt=""
+                class="w-full h-auto rounded-2xl border border-white/10 bg-black shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+              <figcaption class="text-sm text-gray-300">{{ ts.t(design.name) }}</figcaption>
+            </figure>
+          </li>
+        }
+      </ul>
+
+      <h3 class="text-xl font-playfair text-white pt-4">{{ ts.t('DESKTOP.DESIGNS.VIEWS') }}</h3>
+      <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none p-0 m-0">
+        @for (view of views; track view.file) {
+          <li>
+            <figure class="space-y-3">
+              <img [src]="'/assets/desktop/' + view.file + '.webp'" width="480" height="320" loading="lazy" alt=""
+                class="w-full h-auto rounded-2xl border border-white/10 bg-black shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+              <figcaption class="text-sm text-gray-300">{{ ts.t(view.name) }}</figcaption>
+            </figure>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <!-- App or browser -->
+    <section class="space-y-10" aria-labelledby="compare-title">
+      <div class="text-center space-y-4">
+        <h2 id="compare-title" class="text-3xl md:text-5xl font-playfair font-light text-white">{{ ts.t('DESKTOP.COMPARE.TITLE') }}</h2>
+        <p class="text-gray-400 font-light max-w-2xl mx-auto">{{ ts.t('DESKTOP.COMPARE.SUBTITLE') }}</p>
+      </div>
+      <div class="overflow-x-auto rounded-3xl border border-white/10 bg-white/[0.02]">
+        <table class="w-full min-w-[560px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-white/10">
+              <td class="px-6 py-4"></td>
+              <th scope="col" class="px-6 py-4 font-playfair text-base font-normal text-luxury-gold">{{ ts.t('DESKTOP.COMPARE.APP') }}</th>
+              <th scope="col" class="px-6 py-4 font-playfair text-base font-normal text-white">{{ ts.t('DESKTOP.COMPARE.WEB') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of compareRows; track row.label) {
+              <tr class="border-b border-white/5 last:border-0">
+                <th scope="row" class="px-6 py-4 font-normal text-gray-300">{{ ts.t(row.label) }}</th>
+                <td class="px-6 py-4" [class]="row.appYes ? 'text-white font-medium' : 'text-gray-400'">{{ text(row.app) }}</td>
+                <td class="px-6 py-4" [class]="row.webYes ? 'text-white font-medium' : 'text-gray-400'">{{ text(row.web) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Three steps -->
+    <section class="space-y-10" aria-labelledby="steps-title">
+      <h2 id="steps-title" class="text-center text-3xl md:text-5xl font-playfair font-light text-white">{{ ts.t('DESKTOP.STEPS.TITLE') }}</h2>
+      <ol class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none p-0 m-0">
+        @for (step of steps; track step.n) {
+          <li class="rounded-3xl border border-white/5 bg-white/[0.02] p-8 space-y-3 transition-all duration-300 hover:border-luxury-gold/20">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full border border-luxury-gold/50 text-sm font-bold text-luxury-gold font-playfair">{{ step.n }}</span>
+            <h3 class="text-lg font-playfair text-white">{{ ts.t(step.title) }}</h3>
+            <p class="text-sm text-gray-400 font-light leading-relaxed">{{ ts.t(step.text) }}</p>
+          </li>
+        }
+      </ol>
+      <div class="flex justify-center">
+        <a [href]="app.downloadUrl" rel="noopener"
+          class="aura-focus inline-flex items-center justify-center gap-3 whitespace-nowrap rounded-full bg-luxury-gold px-8 py-4 font-playfair text-xs font-bold uppercase tracking-[0.25em] text-luxury-charcoal transition-all duration-300 hover:bg-white">
+          {{ ts.t('DESKTOP.HERO.DOWNLOAD') }}
+        </a>
+      </div>
+    </section>
+
+    <!-- Questions -->
+    <section class="space-y-10 max-w-3xl mx-auto" aria-labelledby="faq-title">
+      <h2 id="faq-title" class="text-center text-3xl md:text-5xl font-playfair font-light text-white">{{ ts.t('DESKTOP.FAQ.TITLE') }}</h2>
+      <div class="divide-y divide-white/10 rounded-3xl border border-white/10 bg-white/[0.02]">
+        @for (item of faq; track item.q) {
+          <details class="group px-6 py-5">
+            <summary class="aura-focus flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-white [&::-webkit-details-marker]:hidden">
+              <span class="font-playfair text-base">{{ ts.t(item.q) }}</span>
+              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-luxury-gold transition-transform duration-300 group-open:rotate-45" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </summary>
+            <p class="mt-3 text-sm text-gray-400 font-light leading-relaxed">
+              {{ ts.t(item.a) }}
+              @if (item.pawnIo) {
+                <a [href]="app.pawnIoUrl" target="_blank" rel="noopener noreferrer" class="aura-focus rounded text-luxury-gold underline underline-offset-4 hover:text-white">pawnio.eu</a>
+              }
+            </p>
+          </details>
+        }
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10 px-6 py-10 text-center text-xs text-gray-500 space-y-3">
+    <a [href]="app.sourceUrl" target="_blank" rel="noopener noreferrer" class="aura-focus rounded hover:text-luxury-gold transition-colors">{{ ts.t('DESKTOP.SOURCE') }}</a>
+    <p class="max-w-2xl mx-auto">{{ ts.t('LANDING.DESK.DISCLAIMER') }}</p>
+  </footer>
+</div>

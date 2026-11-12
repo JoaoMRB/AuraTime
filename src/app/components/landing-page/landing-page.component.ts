@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { TranslationService } from '../../services/translation.service';
 import { DeskDisplayMockComponent } from '../desk-display-mock/desk-display-mock.component';
+import { DESKTOP_APP } from '../../desktop-app';
 
 @Component({
   selector: 'app-landing-page',
@@ -37,6 +38,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   // Language dropdown
   langDropdownOpen = signal<boolean>(false);
+
+  /** The Windows app: the Desk Display section offers its download first. */
+  readonly desktopApp = DESKTOP_APP;
 
   // Desk Display section content (translation keys)
   readonly deskPoints = ['LANDING.DESK.P1', 'LANDING.DESK.P2', 'LANDING.DESK.P3', 'LANDING.DESK.P4'];

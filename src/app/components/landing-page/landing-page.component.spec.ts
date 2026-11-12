@@ -24,6 +24,23 @@ describe('LandingPageComponent: Desk Display', () => {
     fixture.detectChanges();
   }
 
+  it('links to the Windows app page from the top bar', async () => {
+    const { el } = await render();
+    const link = el.querySelector<HTMLAnchorElement>('header nav [data-testid="nav-desktop"]')!;
+    expect(link.getAttribute('href')).toBe('/desktop');
+    expect(link.textContent).toContain('Windows app');
+  });
+
+  it('offers the Windows app download first in the Desk Display section, the browser version second', async () => {
+    const { el } = await render();
+    const section = el.querySelector('section#desk-display')!;
+    const download = section.querySelector<HTMLAnchorElement>('[data-testid="desk-download"]')!;
+    expect(download.getAttribute('href')).toContain('/releases/latest/download/AuraTime-Setup.exe');
+    const links = Array.from(section.querySelectorAll('a'));
+    expect(links.indexOf(download)).toBeLessThan(links.findIndex(a => a.getAttribute('href') === '/screen'));
+    expect(section.querySelector('a[href="/desktop"]')).toBeTruthy();
+  });
+
   it('has a Desk Display button in the top bar, next to the app button, leading to /screen', async () => {
     const { el } = await render();
     const nav = el.querySelector('header nav')!;

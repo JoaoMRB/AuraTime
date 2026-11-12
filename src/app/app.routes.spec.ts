@@ -6,13 +6,19 @@ import { routes } from './app.routes';
  * would put it back in the initial bundle.
  */
 describe('routes: heavy pages are lazy-loaded', () => {
-  for (const path of ['app', 'screen']) {
+  for (const path of ['app', 'screen', 'desktop']) {
     it(`"${path}" loads its component on demand`, () => {
       const route = routes.find(r => r.path === path)!;
       expect(route.component).withContext('a directly imported component is in the initial bundle').toBeUndefined();
       expect(typeof route.loadComponent).toBe('function');
     });
   }
+
+  it('the Windows app page resolves to the DesktopPageComponent', async () => {
+    const route = routes.find(r => r.path === 'desktop')!;
+    const component = await (route.loadComponent as () => Promise<{ name: string }>)();
+    expect(component.name).toBe('DesktopPageComponent');
+  });
 
   it('the clock route resolves to the ClockComponent', async () => {
     const route = routes.find(r => r.path === 'app')!;

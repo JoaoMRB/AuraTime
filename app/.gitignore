@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+
+# Installer build (app/build-installer.ps1): the published app and the finished Setup.exe.
+# Installers go to a release, not to git.
+/publish/
+/dist/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Logs and local test output
+*.log

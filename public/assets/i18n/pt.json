@@ -52,25 +52,27 @@
     },
     "DESK": {
       "NAV": "Desk Display",
-      "EYEBROW": "NOVO · ECRÃ USB",
+      "EYEBROW": "NOVO · APP PARA WINDOWS",
       "TITLE": "O teu relógio, num ecrã só dele",
-      "SUBTITLE": "O AuraTime Desk Display transforma um pequeno ecrã USB ao lado do teclado num painel em direto: hora, sessão de foco, tarefas, alarmes, relógios mundiais e meteorologia.",
+      "SUBTITLE": "O AuraTime Desk Display transforma um pequeno ecrã USB ao lado do teclado num painel em direto: hora, meteorologia, relógios mundiais, a tua sessão de foco e, com a app para Windows, os sensores do teu PC.",
       "P1": "Segue o tema e a letra do teu AuraTime",
-      "P2": "Funciona no Chrome ou no Edge: sem drivers nem software extra",
+      "P2": "App gratuita para Windows que arranca com o PC, ou diretamente no Chrome e no Edge",
       "P3": "Só envia o que muda, por isso corre fluido",
       "P4": "Escurecimento noturno e proteção anti burn-in incluídos",
       "MOCK_CAPTION": "Pré-visualização em direto com dados de exemplo, desenhada pelo mesmo motor que comanda o ecrã.",
       "STEPS_TITLE": "Configura em três passos",
-      "S1_T": "Abre o Desk Display",
-      "S1_D": "Usa o Chrome ou o Edge no computador e carrega no botão Desk Display.",
+      "S1_T": "Instala a app",
+      "S1_D": "Descarrega o AuraTime para Windows, ou abre o Desk Display no Chrome ou no Edge.",
       "S2_T": "Liga o ecrã",
-      "S2_D": "Liga o ecrã USB, carrega em Ligar e escolhe-o na lista. Da próxima vez liga-se sozinho.",
+      "S2_D": "Liga o ecrã USB. A app encontra-o sozinha; no browser, carrega em Ligar e escolhe-o uma vez.",
       "S3_T": "Escolhe as vistas",
       "S3_D": "Escolhe o que roda, define o horário noturno e deixa-o a correr o dia todo.",
       "COMPAT": "Compatível com ecrãs da classe Turing Smart Screen 3,5\" (USB 1A86:5722, rev. A).",
       "DISCLAIMER": "O AuraTime é um projeto independente, sem qualquer ligação a fabricantes de ecrãs. Os nomes de produtos pertencem aos respetivos donos.",
-      "BROWSER_NOTE": "Precisa do Google Chrome ou do Microsoft Edge num computador.",
-      "CTA": "Abrir o Desk Display"
+      "BROWSER_NOTE": "A versão no browser precisa do Google Chrome ou do Microsoft Edge num computador.",
+      "CTA": "Experimentar no browser",
+      "DOWNLOAD": "Descarregar para Windows",
+      "APP_LINK": "Sobre a app para Windows"
     }
   },
   "CLOCK": {
@@ -455,6 +457,12 @@
         "RESYNCS": "Ressincronizações",
         "RESETS": "Reinícios do ecrã"
       }
+    },
+    "APP_BANNER": {
+      "TITLE": "Novo: AuraTime para Windows (beta)",
+      "TEXT": "Comanda este ecrã sem browser, arranca com o Windows e também mostra os sensores do teu PC. Fecha esta página enquanto a app usa o ecrã.",
+      "DOWNLOAD": "Descarregar",
+      "MORE": "Saber mais"
     }
   },
   "WEATHER": {
@@ -469,5 +477,100 @@
     "CITY_ERROR": "A pesquisa não está disponível neste momento",
     "CITY_USE_LOCATION": "Usar a minha localização",
     "CITY_DEFAULT_HINT": "A tua localização não está disponível, por isso o tempo mostra Lisboa. Procura a tua cidade para a mudar."
+  },
+  "DESKTOP": {
+    "NAV": "App para Windows",
+    "SEO": {
+      "TITLE": "AuraTime para Windows (beta) | App para o ecrã de secretária",
+      "DESCRIPTION": "App gratuita para Windows que comanda um ecrã USB de 3,5\": relógio, meteorologia, relógios mundiais e o CPU, a GPU, a memória, o disco e a rede do teu PC. Arranca com o Windows, sem browser."
+    },
+    "HERO": {
+      "EYEBROW": "BETA · APP PARA WINDOWS",
+      "TITLE": "AuraTime para Windows",
+      "SUBTITLE": "O teu ecrã USB de secretária, sempre ligado. A app arranca com o Windows, fica discreta na área de notificação e mantém o ecrã a funcionar: a hora, a meteorologia, outras cidades e os números do teu próprio PC.",
+      "DOWNLOAD": "Descarregar para Windows",
+      "TRY_WEB": "Experimentar no browser",
+      "META": "Versão {version} beta · Windows 10 e 11, 64 bits · {size} MB · Gratuita e open source",
+      "IMAGE_ALT": "A janela do AuraTime: pré-visualização do ecrã em direto e as definições"
+    },
+    "FEATURES": {
+      "TITLE": "Porquê a app",
+      "F1_T": "Arranca com o Windows",
+      "F1_D": "Liga uma vez. A partir daí o ecrã acende quando inicias sessão.",
+      "F2_T": "Sem browser",
+      "F2_D": "Fala diretamente com o ecrã. Nenhum separador para manter aberto, nada abranda quando a janela está escondida.",
+      "F3_T": "O teu PC num relance",
+      "F3_D": "Temperatura e carga do CPU e da GPU, memória, disco, velocidade da rede e volume.",
+      "F4_T": "Seis designs de sistema",
+      "F4_D": "De três números grandes a um painel completo, cada um com as suas cores.",
+      "F5_T": "Meteorologia e relógios mundiais",
+      "F5_D": "O tempo na tua cidade, a citação do dia e a hora em até três cidades.",
+      "F6_T": "Leve no teu PC",
+      "F6_D": "Fica na área de notificação a usar pouca memória e processador. Os sensores só são lidos enquanto uma vista de sistema está ligada."
+    },
+    "DESIGNS": {
+      "TITLE": "O que mostra",
+      "SUBTITLE": "Todas as imagens aqui foram desenhadas pela própria app, com números de exemplo.",
+      "SYSTEM": "Seis designs para os sensores do teu PC",
+      "VIEWS": "E as vistas que partilha com a versão no browser",
+      "DASHBOARD": "Dashboard",
+      "PANEL": "Painel completo",
+      "GAUGES": "Mostradores",
+      "BARS": "Barras",
+      "GRAPHS": "Gráficos",
+      "MINIMAL": "Minimalista",
+      "CLOCK": "Relógio",
+      "WEATHER": "Meteorologia e citação",
+      "WORLD": "Relógios mundiais"
+    },
+    "COMPARE": {
+      "TITLE": "App ou browser?",
+      "SUBTITLE": "Os dois comandam o mesmo ecrã. Usa um de cada vez: só um programa pode falar com o ecrã.",
+      "APP": "App para Windows",
+      "WEB": "Browser",
+      "R1": "Funciona sem uma janela do browser",
+      "R1_APP": "Sim",
+      "R1_WEB": "Não, a página tem de ficar aberta",
+      "R2": "Arranca sozinha",
+      "R2_APP": "Sim, com o Windows",
+      "R2_WEB": "Com um script de arranque",
+      "R3": "CPU, GPU, memória, disco, rede",
+      "R3_APP": "Sim",
+      "R3_WEB": "Não",
+      "R4": "Sessão de foco, tarefas e alarmes",
+      "R4_APP": "Ainda não",
+      "R4_WEB": "Sim",
+      "R5": "Instalação",
+      "R5_APP": "Instalador de {size} MB",
+      "R5_WEB": "Nada para instalar",
+      "R6": "Funciona em",
+      "R6_APP": "Windows 10 e 11",
+      "R6_WEB": "Chrome ou Edge num computador"
+    },
+    "STEPS": {
+      "TITLE": "A funcionar em três passos",
+      "S1_T": "Descarrega e instala",
+      "S1_D": "Corre o instalador. Não precisa de direitos de administrador e põe o AuraTime no menu Iniciar.",
+      "S2_T": "Liga o ecrã",
+      "S2_D": "Fecha primeiro o software original do ecrã e liga-o por USB. O AuraTime encontra-o sozinho.",
+      "S3_T": "Escolhe o que mostra",
+      "S3_D": "Escolhe as vistas, o design e as cores. A pré-visualização mostra exatamente o que vai para o ecrã."
+    },
+    "FAQ": {
+      "TITLE": "Perguntas",
+      "Q1": "Porque é que o CPU mostra “–” em vez da temperatura?",
+      "A1": "O Windows só deixa os programas lerem os sensores do próprio CPU com direitos de administrador e um pequeno driver. Liga “CPU temperature” nas definições System da app e instala o driver gratuito PawnIO:",
+      "Q2": "Como atualizo?",
+      "A2": "Descarrega a versão nova e corre-a por cima da antiga. As tuas definições ficam.",
+      "Q3": "Como desinstalo?",
+      "A3": "Como qualquer app: Definições → Aplicações → AuraTime → Desinstalar. As tuas definições ficam guardadas, caso voltes.",
+      "Q4": "Envia alguma coisa pela internet?",
+      "A4": "Só para obter a meteorologia: a cidade que escolhes vai para a Open-Meteo, com a posição arredondada a cerca de 1 km. Mais nada sai do teu PC.",
+      "Q5": "Que ecrãs funcionam?",
+      "A5": "Ecrãs USB de 3,5\" da classe Turing Smart Screen (USB 1A86:5722, rev. A), a 480×320.",
+      "Q6": "É mesmo gratuita?",
+      "A6": "Sim. O AuraTime é open source com licença MIT; o código da app está no GitHub."
+    },
+    "SOURCE": "Código no GitHub"
   }
 }

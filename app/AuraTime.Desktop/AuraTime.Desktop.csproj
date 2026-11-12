@@ -25,6 +25,7 @@
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageReference Include="NAudio.Wasapi" Version="3.3.0" />
     <PackageReference Include="SkiaSharp" Version="4.156.0" />
   </ItemGroup>
 

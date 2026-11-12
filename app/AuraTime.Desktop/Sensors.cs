@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using LibreHardwareMonitor.Hardware;
+using NAudio.CoreAudioApi;
 
 namespace AuraTime.Desktop;
 
@@ -32,6 +34,10 @@ public sealed record SystemSnapshot
     public float? DiskUsedPct { get; init; }
     public float? DiskTemp { get; init; }
 
+    /// <summary>Master volume of the default speakers, 0..100.</summary>
+    public float? VolumePct { get; init; }
+    public bool Muted { get; init; }
+
     /// <summary>Bytes per second of the busiest network adapter.</summary>
     public float? NetDownBps { get; init; }
     public float? NetUpBps { get; init; }
@@ -63,7 +69,7 @@ public sealed record SystemSnapshot
             GpuName = "Sample GPU", GpuTemp = 52, GpuLoad = 24, GpuClockMhz = 1800, GpuPowerW = 120,
             RamUsedGb = 17.3f, RamTotalGb = 32, VramUsedGb = 3.2f, VramTotalGb = 8,
             DiskName = "Sample SSD", DiskUsedPct = 62, DiskTemp = 38,
-            NetDownBps = 4_200_000, NetUpBps = 310_000,
+            NetDownBps = 4_200_000, NetUpBps = 310_000, VolumePct = 40,
             History = new SystemHistory(
                 Wave(40, 25, 8, 2, 100), Wave(30, 20, 6, 0, 100), Wave(56, 8, 2, 30, 90), Wave(50, 6, 2, 30, 90),
                 Wave(3_000_000, 2_500_000, 900_000, 0, 9_000_000), Wave(250_000, 150_000, 60_000, 0, 900_000))
@@ -85,6 +91,7 @@ public sealed class SystemSensors : IDisposable
     private readonly object _lock = new();
     private readonly List<float> _cpuLoad = [], _gpuLoad = [], _cpuTemp = [], _gpuTemp = [], _netDown = [], _netUp = [];
     private Computer? _computer;
+    private MMDeviceEnumerator? _audio;
     private System.Threading.Timer? _timer;
 
     public SystemSnapshot Latest { get; private set; } = SystemSnapshot.Empty;
@@ -104,6 +111,8 @@ public sealed class SystemSensors : IDisposable
                 _timer = null;
                 _computer?.Close();
                 _computer = null;
+                _audio?.Dispose();
+                _audio = null;
                 foreach (List<float> series in new[] { _cpuLoad, _gpuLoad, _cpuTemp, _gpuTemp, _netDown, _netUp }) series.Clear();
                 Latest = SystemSnapshot.Empty;
             }
@@ -152,7 +161,8 @@ public sealed class SystemSensors : IDisposable
             }
             foreach (IHardware hardware in _computer.Hardware) hardware.Update();
 
-            SystemSnapshot reading = Read(_computer);
+            (float? volume, bool muted) = ReadVolume();
+            SystemSnapshot reading = Read(_computer) with { VolumePct = volume, Muted = muted };
             Push(_cpuLoad, reading.CpuLoad);
             Push(_gpuLoad, reading.GpuLoad);
             Push(_cpuTemp, reading.CpuTemp);
@@ -173,6 +183,22 @@ public sealed class SystemSensors : IDisposable
         finally
         {
             Monitor.Exit(_lock);
+        }
+    }
+
+    /// <summary>The master volume of the default speakers. No speakers (or none plugged in) is not an error: no reading.</summary>
+    private (float? Volume, bool Muted) ReadVolume()
+    {
+        try
+        {
+            _audio ??= new MMDeviceEnumerator();
+            using MMDevice device = _audio.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            AudioEndpointVolume volume = device.AudioEndpointVolume;
+            return (volume.MasterVolumeLevelScalar * 100, volume.Mute);
+        }
+        catch (Exception e) when (e is COMException or InvalidOperationException or NotSupportedException)
+        {
+            return (null, false);
         }
     }
 

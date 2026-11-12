@@ -13,7 +13,7 @@ public sealed record SystemStyle(string Design, SKColor Accent, SKColor Secondar
 
 public static class SystemDesigns
 {
-    public const string DefaultId = "panel";
+    public const string DefaultId = "dashboard";
     public const int DefaultAlertTemp = 80;
     public const int MinAlertTemp = 50;
     public const int MaxAlertTemp = 100;
@@ -24,10 +24,14 @@ public static class SystemDesigns
         new("panel", "Full panel", "Everything at once, neatly in a grid."),
         new("gauges", "Gauges", "Two big dials for the CPU and the GPU."),
         new("bars", "Bars", "A list of meters, one line each."),
-        new("graphs", "Graphs", "The last few minutes of load and network.")
+        new("graphs", "Graphs", "The last few minutes of load and network."),
+        new("dashboard", "Dashboard", "Everything in cards over the whole screen: CPU, GPU, network, volume, time, memory and disk.")
     ];
 
     public static bool IsKnown(string? id) => Catalog.Any(d => d.Id == id);
+
+    /// <summary>Designs that draw their own cards over the whole screen, instead of sitting inside the theme's big card.</summary>
+    public static bool UsesWholeScreen(string? id) => id == "dashboard";
 
     /// <summary>The colours a design starts with on this theme, as "#RRGGBB".</summary>
     public static (string Accent, string Secondary, string Alert) DefaultColors(Theme theme) =>
@@ -62,10 +66,11 @@ public sealed partial class ScreenRenderer
     private const string Semibold = "inter-latin-600-normal.ttf";
     private const string Medium = "inter-latin-500-normal.ttf";
 
-    private void DrawSystem(SystemSnapshot s, RenderOptions options)
+    private void DrawSystem(SystemSnapshot s, RenderOptions options, DateTime now)
     {
         switch (options.System.Design)
         {
+            case "dashboard": DrawDashboard(s, options, now); break;
             case "minimal": DrawMinimal(s, options); break;
             case "gauges": DrawGauges(s, options); break;
             case "bars": DrawBars(s, options); break;
@@ -267,6 +272,160 @@ public sealed partial class ScreenRenderer
         BigValue(o, big, 48, top + 50, 112, size, color, SKTextAlign.Left, unitScale);
         Text(Ellipsize(sub, subFont, 112), 48, top + 66, subFont, theme.Muted);
         Chart(new SKRect(172, top + 2, 432, top + 66), series, max, color, theme);
+    }
+
+    /* ------------------------------ 6. dashboard ------------------------------ */
+
+    /// <summary>
+    /// The whole screen in cards. Top: CPU and GPU with a load ring. Middle: network, volume, time and date.
+    /// Bottom: memory, the logo, the system drive. The cards stay 14 px inside the screen so the anti burn-in shift
+    /// never pushes one off it.
+    /// </summary>
+    private void DrawDashboard(SystemSnapshot s, RenderOptions o, DateTime now)
+    {
+        SystemStyle st = o.System;
+        Theme theme = o.Theme;
+
+        string vram = s.VramUsedGb is { } gb ? Inv($"{gb:0.0} GB") : "–";
+        Card(o, new SKRect(14, 14, 236, 150), "CPU", s.CpuName, s.CpuLoad, st.Accent, 38, 24,
+            ("TEMP", TempText(s.CpuTemp), s.CpuTemp >= st.AlertTemp), ("SPEED", GhzText(s.CpuClockMhz), false));
+        Card(o, new SKRect(244, 14, 466, 150), "GPU", s.GpuName, s.GpuLoad, st.Secondary, 38, 24,
+            ("TEMP", TempText(s.GpuTemp), s.GpuTemp >= st.AlertTemp), ("VRAM", vram, false));
+
+        // Network, volume, time and date on one strip
+        var strip = new SKRect(14, 158, 466, 198);
+        Panel(strip, theme.Muted, theme);
+        using (SKFont rate = Font(Semibold, 13))
+        using (SKFont small = Font(Medium, 11))
+        {
+            SKColor strong = StrongText(theme);
+            float y = strip.Top + 25;
+            string down = RateText(s.NetDownBps);
+            Arrow(32, y - 4, 8, false, st.Accent);
+            Text(down, 42, y, rate, strong);
+            float upArrow = 42 + rate.MeasureText(down) + 22;
+            Arrow(upArrow, y - 4, 8, true, st.Secondary);
+            Text(RateText(s.NetUpBps), upArrow + 10, y, rate, strong);
+
+            Speaker(240, strip.MidY, st.Accent, s.Muted);
+            Text(s.VolumePct is null || s.Muted ? "–" : PercentText(s.VolumePct), 262, y, rate, strong);
+
+            string suffix = o.Use24h ? "" : now.ToString("tt", CultureInfo.InvariantCulture);
+            DrawTimeWithSuffix(theme, o.Font, now.ToString(o.Use24h ? "HH:mm" : "hh:mm", CultureInfo.InvariantCulture), suffix, 454, strip.Top + 29, 96, 26, 11, alignRight: true);
+            Text(now.ToString("d", o.Culture), 356, y - 1, small, theme.Muted, SKTextAlign.Right);
+        }
+
+        // Memory, logo, system drive
+        float ram = Fraction(s.RamUsedGb, s.RamTotalGb);
+        Card(o, new SKRect(14, 206, 170, 306), "RAM", "", ram * 100, st.Accent, 28, 18,
+            ("USED", s.RamUsedGb is { } used ? Inv($"{used:0.0} GB") : "–", false), ("TOTAL", s.RamTotalGb is { } total ? Inv($"{MathF.Round(total)} GB") : "–", false), compact: true);
+        Logo(240, 246, 26, o);
+        Card(o, new SKRect(310, 206, 466, 306), "DISK", s.DiskName, s.DiskUsedPct, st.Secondary, 28, 18,
+            ("TEMP", TempText(s.DiskTemp), s.DiskTemp >= st.AlertTemp), ("FREE", s.DiskUsedPct is { } du ? PercentText(100 - du) : "–", false), compact: true);
+    }
+
+    /// <summary>
+    /// One component's card: its name, a load ring with the percentage in the middle, and two labelled values beside it.
+    /// <paramref name="compact"/> is the shorter card of the bottom row.
+    /// </summary>
+    private void Card(RenderOptions o, SKRect r, string title, string name, float? load, SKColor color, float ringRadius, float ringTextSize,
+        (string Label, string Value, bool Hot) first, (string Label, string Value, bool Hot) second, bool compact = false)
+    {
+        Theme theme = o.Theme;
+        Panel(r, color, theme);
+        using SKFont titleFont = Font(Semibold, 13);
+        using SKFont small = Font(Medium, 11);
+        using SKFont tiny = Font(Semibold, 10);
+        using SKFont value = Font(Semibold, compact ? 14 : 17);
+
+        Text(title, r.Left + 14, r.Top + 24, titleFont, color, SKTextAlign.Left, 2);
+        if (name.Length > 0) Text(Ellipsize(name, small, compact ? 60 : 104), r.Right - 14, r.Top + 24, small, theme.Muted, SKTextAlign.Right);
+
+        float cx = r.Left + 14 + ringRadius + 4;
+        float cy = r.Top + (compact ? 60 : 84);
+        Ring(cx, cy, ringRadius, compact ? 8 : 9, (load ?? 0) / 100, color, theme);
+        BigValue(o, new Big(load is null ? "–" : RoundText(load.Value), load is null ? "" : "%", false), cx, cy + (compact ? 6 : 7), ringRadius * 1.4f, ringTextSize, color);
+        if (!compact) Text("LOAD", cx, cy + 22, tiny, theme.Muted, SKTextAlign.Center, 1);
+
+        float x = cx + ringRadius + 18;
+        float step = compact ? 36 : 40;
+        float top = r.Top + (compact ? 44 : 58);
+        foreach ((string Label, string Value, bool Hot) item in new[] { first, second })
+        {
+            Text(item.Label, x, top, tiny, theme.Muted, SKTextAlign.Left, 1);
+            Text(item.Value, x, top + (compact ? 17 : 20), value, item.Hot ? o.System.Alert : StrongText(theme));
+            top += step;
+        }
+    }
+
+    /// <summary>A rounded card: a soft fill that keeps the text readable on any theme, and a coloured border.</summary>
+    private void Panel(SKRect rect, SKColor border, Theme theme)
+    {
+        using var paint = new SKPaint { IsAntialias = true, Color = theme.IsLight ? SKColors.White.WithAlpha(140) : SKColors.Black.WithAlpha(70) };
+        _canvas.DrawRoundRect(rect, 14, 14, paint);
+        paint.Style = SKPaintStyle.Stroke;
+        paint.StrokeWidth = 1.5f;
+        paint.Color = border.WithAlpha(150);
+        _canvas.DrawRoundRect(new SKRect(rect.Left + 0.75f, rect.Top + 0.75f, rect.Right - 0.75f, rect.Bottom - 0.75f), 14, 14, paint);
+    }
+
+    /// <summary>A full ring that starts at the top and fills clockwise.</summary>
+    private void Ring(float cx, float cy, float radius, float stroke, float fraction, SKColor color, Theme theme)
+    {
+        using var paint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = stroke, Color = theme.Muted.WithAlpha(56) };
+        _canvas.DrawCircle(cx, cy, radius, paint);
+        float sweep = 360 * Math.Clamp(fraction, 0, 1);
+        if (sweep < 1) return;
+        paint.StrokeCap = SKStrokeCap.Round;
+        paint.Color = color;
+        _canvas.DrawArc(new SKRect(cx - radius, cy - radius, cx + radius, cy + radius), -90, sweep, false, paint);
+    }
+
+    /// <summary>The AuraTime clock mark (the site's icon) with its name under it.</summary>
+    private void Logo(float cx, float cy, float radius, RenderOptions o)
+    {
+        float k = radius / 28f;
+        using var paint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeCap = SKStrokeCap.Round };
+        paint.StrokeWidth = 2.5f * k;
+        paint.Color = o.System.Accent;
+        _canvas.DrawCircle(cx, cy, radius, paint);
+        paint.StrokeWidth = 3f * k;
+        paint.Color = StrongText(o.Theme);
+        _canvas.DrawLine(cx, cy, cx, cy - 14 * k, paint);
+        paint.StrokeWidth = 2.5f * k;
+        paint.Color = o.System.Accent;
+        _canvas.DrawLine(cx, cy, cx + 12 * k, cy + 6 * k, paint);
+        paint.Style = SKPaintStyle.Fill;
+        _canvas.DrawCircle(cx, cy, 2.5f * k, paint);
+
+        using SKFont name = Font(Semibold, 10);
+        Text("AURATIME", cx, cy + radius + 22, name, o.Theme.Muted, SKTextAlign.Center, 2);
+    }
+
+    /// <summary>A small speaker with sound waves, or a cross when muted. The font has no such symbol.</summary>
+    private void Speaker(float x, float cy, SKColor color, bool muted)
+    {
+        using var fill = new SKPaint { IsAntialias = true, Color = color };
+        using var builder = new SKPathBuilder();
+        builder.MoveTo(x, cy - 3.5f);
+        builder.LineTo(x + 4, cy - 3.5f);
+        builder.LineTo(x + 9, cy - 8);
+        builder.LineTo(x + 9, cy + 8);
+        builder.LineTo(x + 4, cy + 3.5f);
+        builder.LineTo(x, cy + 3.5f);
+        builder.Close();
+        using SKPath body = builder.Detach();
+        _canvas.DrawPath(body, fill);
+
+        using var stroke = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1.6f, StrokeCap = SKStrokeCap.Round, Color = color };
+        if (muted)
+        {
+            _canvas.DrawLine(x + 13, cy - 4, x + 20, cy + 4, stroke);
+            _canvas.DrawLine(x + 13, cy + 4, x + 20, cy - 4, stroke);
+            return;
+        }
+        _canvas.DrawArc(new SKRect(x + 4, cy - 5, x + 14, cy + 5), -50, 100, false, stroke);
+        _canvas.DrawArc(new SKRect(x + 1, cy - 9, x + 17, cy + 9), -50, 100, false, stroke);
     }
 
     /* ------------------------------ shared pieces ------------------------------ */

@@ -51,12 +51,13 @@ public sealed partial class ScreenRenderer : IDisposable
         _canvas.Save();
         (int shiftX, int shiftY) = PixelShift(now);
         _canvas.Translate(shiftX, shiftY);
-        DrawCard(theme);
+        // The dashboard design draws its own cards over the whole screen: no big card behind them.
+        if (!(view == ScreenView.System && SystemDesigns.UsesWholeScreen(options.System.Design))) DrawCard(theme);
         // A view without its data falls back to the clock, as in the web app.
         switch (view)
         {
             case ScreenView.System:
-                DrawSystem(data.System, options);
+                DrawSystem(data.System, options, now);
                 break;
             case ScreenView.Weather when data.Weather is not null:
                 DrawWeather(now, data.Weather, options);

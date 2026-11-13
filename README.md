@@ -1,7 +1,17 @@
 # AuraTime
 
+> [!IMPORTANT]
+> **This project is archived.** It is no longer developed and the repository is read-only.
+>
+> The Windows app now continues as **[Vigil](https://github.com/JoaoMRB/Vigil)**, in a repository of its own.
+> Vigil installs separately, and the first time it runs it picks up your AuraTime settings.
+>
+> The website and the browser extension stay as they are, with no new updates. Old releases can still be
+> downloaded.
+
 A minimalist focus clock for your browser: Pomodoro, ambient sound and an optional USB desk display.
 
+[![Status: archived](https://img.shields.io/badge/status-archived-lightgrey.svg)](#auratime)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Angular 18](https://img.shields.io/badge/Angular-18-dd0031.svg)](https://angular.dev)
 [![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://aura-time-iota.vercel.app)
@@ -73,6 +83,9 @@ A minimalist focus clock for your browser: Pomodoro, ambient sound and an option
 - A dock of quick links.
 
 ## Windows app (beta)
+
+> **Moved:** the Windows app is now **[Vigil](https://github.com/JoaoMRB/Vigil)**. What follows describes the
+> last AuraTime version.
 
 **AuraTime for Windows** drives the same USB screen without a browser. It starts with Windows, waits in the
 notification area and adds your PC's own sensors: CPU and GPU temperature and load, memory, disk, network
